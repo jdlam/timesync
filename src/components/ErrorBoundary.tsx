@@ -51,10 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 </p>
               </div>
             )}
-            <Button
-              onClick={this.handleReset}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
-            >
+            <Button onClick={this.handleReset}>
               <RefreshCw className="w-4 h-4" />
               Try Again
             </Button>
