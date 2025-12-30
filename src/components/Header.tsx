@@ -33,7 +33,7 @@ export default function Header() {
               </Link>
               <ThemeToggle />
               <Link to="/events/create">
-                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
+                <Button>
                   Create Event
                 </Button>
               </Link>
@@ -83,7 +83,7 @@ export default function Header() {
             className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
             activeProps={{
               className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2 text-white',
+                'flex items-center gap-3 p-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors mb-2 text-primary-foreground',
             }}
           >
             <Home size={20} />
@@ -96,7 +96,7 @@ export default function Header() {
             className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
             activeProps={{
               className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2 text-white',
+                'flex items-center gap-3 p-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors mb-2 text-primary-foreground',
             }}
           >
             <Calendar size={20} />

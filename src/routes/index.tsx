@@ -82,7 +82,7 @@ function LandingPage() {
             <Link to="/events/create">
               <Button
                 size="lg"
-                className="bg-cyan-600 hover:bg-cyan-700 text-white text-lg px-8 py-6 shadow-lg shadow-cyan-500/50"
+                className="text-lg px-8 py-6 shadow-lg shadow-primary/50"
               >
                 Create Event
               </Button>
@@ -180,7 +180,7 @@ function LandingPage() {
             <Link to="/events/create">
               <Button
                 size="lg"
-                className="bg-cyan-600 hover:bg-cyan-700 text-white text-lg px-8 py-6"
+                className="text-lg px-8 py-6"
               >
                 Create Your First Event
               </Button>
@@ -201,7 +201,7 @@ function LandingPage() {
           <Link to="/events/create">
             <Button
               size="lg"
-              className="bg-cyan-600 hover:bg-cyan-700 text-white text-lg px-12 py-6 shadow-lg shadow-cyan-500/50"
+              className="text-lg px-12 py-6 shadow-lg shadow-primary/50"
             >
               Get Started - It's Free
             </Button>

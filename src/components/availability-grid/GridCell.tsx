@@ -6,7 +6,11 @@ interface GridCellProps {
   displayTime: string
   isSelected: boolean
   mode: 'select' | 'view'
-  onInteraction: (timestamp: string, action: 'toggle' | 'select' | 'deselect') => void
+  onInteraction: (
+    timestamp: string,
+    action: 'start' | 'enter' | 'click',
+    shiftKey?: boolean
+  ) => void
   heatmapData?: HeatmapSlotData
   heatmapColor?: string
   isDragging?: boolean
@@ -22,29 +26,37 @@ export function GridCell({
   heatmapColor,
   isDragging,
 }: GridCellProps) {
-  const handleClick = () => {
-    if (mode === 'select') {
-      onInteraction(timestamp, 'toggle')
+  const handleClick = (e: React.MouseEvent) => {
+    // Only handle shift+click here, regular clicks are handled by mousedown
+    if (mode === 'select' && e.shiftKey) {
+      e.preventDefault()
+      e.stopPropagation() // Prevent container from handling this
+      onInteraction(timestamp, 'click', true)
     }
   }
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     if (mode === 'select') {
-      // Select the first cell when mouse is pressed
-      onInteraction(timestamp, 'toggle')
+      if (e.shiftKey) {
+        // Prevent container from starting drag mode during shift+click
+        e.stopPropagation()
+      } else {
+        // Start drag selection (also handles single click)
+        onInteraction(timestamp, 'start')
+      }
     }
   }
 
   const handleMouseEnter = () => {
     if (mode === 'select' && isDragging) {
-      onInteraction(timestamp, 'select')
+      onInteraction(timestamp, 'enter')
     }
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (mode === 'select') {
       e.preventDefault()
-      onInteraction(timestamp, 'toggle')
+      onInteraction(timestamp, 'start')
     }
   }
 

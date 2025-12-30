@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import type { Event } from '@/db/schema'
 import {
   generateTimeSlots,
@@ -10,7 +10,6 @@ import {
 import { GridCell } from './GridCell'
 import type { HeatmapSlotData } from '@/lib/heatmap-utils'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface AvailabilityGridProps {
   event: Event
@@ -33,6 +32,10 @@ export function AvailabilityGrid({
     new Set(initialSelections)
   )
   const [isDragging, setIsDragging] = useState(false)
+  // Track whether drag is selecting or deselecting
+  const dragModeRef = useRef<'select' | 'deselect' | null>(null)
+  // Track last clicked cell for shift+click range selection
+  const lastClickedRef = useRef<string | null>(null)
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set(event.dates))
 
   // Generate all time slots
@@ -62,22 +65,63 @@ export function AvailabilityGrid({
 
   // Handle slot interaction
   const handleSlotInteraction = useCallback(
-    (timestamp: string, action: 'toggle' | 'select' | 'deselect') => {
+    (
+      timestamp: string,
+      action: 'start' | 'enter' | 'click',
+      shiftKey?: boolean
+    ) => {
       if (mode === 'view') return
 
       setSelectedSlots((prev) => {
         const newSelected = new Set(prev)
 
-        if (action === 'toggle') {
-          if (newSelected.has(timestamp)) {
+        if (action === 'start') {
+          // Mouse down - start drag, determine if selecting or deselecting
+          const wasSelected = newSelected.has(timestamp)
+          dragModeRef.current = wasSelected ? 'deselect' : 'select'
+
+          if (wasSelected) {
             newSelected.delete(timestamp)
           } else {
             newSelected.add(timestamp)
           }
-        } else if (action === 'select') {
-          newSelected.add(timestamp)
-        } else if (action === 'deselect') {
-          newSelected.delete(timestamp)
+          lastClickedRef.current = timestamp
+        } else if (action === 'enter' && isDragging && dragModeRef.current) {
+          // Mouse enter while dragging
+          if (dragModeRef.current === 'select') {
+            newSelected.add(timestamp)
+          } else {
+            newSelected.delete(timestamp)
+          }
+        } else if (action === 'click' && shiftKey) {
+          // Shift+click - select or deselect range based on clicked cell's state
+          const shouldSelect = !newSelected.has(timestamp)
+
+          if (lastClickedRef.current) {
+            const lastIndex = allSlots.indexOf(lastClickedRef.current)
+            const currentIndex = allSlots.indexOf(timestamp)
+
+            if (lastIndex !== -1 && currentIndex !== -1) {
+              const startIndex = Math.min(lastIndex, currentIndex)
+              const endIndex = Math.max(lastIndex, currentIndex)
+
+              for (let i = startIndex; i <= endIndex; i++) {
+                if (shouldSelect) {
+                  newSelected.add(allSlots[i])
+                } else {
+                  newSelected.delete(allSlots[i])
+                }
+              }
+            }
+          } else {
+            // No previous click, just toggle this cell
+            if (shouldSelect) {
+              newSelected.add(timestamp)
+            } else {
+              newSelected.delete(timestamp)
+            }
+          }
+          lastClickedRef.current = timestamp
         }
 
         // Notify parent of change
@@ -88,7 +132,7 @@ export function AvailabilityGrid({
         return newSelected
       })
     },
-    [mode, onChange]
+    [mode, onChange, isDragging, allSlots]
   )
 
   // Handle mouse down to start dragging
@@ -101,6 +145,7 @@ export function AvailabilityGrid({
   // Handle mouse up to stop dragging
   const handleMouseUp = () => {
     setIsDragging(false)
+    dragModeRef.current = null
   }
 
   // Toggle date expansion in mobile view

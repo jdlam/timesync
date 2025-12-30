@@ -332,7 +332,6 @@ function CreateEvent() {
                   setCreatedEvent(null)
                   router.navigate({ to: '/' })
                 }}
-                className="bg-cyan-600 hover:bg-cyan-700"
               >
                 Done
               </Button>

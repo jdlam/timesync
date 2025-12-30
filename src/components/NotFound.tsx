@@ -18,7 +18,7 @@ export function NotFound({
         <h1 className="text-4xl font-bold text-foreground mb-2">{title}</h1>
         <p className="text-lg text-muted-foreground mb-8">{message}</p>
         <Link to="/">
-          <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
+          <Button>
             <Home className="w-4 h-4" />
             Go Home
           </Button>

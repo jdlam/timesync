@@ -221,7 +221,7 @@ function EditResponse() {
               <Button
                 type="submit"
                 disabled={isSubmitting || selectedSlots.length === 0}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white px-8"
+                className="px-8"
               >
                 {isSubmitting && <Loader2 className="animate-spin" />}
                 {isSubmitting ? 'Updating...' : 'Update Response'}
