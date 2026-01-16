@@ -1,235 +1,251 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
-import { db, events, responses, type Event, type Response } from '@/db'
-import { eq, and } from 'drizzle-orm'
-import { submitResponseSchema, type SubmitResponseInput } from '@/lib/validation-schemas'
-import { EventHeader } from '@/components/EventHeader'
-import { AvailabilityGrid } from '@/components/availability-grid/AvailabilityGrid'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
-import { NotFound } from '@/components/NotFound'
+import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { and, eq } from "drizzle-orm";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
+import { EventHeader } from "@/components/EventHeader";
+import { NotFound } from "@/components/NotFound";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { db, events, responses } from "@/db";
+import type { SubmitResponseInput } from "@/lib/validation-schemas";
 
-export const Route = createFileRoute('/events/$eventId/edit/$editToken')({
-  component: EditResponse,
-  loader: async ({ params }) => {
-    try {
-      const event = await getEventById({ data: params.eventId })
-      const response = await getResponseByEditToken({
-        data: {
-          eventId: params.eventId,
-          editToken: params.editToken,
-        },
-      })
-      return { event, response, error: null }
-    } catch (error) {
-      return {
-        event: null,
-        response: null,
-        error: error instanceof Error ? error.message : 'Response not found or invalid edit token'
-      }
-    }
-  },
-})
+export const Route = createFileRoute("/events/$eventId/edit/$editToken")({
+	component: EditResponse,
+	loader: async ({ params }) => {
+		try {
+			const event = await getEventById({ data: params.eventId });
+			const response = await getResponseByEditToken({
+				data: {
+					eventId: params.eventId,
+					editToken: params.editToken,
+				},
+			});
+			return { event, response, error: null };
+		} catch (error) {
+			return {
+				event: null,
+				response: null,
+				error:
+					error instanceof Error
+						? error.message
+						: "Response not found or invalid edit token",
+			};
+		}
+	},
+});
 
 // Server function to get event by ID
-const getEventById = createServerFn({ method: 'GET' })
-  .inputValidator((data: string) => data)
-  .handler(async ({ data: eventId }) => {
-    const [event] = await db
-      .select()
-      .from(events)
-      .where(eq(events.id, eventId))
-      .limit(1)
+const getEventById = createServerFn({ method: "GET" })
+	.inputValidator((data: string) => data)
+	.handler(async ({ data: eventId }) => {
+		const [event] = await db
+			.select()
+			.from(events)
+			.where(eq(events.id, eventId))
+			.limit(1);
 
-    if (!event) {
-      throw new Error('Event not found')
-    }
+		if (!event) {
+			throw new Error("Event not found");
+		}
 
-    return event
-  })
+		return event;
+	});
 
 // Server function to get response by edit token
-const getResponseByEditToken = createServerFn({ method: 'POST' })
-  .inputValidator((data: { eventId: string; editToken: string }) => data)
-  .handler(async ({ data }) => {
-    const [response] = await db
-      .select()
-      .from(responses)
-      .where(
-        and(
-          eq(responses.eventId, data.eventId),
-          eq(responses.editToken, data.editToken)
-        )
-      )
-      .limit(1)
+const getResponseByEditToken = createServerFn({ method: "POST" })
+	.inputValidator((data: { eventId: string; editToken: string }) => data)
+	.handler(async ({ data }) => {
+		const [response] = await db
+			.select()
+			.from(responses)
+			.where(
+				and(
+					eq(responses.eventId, data.eventId),
+					eq(responses.editToken, data.editToken),
+				),
+			)
+			.limit(1);
 
-    if (!response) {
-      throw new Error('Response not found or invalid edit token')
-    }
+		if (!response) {
+			throw new Error("Response not found or invalid edit token");
+		}
 
-    return response
-  })
+		return response;
+	});
 
 // Server function to update response
-const updateResponse = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (data: SubmitResponseInput & { responseId: string }) => data
-  )
-  .handler(async ({ data }) => {
-    const [updatedResponse] = await db
-      .update(responses)
-      .set({
-        respondentName: data.respondentName,
-        respondentComment: data.respondentComment || null,
-        selectedSlots: data.selectedSlots,
-        updatedAt: new Date(),
-      })
-      .where(eq(responses.id, data.responseId))
-      .returning()
+const updateResponse = createServerFn({ method: "POST" })
+	.inputValidator((data: SubmitResponseInput & { responseId: string }) => data)
+	.handler(async ({ data }) => {
+		const [updatedResponse] = await db
+			.update(responses)
+			.set({
+				respondentName: data.respondentName,
+				respondentComment: data.respondentComment || null,
+				selectedSlots: data.selectedSlots,
+				updatedAt: new Date(),
+			})
+			.where(eq(responses.id, data.responseId))
+			.returning();
 
-    return updatedResponse
-  })
+		return updatedResponse;
+	});
 
 function EditResponse() {
-  const { event, response, error: loaderError } = Route.useLoaderData()
+	const { event, response, error: loaderError } = Route.useLoaderData();
 
-  if (loaderError || !event || !response) {
-    return <NotFound title="Response Not Found" message={loaderError || "This response doesn't exist or the edit link is invalid."} />
-  }
+	if (loaderError || !event || !response) {
+		return (
+			<NotFound
+				title="Response Not Found"
+				message={
+					loaderError ||
+					"This response doesn't exist or the edit link is invalid."
+				}
+			/>
+		);
+	}
 
-  const [selectedSlots, setSelectedSlots] = useState<string[]>(response.selectedSlots)
-  const [name, setName] = useState(response.respondentName)
-  const [comment, setComment] = useState(response.respondentComment || '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+	const [selectedSlots, setSelectedSlots] = useState<string[]>(
+		response.selectedSlots,
+	);
+	const [name, setName] = useState(response.respondentName);
+	const [comment, setComment] = useState(response.respondentComment || "");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccess(false)
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setError(null);
+		setSuccess(false);
 
-    // Validate
-    if (!name.trim()) {
-      setError('Please enter your name')
-      return
-    }
+		// Validate
+		if (!name.trim()) {
+			setError("Please enter your name");
+			return;
+		}
 
-    if (selectedSlots.length === 0) {
-      setError('Please select at least one time slot')
-      return
-    }
+		if (selectedSlots.length === 0) {
+			setError("Please select at least one time slot");
+			return;
+		}
 
-    setIsSubmitting(true)
+		setIsSubmitting(true);
 
-    try {
-      await updateResponse({
-        data: {
-          responseId: response.id,
-          respondentName: name.trim(),
-          respondentComment: comment.trim() || undefined,
-          selectedSlots,
-        },
-      })
+		try {
+			await updateResponse({
+				data: {
+					responseId: response.id,
+					respondentName: name.trim(),
+					respondentComment: comment.trim() || undefined,
+					selectedSlots,
+				},
+			});
 
-      setSuccess(true)
-      toast.success('Response updated successfully!')
+			setSuccess(true);
+			toast.success("Response updated successfully!");
 
-      // Hide success message after 3 seconds
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      console.error('Failed to update response:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update response'
-      setError(errorMessage)
-      toast.error(errorMessage)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+			// Hide success message after 3 seconds
+			setTimeout(() => setSuccess(false), 3000);
+		} catch (err) {
+			console.error("Failed to update response:", err);
+			const errorMessage =
+				err instanceof Error ? err.message : "Failed to update response";
+			setError(errorMessage);
+			toast.error(errorMessage);
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
 
-  return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-4 flex items-center gap-2">
-          <div className="bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-full text-sm font-semibold">
-            Editing Response
-          </div>
-        </div>
+	return (
+		<div className="min-h-screen bg-background py-12 px-4">
+			<div className="max-w-6xl mx-auto">
+				<div className="mb-4 flex items-center gap-2">
+					<div className="bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-full text-sm font-semibold">
+						Editing Response
+					</div>
+				</div>
 
-        <EventHeader event={event} />
+				<EventHeader event={event} />
 
-        <div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Update Your Availability</h2>
-          <p className="text-muted-foreground mb-6">
-            Make changes to your availability and click Update to save.
-          </p>
+				<div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6">
+					<h2 className="text-2xl font-bold text-foreground mb-4">
+						Update Your Availability
+					</h2>
+					<p className="text-muted-foreground mb-6">
+						Make changes to your availability and click Update to save.
+					</p>
 
-          <AvailabilityGrid
-            event={event}
-            initialSelections={selectedSlots}
-            onChange={setSelectedSlots}
-            mode="select"
-          />
+					<AvailabilityGrid
+						event={event}
+						initialSelections={selectedSlots}
+						onChange={setSelectedSlots}
+						mode="select"
+					/>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-foreground">
-                Your Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
-                className="bg-background border-border text-foreground"
-                required
-              />
-            </div>
+					<form onSubmit={handleSubmit} className="mt-8 space-y-6">
+						<div className="space-y-2">
+							<Label htmlFor="name" className="text-foreground">
+								Your Name <span className="text-red-500">*</span>
+							</Label>
+							<Input
+								id="name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								placeholder="Enter your name"
+								className="bg-background border-border text-foreground"
+								required
+							/>
+						</div>
 
-            <div className="space-y-2">
-              <Label htmlFor="comment" className="text-foreground">
-                Comment (Optional)
-              </Label>
-              <Textarea
-                id="comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Any additional notes..."
-                rows={3}
-                className="bg-background border-border text-foreground"
-              />
-            </div>
+						<div className="space-y-2">
+							<Label htmlFor="comment" className="text-foreground">
+								Comment (Optional)
+							</Label>
+							<Textarea
+								id="comment"
+								value={comment}
+								onChange={(e) => setComment(e.target.value)}
+								placeholder="Any additional notes..."
+								rows={3}
+								className="bg-background border-border text-foreground"
+							/>
+						</div>
 
-            {error && (
-              <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
-                <p className="text-red-400">{error}</p>
-              </div>
-            )}
+						{error && (
+							<div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
+								<p className="text-red-400">{error}</p>
+							</div>
+						)}
 
-            {success && (
-              <div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
-                <p className="text-green-400">Your response has been updated successfully!</p>
-              </div>
-            )}
+						{success && (
+							<div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
+								<p className="text-green-400">
+									Your response has been updated successfully!
+								</p>
+							</div>
+						)}
 
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={isSubmitting || selectedSlots.length === 0}
-                className="px-8"
-              >
-                {isSubmitting && <Loader2 className="animate-spin" />}
-                {isSubmitting ? 'Updating...' : 'Update Response'}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
+						<div className="flex justify-end">
+							<Button
+								type="submit"
+								disabled={isSubmitting || selectedSlots.length === 0}
+								className="px-8"
+							>
+								{isSubmitting && <Loader2 className="animate-spin" />}
+								{isSubmitting ? "Updating..." : "Update Response"}
+							</Button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	);
 }
