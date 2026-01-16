@@ -15,7 +15,6 @@ interface HeatmapCellProps {
 }
 
 export function HeatmapCell({
-  timestamp,
   displayTime,
   data,
   bgColor,

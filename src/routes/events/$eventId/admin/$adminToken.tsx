@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { db, events, responses, type Event, type Response } from '@/db'
+import { db, events, responses } from '@/db'
 import { eq, and, desc } from 'drizzle-orm'
 import { EventHeader } from '@/components/EventHeader'
 import { HeatmapGrid } from '@/components/heatmap/HeatmapGrid'

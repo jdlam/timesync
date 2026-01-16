@@ -41,7 +41,7 @@ export const createEventSchema = z.object({
     .regex(/^\d{2}:\d{2}$/, 'Time must be in HH:mm format'),
 
   slotDuration: z.enum(['15', '30', '60'], {
-    errorMap: () => ({ message: 'Slot duration must be 15, 30, or 60 minutes' }),
+    message: 'Slot duration must be 15, 30, or 60 minutes',
   }),
 }).refine(
   (data) => {

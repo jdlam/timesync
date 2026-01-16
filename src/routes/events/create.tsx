@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useAppForm } from '@/hooks/demo.form'
 import { createEventSchema, type CreateEventInput } from '@/lib/validation-schemas'
 import { generateAdminToken } from '@/lib/token-utils'
@@ -77,7 +77,7 @@ function CreateEvent() {
   const form = useAppForm({
     defaultValues: {
       title: '',
-      description: '',
+      description: '' as string | undefined,
       timeZone: getBrowserTimezone(),
       dates: [] as string[],
       timeRangeStart: '09:00',
@@ -85,7 +85,7 @@ function CreateEvent() {
       slotDuration: '30' as '15' | '30' | '60',
     },
     validators: {
-      onSubmit: createEventSchema,
+      onSubmit: createEventSchema as never,
     },
     onSubmit: async ({ value }) => {
       try {
