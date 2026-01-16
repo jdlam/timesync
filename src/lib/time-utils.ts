@@ -1,5 +1,5 @@
-import { format, parse, addMinutes } from 'date-fns'
-import { toZonedTime, fromZonedTime } from 'date-fns-tz'
+import { addMinutes, format, parse } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 /**
  * Generate all time slots between start/end times for given dates
@@ -11,30 +11,30 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz'
  * @returns Array of ISO timestamp strings
  */
 export function generateTimeSlots(
-  dates: string[],
-  timeRangeStart: string,
-  timeRangeEnd: string,
-  slotDuration: number,
-  timeZone: string
+	dates: string[],
+	timeRangeStart: string,
+	timeRangeEnd: string,
+	slotDuration: number,
+	timeZone: string,
 ): string[] {
-  const slots: string[] = []
+	const slots: string[] = [];
 
-  for (const dateStr of dates) {
-    // Parse the date and times in the specified timezone
-    const startDateTime = parseTimeInZone(dateStr, timeRangeStart, timeZone)
-    const endDateTime = parseTimeInZone(dateStr, timeRangeEnd, timeZone)
+	for (const dateStr of dates) {
+		// Parse the date and times in the specified timezone
+		const startDateTime = parseTimeInZone(dateStr, timeRangeStart, timeZone);
+		const endDateTime = parseTimeInZone(dateStr, timeRangeEnd, timeZone);
 
-    let currentSlot = startDateTime
+		let currentSlot = startDateTime;
 
-    // Generate slots from start to end
-    while (currentSlot < endDateTime) {
-      // Convert to UTC ISO string for storage
-      slots.push(currentSlot.toISOString())
-      currentSlot = addMinutes(currentSlot, slotDuration)
-    }
-  }
+		// Generate slots from start to end
+		while (currentSlot < endDateTime) {
+			// Convert to UTC ISO string for storage
+			slots.push(currentSlot.toISOString());
+			currentSlot = addMinutes(currentSlot, slotDuration);
+		}
+	}
 
-  return slots
+	return slots;
 }
 
 /**
@@ -45,18 +45,18 @@ export function generateTimeSlots(
  * @returns Date object
  */
 export function parseTimeInZone(
-  dateStr: string,
-  timeStr: string,
-  timeZone: string
+	dateStr: string,
+	timeStr: string,
+	timeZone: string,
 ): Date {
-  // Combine date and time strings
-  const dateTimeStr = `${dateStr} ${timeStr}`
+	// Combine date and time strings
+	const dateTimeStr = `${dateStr} ${timeStr}`;
 
-  // Parse as if it's in the specified timezone
-  const parsedDate = parse(dateTimeStr, 'yyyy-MM-dd HH:mm', new Date())
+	// Parse as if it's in the specified timezone
+	const parsedDate = parse(dateTimeStr, "yyyy-MM-dd HH:mm", new Date());
 
-  // Convert from the specified timezone to UTC
-  return fromZonedTime(parsedDate, timeZone)
+	// Convert from the specified timezone to UTC
+	return fromZonedTime(parsedDate, timeZone);
 }
 
 /**
@@ -67,18 +67,18 @@ export function parseTimeInZone(
  * @returns Formatted time string
  */
 export function formatTimeSlot(
-  isoTimestamp: string,
-  timeZone: string,
-  formatType: 'short' | 'long' = 'short'
+	isoTimestamp: string,
+	timeZone: string,
+	formatType: "short" | "long" = "short",
 ): string {
-  const date = new Date(isoTimestamp)
-  const zonedDate = toZonedTime(date, timeZone)
+	const date = new Date(isoTimestamp);
+	const zonedDate = toZonedTime(date, timeZone);
 
-  if (formatType === 'short') {
-    return format(zonedDate, 'h:mm a') // 9:00 AM
-  } else {
-    return format(zonedDate, 'EEE, MMM d, h:mm a') // Mon, Jan 15, 9:00 AM
-  }
+	if (formatType === "short") {
+		return format(zonedDate, "h:mm a"); // 9:00 AM
+	} else {
+		return format(zonedDate, "EEE, MMM d, h:mm a"); // Mon, Jan 15, 9:00 AM
+	}
 }
 
 /**
@@ -87,13 +87,10 @@ export function formatTimeSlot(
  * @param timeZone - IANA timezone string
  * @returns Formatted date string
  */
-export function formatDate(
-  isoTimestamp: string,
-  timeZone: string
-): string {
-  const date = new Date(isoTimestamp)
-  const zonedDate = toZonedTime(date, timeZone)
-  return format(zonedDate, 'yyyy-MM-dd') // 2025-01-15
+export function formatDate(isoTimestamp: string, timeZone: string): string {
+	const date = new Date(isoTimestamp);
+	const zonedDate = toZonedTime(date, timeZone);
+	return format(zonedDate, "yyyy-MM-dd"); // 2025-01-15
 }
 
 /**
@@ -102,8 +99,8 @@ export function formatDate(
  * @returns Formatted date string (e.g., "Mon, Jan 15")
  */
 export function formatDateDisplay(dateStr: string): string {
-  const date = parse(dateStr, 'yyyy-MM-dd', new Date())
-  return format(date, 'EEE, MMM d') // Mon, Jan 15
+	const date = parse(dateStr, "yyyy-MM-dd", new Date());
+	return format(date, "EEE, MMM d"); // Mon, Jan 15
 }
 
 /**
@@ -113,22 +110,22 @@ export function formatDateDisplay(dateStr: string): string {
  * @returns Map of date string to array of slot timestamps
  */
 export function groupSlotsByDate(
-  slots: string[],
-  timeZone: string
+	slots: string[],
+	timeZone: string,
 ): Map<string, string[]> {
-  const grouped = new Map<string, string[]>()
+	const grouped = new Map<string, string[]>();
 
-  for (const slot of slots) {
-    const dateKey = formatDate(slot, timeZone)
+	for (const slot of slots) {
+		const dateKey = formatDate(slot, timeZone);
 
-    if (!grouped.has(dateKey)) {
-      grouped.set(dateKey, [])
-    }
+		if (!grouped.has(dateKey)) {
+			grouped.set(dateKey, []);
+		}
 
-    grouped.get(dateKey)!.push(slot)
-  }
+		grouped.get(dateKey)!.push(slot);
+	}
 
-  return grouped
+	return grouped;
 }
 
 /**
@@ -137,8 +134,8 @@ export function groupSlotsByDate(
  * @returns Display label (e.g., "Mon 1/15")
  */
 export function getDateColumnLabel(dateStr: string): string {
-  const date = parse(dateStr, 'yyyy-MM-dd', new Date())
-  return format(date, 'EEE M/d') // Mon 1/15
+	const date = parse(dateStr, "yyyy-MM-dd", new Date());
+	return format(date, "EEE M/d"); // Mon 1/15
 }
 
 /**
@@ -148,9 +145,9 @@ export function getDateColumnLabel(dateStr: string): string {
  * @returns true if valid, false otherwise
  */
 export function validateTimeRange(startTime: string, endTime: string): boolean {
-  const start = parse(startTime, 'HH:mm', new Date())
-  const end = parse(endTime, 'HH:mm', new Date())
-  return end > start
+	const start = parse(startTime, "HH:mm", new Date());
+	const end = parse(endTime, "HH:mm", new Date());
+	return end > start;
 }
 
 /**
@@ -159,10 +156,10 @@ export function validateTimeRange(startTime: string, endTime: string): boolean {
  * @returns true if date is in the past
  */
 export function isDateInPast(dateStr: string): boolean {
-  const date = parse(dateStr, 'yyyy-MM-dd', new Date())
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return date < today
+	const date = parse(dateStr, "yyyy-MM-dd", new Date());
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	return date < today;
 }
 
 /**
@@ -170,5 +167,5 @@ export function isDateInPast(dateStr: string): boolean {
  * @returns IANA timezone string
  */
 export function getBrowserTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone
+	return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }

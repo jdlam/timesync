@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { randomUUID } from "crypto";
 
 /**
  * Generate a secure admin token for event admin access
@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto'
  * @returns UUID string
  */
 export function generateAdminToken(): string {
-  return randomUUID()
+	return randomUUID();
 }
 
 /**
@@ -15,7 +15,7 @@ export function generateAdminToken(): string {
  * @returns UUID string
  */
 export function generateEditToken(): string {
-  return randomUUID()
+	return randomUUID();
 }
 
 /**
@@ -24,6 +24,7 @@ export function generateEditToken(): string {
  * @returns true if valid UUID format
  */
 export function isValidUUID(token: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(token)
+	const uuidRegex =
+		/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+	return uuidRegex.test(token);
 }
