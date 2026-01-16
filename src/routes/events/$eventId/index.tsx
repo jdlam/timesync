@@ -27,15 +27,15 @@ export const Route = createFileRoute('/events/$eventId/')({
   component: EventResponse,
   loader: async ({ params }) => {
     try {
-      const event = await getEventById({ data: params.eventId })
-      return { event, error: null }
+      const result = await getEventById({ data: params.eventId })
+      return { event: result.event, responseCount: result.responseCount, error: null }
     } catch (error) {
-      return { event: null, error: error instanceof Error ? error.message : 'Event not found' }
+      return { event: null, responseCount: 0, error: error instanceof Error ? error.message : 'Event not found' }
     }
   },
 })
 
-// Server function to get event by ID
+// Server function to get event by ID with response count
 const getEventById = createServerFn({ method: 'GET' })
   .inputValidator((data: string) => data)
   .handler(async ({ data: eventId }) => {
@@ -53,7 +53,16 @@ const getEventById = createServerFn({ method: 'GET' })
       throw new Error('This event is no longer accepting responses')
     }
 
-    return event
+    // Get current response count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(responses)
+      .where(eq(responses.eventId, eventId))
+
+    return {
+      event,
+      responseCount: countResult.count,
+    }
   })
 
 // Server function to submit response
@@ -104,7 +113,7 @@ const submitResponse = createServerFn({ method: 'POST' })
   })
 
 function EventResponse() {
-  const { event, error: loaderError } = Route.useLoaderData()
+  const { event, responseCount, error: loaderError } = Route.useLoaderData()
 
   if (loaderError || !event) {
     return <NotFound title="Event Not Found" message={loaderError || "This event doesn't exist or is no longer accepting responses."} />
@@ -168,7 +177,7 @@ function EventResponse() {
   return (
     <div className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <EventHeader event={event} />
+        <EventHeader event={event} responseCount={responseCount} />
 
         <div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6">
           <h2 className="text-2xl font-bold text-foreground mb-4">Select Your Availability</h2>

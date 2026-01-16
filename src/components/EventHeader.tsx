@@ -1,11 +1,16 @@
 import type { Event } from '@/db/schema'
-import { Clock, Calendar, MapPin } from 'lucide-react'
+import { Clock, Calendar, MapPin, Users } from 'lucide-react'
 
 interface EventHeaderProps {
   event: Event
+  responseCount?: number
 }
 
-export function EventHeader({ event }: EventHeaderProps) {
+export function EventHeader({ event, responseCount }: EventHeaderProps) {
+  const spotsRemaining = responseCount !== undefined
+    ? event.maxRespondents - responseCount
+    : undefined
+
   return (
     <div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6 mb-6">
       <h1 className="text-3xl font-bold text-foreground mb-2">{event.title}</h1>
@@ -31,6 +36,17 @@ export function EventHeader({ event }: EventHeaderProps) {
           <MapPin className="w-4 h-4" />
           <span>{event.timeZone}</span>
         </div>
+
+        {spotsRemaining !== undefined && (
+          <div className={`flex items-center gap-2 ${spotsRemaining <= 2 ? 'text-amber-500' : ''}`}>
+            <Users className="w-4 h-4" />
+            <span>
+              {spotsRemaining > 0
+                ? `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`
+                : 'No spots remaining'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

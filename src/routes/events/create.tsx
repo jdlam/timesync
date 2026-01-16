@@ -5,6 +5,7 @@ import { useAppForm } from '@/hooks/demo.form'
 import { createEventSchema, type CreateEventInput } from '@/lib/validation-schemas'
 import { generateAdminToken } from '@/lib/token-utils'
 import { getBrowserTimezone } from '@/lib/time-utils'
+import { TIER_LIMITS } from '@/lib/tier-config'
 import { db, events } from '@/db'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,7 +53,7 @@ const createEvent = createServerFn({ method: 'POST' })
         slotDuration: Number.parseInt(data.slotDuration),
         adminToken,
         isPremium: false,
-        maxRespondents: 20,
+        maxRespondents: TIER_LIMITS.free.maxParticipants,
         creatorId: null, // Guest mode
       })
       .returning()
