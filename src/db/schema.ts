@@ -48,7 +48,7 @@ export const events = pgTable('events', {
   // Premium features
   isPremium: boolean('is_premium').default(false).notNull(),
   password: varchar('password', { length: 255 }), // Password protection (premium only)
-  maxRespondents: integer('max_respondents').default(20).notNull(), // 20 for free, unlimited (-1) for premium
+  maxRespondents: integer('max_respondents').default(5).notNull(), // 5 for free, unlimited (-1) for premium
 
   // Customization (premium)
   customLogo: text('custom_logo'), // URL or base64

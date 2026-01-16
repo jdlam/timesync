@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { validateTimeRange, isDateInPast } from './time-utils'
+import { TIER_LIMITS } from './tier-config'
 
 /**
  * Validation schema for event creation
@@ -22,7 +23,7 @@ export const createEventSchema = z.object({
   dates: z
     .array(z.string())
     .min(1, 'At least one date is required')
-    .max(14, 'Maximum 14 dates allowed for free tier')
+    .max(TIER_LIMITS.free.maxDates, `Maximum ${TIER_LIMITS.free.maxDates} dates allowed for free tier`)
     .refine(
       (dates) => {
         // Check if any dates are in the past
