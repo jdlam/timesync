@@ -1,8 +1,8 @@
 import { Calendar, Clock, MapPin, Users } from "lucide-react";
-import type { Event } from "@/db/schema";
+import type { Doc } from "../../convex/_generated/dataModel";
 
 interface EventHeaderProps {
-	event: Event;
+	event: Doc<"events">;
 	responseCount?: number;
 }
 

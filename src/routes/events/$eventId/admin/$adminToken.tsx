@@ -1,9 +1,10 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq } from "drizzle-orm";
-import { Link as LinkIcon, Users } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link as LinkIcon, Loader2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { EventHeader } from "@/components/EventHeader";
 import { HeatmapGrid } from "@/components/heatmap/HeatmapGrid";
 import { LinkCopy } from "@/components/LinkCopy";
@@ -19,99 +20,45 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { db, events, responses } from "@/db";
 
 export const Route = createFileRoute("/events/$eventId/admin/$adminToken")({
 	component: AdminDashboard,
-	loader: async ({ params }) => {
-		try {
-			const event = await getEventByAdminToken({
-				data: {
-					eventId: params.eventId,
-					adminToken: params.adminToken,
-				},
-			});
-
-			const allResponses = await getEventResponses({
-				data: params.eventId,
-			});
-
-			return { event, responses: allResponses, error: null };
-		} catch (error) {
-			return {
-				event: null,
-				responses: [],
-				error:
-					error instanceof Error
-						? error.message
-						: "Event not found or invalid admin token",
-			};
-		}
-	},
 });
 
-// Server function to get event by admin token
-const getEventByAdminToken = createServerFn({ method: "POST" })
-	.inputValidator((data: { eventId: string; adminToken: string }) => data)
-	.handler(async ({ data }) => {
-		const [event] = await db
-			.select()
-			.from(events)
-			.where(
-				and(
-					eq(events.id, data.eventId),
-					eq(events.adminToken, data.adminToken),
-				),
-			)
-			.limit(1);
-
-		if (!event) {
-			throw new Error("Event not found or invalid admin token");
-		}
-
-		return event;
-	});
-
-// Server function to get all responses for an event
-const getEventResponses = createServerFn({ method: "GET" })
-	.inputValidator((data: string) => data)
-	.handler(async ({ data: eventId }) => {
-		return await db
-			.select()
-			.from(responses)
-			.where(eq(responses.eventId, eventId))
-			.orderBy(desc(responses.createdAt));
-	});
-
-// Server function to delete a response
-const deleteResponse = createServerFn({ method: "POST" })
-	.inputValidator((data: string) => data)
-	.handler(async ({ data: responseId }) => {
-		await db.delete(responses).where(eq(responses.id, responseId));
-		return { success: true };
-	});
-
 function AdminDashboard() {
-	const {
-		event,
-		responses: initialResponses,
-		error: loaderError,
-	} = Route.useLoaderData();
+	const { eventId, adminToken } = Route.useParams();
 
-	if (loaderError || !event) {
+	// Fetch event with admin token validation
+	const event = useQuery(api.events.getByAdminToken, {
+		eventId: eventId as Id<"events">,
+		adminToken,
+	});
+
+	// Fetch all responses for the event
+	const responses = useQuery(api.responses.getByEventId, {
+		eventId: eventId as Id<"events">,
+	});
+
+	const deleteResponseMutation = useMutation(api.responses.remove);
+
+	// Loading state
+	if (event === undefined || responses === undefined) {
 		return (
-			<NotFound
-				title="Admin Access Denied"
-				message={
-					loaderError ||
-					"This event doesn't exist or the admin link is invalid."
-				}
-			/>
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+			</div>
 		);
 	}
 
-	const router = useRouter();
-	const [responses, setResponses] = useState(initialResponses);
+	// Error state
+	if (!event) {
+		return (
+			<NotFound
+				title="Admin Access Denied"
+				message="This event doesn't exist or the admin link is invalid."
+			/>
+		);
+	}
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
@@ -128,14 +75,11 @@ function AdminDashboard() {
 		setDeleteDialogOpen(false);
 
 		try {
-			await deleteResponse({ data: responseToDelete });
+			await deleteResponseMutation({
+				responseId: responseToDelete as Id<"responses">,
+			});
 
-			// Remove from local state
-			setResponses((prev) => prev.filter((r) => r.id !== responseToDelete));
-
-			// Optionally invalidate router to refetch
-			router.invalidate();
-
+			// Convex will automatically update the responses query
 			toast.success("Response deleted successfully");
 		} catch (error) {
 			console.error("Failed to delete response:", error);
@@ -152,7 +96,7 @@ function AdminDashboard() {
 
 	// Generate URLs
 	const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-	const publicUrl = `${baseUrl}/events/${event.id}`;
+	const publicUrl = `${baseUrl}/events/${event._id}`;
 	const adminUrl = typeof window !== "undefined" ? window.location.href : "";
 
 	return (

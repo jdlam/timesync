@@ -1,11 +1,11 @@
 import { format } from "date-fns";
 import { MessageSquare, Trash2 } from "lucide-react";
-import type { Response } from "@/db/schema";
+import type { Doc } from "../../convex/_generated/dataModel";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
 interface ResponsesListProps {
-	responses: Response[];
+	responses: Doc<"responses">[];
 	onDeleteResponse: (id: string) => void;
 	isDeletingId?: string | null;
 }
@@ -39,7 +39,7 @@ export function ResponsesList({
 			<div className="space-y-3">
 				{responses.map((response) => (
 					<Card
-						key={response.id}
+						key={response._id}
 						className="bg-card border-border p-4 hover:border-cyan-500 transition-colors"
 					>
 						<div className="flex justify-between items-start gap-4">
@@ -68,8 +68,7 @@ export function ResponsesList({
 										{format(new Date(response.createdAt), "MMM d, yyyy h:mm a")}
 									</div>
 
-									{response.updatedAt.getTime() !==
-										response.createdAt.getTime() && (
+									{response.updatedAt !== response.createdAt && (
 										<div className="text-muted-foreground">
 											Updated{" "}
 											{format(new Date(response.updatedAt), "MMM d, h:mm a")}
@@ -81,11 +80,11 @@ export function ResponsesList({
 							<Button
 								variant="destructive"
 								size="sm"
-								onClick={() => onDeleteResponse(response.id)}
-								disabled={isDeletingId === response.id}
+								onClick={() => onDeleteResponse(response._id)}
+								disabled={isDeletingId === response._id}
 								className="shrink-0"
 							>
-								{isDeletingId === response.id ? (
+								{isDeletingId === response._id ? (
 									"Deleting..."
 								) : (
 									<>

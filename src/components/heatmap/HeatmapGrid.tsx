@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Event, Response } from "@/db/schema";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import {
 	calculateHeatmap,
 	getBestTimeSlots,
@@ -17,8 +17,8 @@ import {
 import { HeatmapCell } from "./HeatmapCell";
 
 interface HeatmapGridProps {
-	event: Event;
-	responses: Response[];
+	event: Doc<"events">;
+	responses: Doc<"responses">[];
 }
 
 export function HeatmapGrid({ event, responses }: HeatmapGridProps) {

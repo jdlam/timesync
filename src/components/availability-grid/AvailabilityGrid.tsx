@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { Event } from "@/db/schema";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import type { HeatmapSlotData } from "@/lib/heatmap-utils";
 import {
 	formatDateDisplay,
@@ -12,7 +12,7 @@ import {
 import { GridCell } from "./GridCell";
 
 interface AvailabilityGridProps {
-	event: Event;
+	event: Doc<"events">;
 	initialSelections?: string[];
 	onChange?: (selectedSlots: string[]) => void;
 	mode?: "select" | "view";

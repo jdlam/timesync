@@ -1,6 +1,7 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { ConvexClientProvider } from "../components/ConvexClientProvider";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import Header from "../components/Header";
 import { Toaster } from "../components/ui/sonner";
@@ -41,22 +42,24 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="bg-background text-foreground">
 				<ErrorBoundary>
-					<ThemeProvider>
-						<Header />
-						{children}
-						<Toaster richColors closeButton />
-						<TanStackDevtools
-							config={{
-								position: "bottom-right",
-							}}
-							plugins={[
-								{
-									name: "Tanstack Router",
-									render: <TanStackRouterDevtoolsPanel />,
-								},
-							]}
-						/>
-					</ThemeProvider>
+					<ConvexClientProvider>
+						<ThemeProvider>
+							<Header />
+							{children}
+							<Toaster richColors closeButton />
+							<TanStackDevtools
+								config={{
+									position: "bottom-right",
+								}}
+								plugins={[
+									{
+										name: "Tanstack Router",
+										render: <TanStackRouterDevtoolsPanel />,
+									},
+								]}
+							/>
+						</ThemeProvider>
+					</ConvexClientProvider>
 				</ErrorBoundary>
 				<Scripts />
 			</body>
