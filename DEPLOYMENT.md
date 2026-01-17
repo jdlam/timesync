@@ -56,6 +56,7 @@ In Vercel project settings, add these environment variables:
 |----------|-------------|-------|
 | `DATABASE_URL` | Set automatically by Neon integration | All |
 | `VITE_CONVEX_URL` | Your Convex deployment URL from [dashboard.convex.dev](https://dashboard.convex.dev) | Production / Preview |
+| `CONVEX_DEPLOY_KEY` | Deploy key from Convex dashboard (Settings → Deploy Key) | Production / Preview |
 | `BETTER_AUTH_SECRET` | Generate with `openssl rand -base64 32` | All |
 | `BETTER_AUTH_URL` | Production: your domain, Preview: `https://*.vercel.app` | Production / Preview |
 | `NODE_ENV` | `production` | Production |
@@ -81,8 +82,10 @@ Or use Vercel's deployment to run migrations automatically by adding a build ste
 ## Step 6: Deploy
 
 1. Push to your main branch
-2. Vercel will automatically deploy to production
+2. Vercel will automatically deploy to production (including Convex functions)
 3. Create a PR to test preview deployments
+
+**Note:** The build command (`npx convex deploy && npm run build`) automatically deploys Convex functions before building the frontend. This ensures your Convex backend is always in sync with your frontend deployment.
 
 ---
 
