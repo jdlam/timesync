@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
 import { EventHeader } from "@/components/EventHeader";
 import { NotFound } from "@/components/NotFound";
@@ -14,10 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/events/$eventId/edit/$editToken")({
-	component: EditResponse,
+	component: EditResponseWrapper,
 });
 
-function EditResponse() {
+function EditResponseWrapper() {
 	const { eventId, editToken } = Route.useParams();
 
 	// Fetch event
@@ -30,8 +30,6 @@ function EditResponse() {
 		eventId: eventId as Id<"events">,
 		editToken,
 	});
-
-	const updateResponseMutation = useMutation(api.responses.update);
 
 	// Loading state
 	if (event === undefined || response === undefined) {
@@ -51,6 +49,18 @@ function EditResponse() {
 			/>
 		);
 	}
+
+	return <EditResponseForm event={event} response={response} />;
+}
+
+function EditResponseForm({
+	event,
+	response,
+}: {
+	event: Doc<"events">;
+	response: Doc<"responses">;
+}) {
+	const updateResponseMutation = useMutation(api.responses.update);
 
 	const [selectedSlots, setSelectedSlots] = useState<string[]>(
 		response.selectedSlots,

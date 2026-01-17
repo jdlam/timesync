@@ -1,12 +1,10 @@
-import { randomUUID } from "crypto";
-
 /**
  * Generate a secure admin token for event admin access
  * Uses UUID v4 for cryptographically secure random tokens
  * @returns UUID string
  */
 export function generateAdminToken(): string {
-	return randomUUID();
+	return crypto.randomUUID();
 }
 
 /**
@@ -15,7 +13,7 @@ export function generateAdminToken(): string {
  * @returns UUID string
  */
 export function generateEditToken(): string {
-	return randomUUID();
+	return crypto.randomUUID();
 }
 
 /**

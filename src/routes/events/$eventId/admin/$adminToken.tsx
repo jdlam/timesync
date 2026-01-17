@@ -28,18 +28,21 @@ export const Route = createFileRoute("/events/$eventId/admin/$adminToken")({
 function AdminDashboard() {
 	const { eventId, adminToken } = Route.useParams();
 
-	// Fetch event with admin token validation
+	// All hooks must be called unconditionally at the top
 	const event = useQuery(api.events.getByAdminToken, {
 		eventId: eventId as Id<"events">,
 		adminToken,
 	});
 
-	// Fetch all responses for the event
 	const responses = useQuery(api.responses.getByEventId, {
 		eventId: eventId as Id<"events">,
 	});
 
 	const deleteResponseMutation = useMutation(api.responses.remove);
+
+	const [deletingId, setDeletingId] = useState<string | null>(null);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
 
 	// Loading state
 	if (event === undefined || responses === undefined) {
@@ -59,9 +62,6 @@ function AdminDashboard() {
 			/>
 		);
 	}
-	const [deletingId, setDeletingId] = useState<string | null>(null);
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
 
 	const handleDeleteClick = (responseId: string) => {
 		setResponseToDelete(responseId);

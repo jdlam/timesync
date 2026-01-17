@@ -29,11 +29,21 @@ export const Route = createFileRoute("/events/$eventId/")({
 function EventResponse() {
 	const { eventId } = Route.useParams();
 
-	// Try to fetch event data - will be undefined while loading or if ID is invalid
+	// All hooks must be called unconditionally at the top
 	const eventData = useQuery(api.events.getByIdWithResponseCount, {
 		eventId: eventId as Id<"events">,
 	});
 	const submitResponseMutation = useMutation(api.responses.submit);
+
+	const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+	const [name, setName] = useState("");
+	const [comment, setComment] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [submittedResponse, setSubmittedResponse] = useState<{
+		responseId: string;
+		editToken: string;
+	} | null>(null);
 
 	// Loading state
 	if (eventData === undefined) {
@@ -55,16 +65,6 @@ function EventResponse() {
 	}
 
 	const { event, responseCount } = eventData;
-
-	const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-	const [name, setName] = useState("");
-	const [comment, setComment] = useState("");
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [submittedResponse, setSubmittedResponse] = useState<{
-		responseId: string;
-		editToken: string;
-	} | null>(null);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
