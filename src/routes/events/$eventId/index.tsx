@@ -1,9 +1,10 @@
+import { useMutation, useQuery } from "convex/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { eq, sql } from "drizzle-orm";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
 import { EventHeader } from "@/components/EventHeader";
 import { LinkCopy } from "@/components/LinkCopy";
@@ -19,119 +20,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { db, events, responses } from "@/db";
 import { generateEditToken } from "@/lib/token-utils";
-import type { SubmitResponseInput } from "@/lib/validation-schemas";
 
 export const Route = createFileRoute("/events/$eventId/")({
 	component: EventResponse,
-	loader: async ({ params }) => {
-		try {
-			const result = await getEventById({ data: params.eventId });
-			return {
-				event: result.event,
-				responseCount: result.responseCount,
-				error: null,
-			};
-		} catch (error) {
-			return {
-				event: null,
-				responseCount: 0,
-				error: error instanceof Error ? error.message : "Event not found",
-			};
-		}
-	},
 });
 
-// Server function to get event by ID with response count
-const getEventById = createServerFn({ method: "GET" })
-	.inputValidator((data: string) => data)
-	.handler(async ({ data: eventId }) => {
-		const [event] = await db
-			.select()
-			.from(events)
-			.where(eq(events.id, eventId))
-			.limit(1);
-
-		if (!event) {
-			throw new Error("Event not found");
-		}
-
-		if (!event.isActive) {
-			throw new Error("This event is no longer accepting responses");
-		}
-
-		// Get current response count
-		const [countResult] = await db
-			.select({ count: sql<number>`count(*)::int` })
-			.from(responses)
-			.where(eq(responses.eventId, eventId));
-
-		return {
-			event,
-			responseCount: countResult.count,
-		};
-	});
-
-// Server function to submit response
-const submitResponse = createServerFn({ method: "POST" })
-	.inputValidator((data: SubmitResponseInput & { eventId: string }) => data)
-	.handler(async ({ data }) => {
-		// Check max respondents limit
-		const [countResult] = await db
-			.select({ count: sql<number>`count(*)::int` })
-			.from(responses)
-			.where(eq(responses.eventId, data.eventId));
-
-		const [event] = await db
-			.select()
-			.from(events)
-			.where(eq(events.id, data.eventId))
-			.limit(1);
-
-		if (!event) {
-			throw new Error("Event not found");
-		}
-
-		if (countResult.count >= event.maxRespondents) {
-			throw new Error("Maximum number of respondents reached");
-		}
-
-		// Generate edit token
-		const editToken = generateEditToken();
-
-		// Insert response
-		const [response] = await db
-			.insert(responses)
-			.values({
-				eventId: data.eventId,
-				respondentName: data.respondentName,
-				respondentComment: data.respondentComment || null,
-				selectedSlots: data.selectedSlots,
-				editToken,
-			})
-			.returning();
-
-		return {
-			responseId: response.id,
-			editToken: response.editToken,
-		};
-	});
-
 function EventResponse() {
-	const { event, responseCount, error: loaderError } = Route.useLoaderData();
+	const { eventId } = Route.useParams();
 
-	if (loaderError || !event) {
-		return (
-			<NotFound
-				title="Event Not Found"
-				message={
-					loaderError ||
-					"This event doesn't exist or is no longer accepting responses."
-				}
-			/>
-		);
-	}
+	// All hooks must be called unconditionally at the top
+	const eventData = useQuery(api.events.getByIdWithResponseCount, {
+		eventId: eventId as Id<"events">,
+	});
+	const submitResponseMutation = useMutation(api.responses.submit);
 
 	const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 	const [name, setName] = useState("");
@@ -142,6 +44,27 @@ function EventResponse() {
 		responseId: string;
 		editToken: string;
 	} | null>(null);
+
+	// Loading state
+	if (eventData === undefined) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+			</div>
+		);
+	}
+
+	// Error state - eventData will throw if event not found
+	if (!eventData?.event) {
+		return (
+			<NotFound
+				title="Event Not Found"
+				message="This event doesn't exist or is no longer accepting responses."
+			/>
+		);
+	}
+
+	const { event, responseCount } = eventData;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -161,16 +84,19 @@ function EventResponse() {
 		setIsSubmitting(true);
 
 		try {
-			const result = await submitResponse({
-				data: {
-					eventId: event.id,
-					respondentName: name.trim(),
-					respondentComment: comment.trim() || undefined,
-					selectedSlots,
-				},
+			const editToken = generateEditToken();
+			const result = await submitResponseMutation({
+				eventId: event._id,
+				respondentName: name.trim(),
+				respondentComment: comment.trim() || undefined,
+				selectedSlots,
+				editToken,
 			});
 
-			setSubmittedResponse(result);
+			setSubmittedResponse({
+				responseId: result.responseId,
+				editToken: result.editToken,
+			});
 			toast.success("Availability submitted successfully!");
 		} catch (err) {
 			console.error("Failed to submit response:", err);
@@ -186,7 +112,7 @@ function EventResponse() {
 	// Generate edit URL
 	const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 	const editUrl = submittedResponse
-		? `${baseUrl}/events/${event.id}/edit/${submittedResponse.editToken}`
+		? `${baseUrl}/events/${event._id}/edit/${submittedResponse.editToken}`
 		: "";
 
 	return (

@@ -1,4 +1,11 @@
-import type { Response } from "@/db/schema";
+/**
+ * Response type for heatmap calculations
+ * Compatible with both Drizzle and Convex response types
+ */
+interface ResponseForHeatmap {
+	selectedSlots: string[];
+	respondentName: string;
+}
 
 /**
  * Heatmap data for a single time slot
@@ -16,7 +23,7 @@ export interface HeatmapSlotData {
  * @returns Map of slot timestamp to heatmap data
  */
 export function calculateHeatmap(
-	responses: Response[],
+	responses: ResponseForHeatmap[],
 	allSlots: string[],
 ): Map<string, HeatmapSlotData> {
 	const heatmapData = new Map<string, HeatmapSlotData>();

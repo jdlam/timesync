@@ -21,21 +21,34 @@ export function SubscribeButton({ label }: { label: string }) {
 	);
 }
 
+function getErrorMessage(error: unknown): string {
+	if (typeof error === "string") {
+		return error;
+	}
+	if (error && typeof error === "object" && "message" in error) {
+		return String(error.message);
+	}
+	return "Validation error";
+}
+
 function ErrorMessages({
 	errors,
 }: {
-	errors: Array<string | { message: string }>;
+	errors: Array<unknown>;
 }) {
 	return (
 		<>
-			{errors.map((error) => (
-				<div
-					key={typeof error === "string" ? error : error.message}
-					className="text-red-500 mt-1 font-bold"
-				>
-					{typeof error === "string" ? error : error.message}
-				</div>
-			))}
+			{errors.map((error, index) => {
+				const message = getErrorMessage(error);
+				return (
+					<div
+						key={`${message}-${index}`}
+						className="text-red-500 mt-1 font-bold"
+					>
+						{message}
+					</div>
+				);
+			})}
 		</>
 	);
 }

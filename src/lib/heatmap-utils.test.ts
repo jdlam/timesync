@@ -1,19 +1,24 @@
 import { describe, expect, it } from "vitest";
-import type { Response } from "@/db/schema";
 import {
 	calculateHeatmap,
+	calculateHeatmapStats,
+	getBestTimeSlots,
 	getHeatmapColor,
 	getHeatmapOpacity,
-	getBestTimeSlots,
-	calculateHeatmapStats,
 	type HeatmapSlotData,
 } from "./heatmap-utils";
+
+// Mock response type matching what calculateHeatmap expects
+interface MockResponse {
+	respondentName: string;
+	selectedSlots: string[];
+}
 
 // Helper to create mock responses
 function createMockResponse(
 	name: string,
 	selectedSlots: string[],
-): Pick<Response, "respondentName" | "selectedSlots"> {
+): MockResponse {
 	return {
 		respondentName: name,
 		selectedSlots,
@@ -39,7 +44,7 @@ describe("heatmap-utils", () => {
 			const responses = [
 				createMockResponse("Alice", [allSlots[0]]),
 				createMockResponse("Bob", [allSlots[0], allSlots[1]]),
-			] as Response[];
+			] as MockResponse[];
 
 			const heatmap = calculateHeatmap(responses, allSlots);
 
@@ -53,7 +58,7 @@ describe("heatmap-utils", () => {
 			const responses = [
 				createMockResponse("Alice", [allSlots[0]]),
 				createMockResponse("Bob", [allSlots[0], allSlots[1]]),
-			] as Response[];
+			] as MockResponse[];
 
 			const heatmap = calculateHeatmap(responses, allSlots);
 
@@ -64,7 +69,7 @@ describe("heatmap-utils", () => {
 		it("should handle slots with no availability", () => {
 			const responses = [
 				createMockResponse("Alice", [allSlots[0]]),
-			] as Response[];
+			] as MockResponse[];
 
 			const heatmap = calculateHeatmap(responses, allSlots);
 

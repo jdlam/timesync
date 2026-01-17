@@ -1,9 +1,10 @@
+import { useMutation, useQuery } from "convex/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { and, eq } from "drizzle-orm";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../../../../convex/_generated/api";
+import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
 import { EventHeader } from "@/components/EventHeader";
 import { NotFound } from "@/components/NotFound";
@@ -11,105 +12,55 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { db, events, responses } from "@/db";
-import type { SubmitResponseInput } from "@/lib/validation-schemas";
 
 export const Route = createFileRoute("/events/$eventId/edit/$editToken")({
-	component: EditResponse,
-	loader: async ({ params }) => {
-		try {
-			const event = await getEventById({ data: params.eventId });
-			const response = await getResponseByEditToken({
-				data: {
-					eventId: params.eventId,
-					editToken: params.editToken,
-				},
-			});
-			return { event, response, error: null };
-		} catch (error) {
-			return {
-				event: null,
-				response: null,
-				error:
-					error instanceof Error
-						? error.message
-						: "Response not found or invalid edit token",
-			};
-		}
-	},
+	component: EditResponseWrapper,
 });
 
-// Server function to get event by ID
-const getEventById = createServerFn({ method: "GET" })
-	.inputValidator((data: string) => data)
-	.handler(async ({ data: eventId }) => {
-		const [event] = await db
-			.select()
-			.from(events)
-			.where(eq(events.id, eventId))
-			.limit(1);
+function EditResponseWrapper() {
+	const { eventId, editToken } = Route.useParams();
 
-		if (!event) {
-			throw new Error("Event not found");
-		}
-
-		return event;
+	// Fetch event
+	const event = useQuery(api.events.getById, {
+		eventId: eventId as Id<"events">,
 	});
 
-// Server function to get response by edit token
-const getResponseByEditToken = createServerFn({ method: "POST" })
-	.inputValidator((data: { eventId: string; editToken: string }) => data)
-	.handler(async ({ data }) => {
-		const [response] = await db
-			.select()
-			.from(responses)
-			.where(
-				and(
-					eq(responses.eventId, data.eventId),
-					eq(responses.editToken, data.editToken),
-				),
-			)
-			.limit(1);
-
-		if (!response) {
-			throw new Error("Response not found or invalid edit token");
-		}
-
-		return response;
+	// Fetch response by edit token
+	const response = useQuery(api.responses.getByEditToken, {
+		eventId: eventId as Id<"events">,
+		editToken,
 	});
 
-// Server function to update response
-const updateResponse = createServerFn({ method: "POST" })
-	.inputValidator((data: SubmitResponseInput & { responseId: string }) => data)
-	.handler(async ({ data }) => {
-		const [updatedResponse] = await db
-			.update(responses)
-			.set({
-				respondentName: data.respondentName,
-				respondentComment: data.respondentComment || null,
-				selectedSlots: data.selectedSlots,
-				updatedAt: new Date(),
-			})
-			.where(eq(responses.id, data.responseId))
-			.returning();
+	// Loading state
+	if (event === undefined || response === undefined) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+			</div>
+		);
+	}
 
-		return updatedResponse;
-	});
-
-function EditResponse() {
-	const { event, response, error: loaderError } = Route.useLoaderData();
-
-	if (loaderError || !event || !response) {
+	// Error state
+	if (!event || !response) {
 		return (
 			<NotFound
 				title="Response Not Found"
-				message={
-					loaderError ||
-					"This response doesn't exist or the edit link is invalid."
-				}
+				message="This response doesn't exist or the edit link is invalid."
 			/>
 		);
 	}
+
+	return <EditResponseForm event={event} response={response} />;
+}
+
+function EditResponseForm({
+	event,
+	response,
+}: {
+	event: Doc<"events">;
+	response: Doc<"responses">;
+}) {
+	const updateResponseMutation = useMutation(api.responses.update);
 
 	const [selectedSlots, setSelectedSlots] = useState<string[]>(
 		response.selectedSlots,
@@ -139,13 +90,11 @@ function EditResponse() {
 		setIsSubmitting(true);
 
 		try {
-			await updateResponse({
-				data: {
-					responseId: response.id,
-					respondentName: name.trim(),
-					respondentComment: comment.trim() || undefined,
-					selectedSlots,
-				},
+			await updateResponseMutation({
+				responseId: response._id,
+				respondentName: name.trim(),
+				respondentComment: comment.trim() || undefined,
+				selectedSlots,
 			});
 
 			setSuccess(true);

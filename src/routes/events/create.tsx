@@ -1,9 +1,10 @@
+import { useMutation } from "convex/react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
@@ -24,50 +25,18 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { db, events } from "@/db";
 import { useAppForm } from "@/hooks/demo.form";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone } from "@/lib/time-utils";
 import { generateAdminToken } from "@/lib/token-utils";
-import {
-	type CreateEventInput,
-	createEventSchema,
-} from "@/lib/validation-schemas";
+import { createEventSchema } from "@/lib/validation-schemas";
 
 export const Route = createFileRoute("/events/create")({
 	component: CreateEvent,
 });
 
-// Server function to create event
-const createEvent = createServerFn({ method: "POST" })
-	.inputValidator((data: CreateEventInput) => data)
-	.handler(async ({ data }) => {
-		const adminToken = generateAdminToken();
-
-		const [event] = await db
-			.insert(events)
-			.values({
-				title: data.title,
-				description: data.description || null,
-				timeZone: data.timeZone,
-				dates: data.dates,
-				timeRangeStart: data.timeRangeStart,
-				timeRangeEnd: data.timeRangeEnd,
-				slotDuration: Number.parseInt(data.slotDuration),
-				adminToken,
-				isPremium: false,
-				maxRespondents: TIER_LIMITS.free.maxParticipants,
-				creatorId: null, // Guest mode
-			})
-			.returning();
-
-		return {
-			eventId: event.id,
-			adminToken: event.adminToken,
-		};
-	});
-
 function CreateEvent() {
+	const createEventMutation = useMutation(api.events.create);
 	const router = useRouter();
 	const [createdEvent, setCreatedEvent] = useState<{
 		eventId: string;
@@ -92,8 +61,22 @@ function CreateEvent() {
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				const result = await createEvent({ data: value });
-				setCreatedEvent(result);
+				const adminToken = generateAdminToken();
+				const result = await createEventMutation({
+					title: value.title,
+					description: value.description || undefined,
+					timeZone: value.timeZone,
+					dates: value.dates,
+					timeRangeStart: value.timeRangeStart,
+					timeRangeEnd: value.timeRangeEnd,
+					slotDuration: Number.parseInt(value.slotDuration),
+					adminToken,
+					maxRespondents: TIER_LIMITS.free.maxParticipants,
+				});
+				setCreatedEvent({
+					eventId: result.eventId,
+					adminToken: result.adminToken,
+				});
 				toast.success("Event created successfully!");
 			} catch (error) {
 				console.error("Failed to create event:", error);
