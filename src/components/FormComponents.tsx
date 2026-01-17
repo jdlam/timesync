@@ -6,7 +6,8 @@ import * as ShadcnSelect from "@/components/ui/select";
 import { Slider as ShadcnSlider } from "@/components/ui/slider";
 import { Switch as ShadcnSwitch } from "@/components/ui/switch";
 import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
-import { useFieldContext, useFormContext } from "@/hooks/demo.form-context";
+import { useFieldContext, useFormContext } from "@/hooks/form-context";
+import { getErrorMessage } from "@/lib/form-utils";
 
 export function SubscribeButton({ label }: { label: string }) {
 	const form = useFormContext();
@@ -19,16 +20,6 @@ export function SubscribeButton({ label }: { label: string }) {
 			)}
 		</form.Subscribe>
 	);
-}
-
-export function getErrorMessage(error: unknown): string {
-	if (typeof error === "string") {
-		return error;
-	}
-	if (error && typeof error === "object" && "message" in error) {
-		return String(error.message);
-	}
-	return "Validation error";
 }
 
 function ErrorMessages({ errors }: { errors: Array<unknown> }) {

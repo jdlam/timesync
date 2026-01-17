@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/components/demo.FormComponents";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useAppForm } from "@/hooks/demo.form";
+import { useAppForm } from "@/hooks/form";
+import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone } from "@/lib/time-utils";
 import { generateAdminToken } from "@/lib/token-utils";
