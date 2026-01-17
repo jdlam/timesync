@@ -3,7 +3,6 @@ import {
 	TIER_LIMITS,
 	getTierLimits,
 	hasUnlimitedParticipants,
-	type TierType,
 } from "./tier-config";
 
 describe("tier-config", () => {
