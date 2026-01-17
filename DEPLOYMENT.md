@@ -55,6 +55,7 @@ In Vercel project settings, add these environment variables:
 | Variable | Description | Scope |
 |----------|-------------|-------|
 | `DATABASE_URL` | Set automatically by Neon integration | All |
+| `VITE_CONVEX_URL` | Your Convex deployment URL from [dashboard.convex.dev](https://dashboard.convex.dev) | Production / Preview |
 | `BETTER_AUTH_SECRET` | Generate with `openssl rand -base64 32` | All |
 | `BETTER_AUTH_URL` | Production: your domain, Preview: `https://*.vercel.app` | Production / Preview |
 | `NODE_ENV` | `production` | Production |
