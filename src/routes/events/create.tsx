@@ -1,10 +1,10 @@
-import { useMutation } from "convex/react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../../convex/_generated/api";
+import { getErrorMessage } from "@/components/demo.FormComponents";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone } from "@/lib/time-utils";
 import { generateAdminToken } from "@/lib/token-utils";
 import { createEventSchema } from "@/lib/validation-schemas";
+import { api } from "../../../convex/_generated/api";
 
 export const Route = createFileRoute("/events/create")({
 	component: CreateEvent,
@@ -170,7 +171,7 @@ function CreateEvent() {
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-red-500 text-sm mt-1">
-										{field.state.meta.errors[0]}
+										{getErrorMessage(field.state.meta.errors[0])}
 									</p>
 								)}
 							</div>
@@ -221,7 +222,7 @@ function CreateEvent() {
 									)}
 									{field.state.meta.errors.length > 0 && (
 										<p className="text-red-500 text-sm mt-1">
-											{field.state.meta.errors[0]}
+											{getErrorMessage(field.state.meta.errors[0])}
 										</p>
 									)}
 								</div>
@@ -269,7 +270,7 @@ function CreateEvent() {
 									/>
 									{field.state.meta.errors.length > 0 && (
 										<p className="text-red-500 text-sm mt-1">
-											{field.state.meta.errors[0]}
+											{getErrorMessage(field.state.meta.errors[0])}
 										</p>
 									)}
 								</div>
