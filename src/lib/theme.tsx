@@ -22,6 +22,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 	const [effectiveTheme, setEffectiveTheme] = useState<"light" | "dark">(() => {
 		if (typeof window !== "undefined") {
+			// Check if class was already set by inline script
+			if (document.documentElement.classList.contains("dark")) {
+				return "dark";
+			}
+			if (document.documentElement.classList.contains("light")) {
+				return "light";
+			}
+			// Fallback to system preference
 			return window.matchMedia("(prefers-color-scheme: dark)").matches
 				? "dark"
 				: "light";
