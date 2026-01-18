@@ -1,0 +1,304 @@
+# CLAUDE.md - Guidelines for Claude
+
+This file provides context and guidelines for Claude (AI assistant) when working on the TimeSync codebase.
+
+## Project Overview
+
+TimeSync is a modern scheduling app for coordinating group availability. Users can create events, share links, and find the best meeting times using an interactive heatmap visualization.
+
+**Key Principle**: No account required for core functionality. Guest users can create events and submit availability.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, TanStack Router, TanStack Form |
+| Backend | Convex (real-time database + serverless functions) |
+| Styling | Tailwind CSS v4, shadcn/ui components |
+| Validation | Zod |
+| Date Handling | date-fns, date-fns-tz |
+| Testing | Vitest, Testing Library, convex-test |
+| Linting | Biome (not ESLint/Prettier) |
+
+## Project Structure
+
+```
+src/
+├── components/           # React components
+│   ├── availability-grid/   # Availability selection grid
+│   ├── heatmap/             # Heatmap visualization
+│   └── ui/                  # shadcn/ui components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utilities and helpers
+└── routes/               # TanStack Router file-based routing
+
+convex/
+├── schema.ts             # Database schema (source of truth)
+├── events.ts             # Event queries/mutations
+└── responses.ts          # Response queries/mutations
+```
+
+## Commands
+
+```bash
+npm run dev          # Start frontend + Convex backend
+npm run test         # Run tests with Vitest
+npm run typecheck    # TypeScript checking
+npm run check        # Biome lint + format check
+npm run build        # Production build
+```
+
+## Git Conventions
+
+### Commit & PR Title Format
+
+Use this format for commit messages and PR titles:
+
+```
+<Type>: <Short description>
+```
+
+**Types:**
+| Type | Use For |
+|------|---------|
+| `Feat` | New features or functionality |
+| `Bug` | Bug fixes |
+| `Refactor` | Code refactoring (no behavior change) |
+| `Docs` | Documentation updates |
+| `Test` | Adding or updating tests |
+| `Chore` | Maintenance, dependencies, config |
+| `Style` | Formatting, styling changes |
+
+**Examples:**
+```
+Feat: Admin can see individual response's selections
+Bug: Multi-select fix
+Refactor: Extract heatmap calculation to utility
+Docs: Update README with deployment instructions
+Test: Add unit tests for time-utils
+Chore: Update Convex to v1.32
+```
+
+**Guidelines:**
+- Keep titles concise (50 chars or less ideal)
+- Use sentence case after the colon
+- No period at the end
+- Be specific about what changed
+
+### Branch Naming
+
+```
+<username>/<type>-<short-description>
+```
+
+**Examples:**
+```
+jlam/feat-admin-view-response
+jlam/bug-multiselect-fix
+```
+
+## Code Style Guidelines
+
+### TypeScript
+- Strict mode enabled - avoid `any` types
+- Use proper typing for Convex functions (use `v.` validators)
+- Prefer interfaces over type aliases for objects
+
+### React
+- Use functional components with hooks
+- Colocate related components in feature folders
+- Use TanStack Form for form state management
+- Use TanStack Router for navigation (`Link`, `useNavigate`)
+
+### Convex
+- All database operations go through Convex queries/mutations
+- Use indexes for queries (defined in `schema.ts`)
+- Queries are real-time by default - data auto-updates
+- Use `useQuery` and `useMutation` hooks from `convex/react`
+
+### Styling
+- Use Tailwind CSS utility classes
+- Use `cn()` helper from `@/lib/utils` for conditional classes
+- Follow shadcn/ui patterns for new components
+- Support dark mode with `dark:` variants
+
+### Formatting
+- Biome handles formatting (not Prettier)
+- Use tabs for indentation
+- Run `npm run check` before committing
+
+## Key Patterns
+
+### Creating Convex Queries/Mutations
+
+```typescript
+// convex/example.ts
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+
+export const getById = query({
+  args: { id: v.id("tableName") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const create = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("tableName", {
+      name: args.name,
+      createdAt: Date.now(),
+    });
+  },
+});
+```
+
+### Using Convex in React
+
+```typescript
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@convex/_generated/api";
+
+function MyComponent() {
+  const data = useQuery(api.example.getById, { id: someId });
+  const createItem = useMutation(api.example.create);
+
+  // data is undefined while loading, then updates in real-time
+}
+```
+
+### Route Components (TanStack Router)
+
+```typescript
+// src/routes/example.tsx
+import { createFileRoute } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/example")({
+  component: ExamplePage,
+});
+
+function ExamplePage() {
+  return <div>...</div>;
+}
+```
+
+### Form Handling (TanStack Form + Zod)
+
+```typescript
+import { useForm } from "@tanstack/react-form";
+import { zodValidator } from "@tanstack/zod-form-adapter";
+import { z } from "zod";
+
+const schema = z.object({
+  title: z.string().min(1, "Required"),
+});
+
+function MyForm() {
+  const form = useForm({
+    defaultValues: { title: "" },
+    validatorAdapter: zodValidator(),
+    validators: { onChange: schema },
+    onSubmit: async ({ value }) => {
+      // handle submit
+    },
+  });
+}
+```
+
+## Database Schema
+
+The Convex schema (`convex/schema.ts`) defines three tables:
+
+1. **users** - Registered accounts (not implemented yet)
+2. **events** - Scheduling events with configuration
+3. **responses** - User availability submissions
+
+Key fields:
+- `events.adminToken` - Secret token for admin access
+- `responses.editToken` - Secret token for editing responses
+- `events.isActive` - Soft delete flag
+
+## Testing
+
+### Unit Tests
+```bash
+npm run test              # Run all tests
+npm run test -- --watch   # Watch mode
+```
+
+### Test Patterns
+
+```typescript
+// Convex function tests use convex-test
+import { convexTest } from "convex-test";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+describe("events", () => {
+  test("create event", async () => {
+    const t = convexTest(schema);
+    const eventId = await t.mutation(api.events.create, { ... });
+    expect(eventId).toBeDefined();
+  });
+});
+```
+
+## Common Tasks
+
+### Adding a New Route
+1. Create file in `src/routes/` following TanStack Router conventions
+2. Export `Route` using `createFileRoute()`
+3. Routes auto-register via file-based routing
+
+### Adding a New UI Component
+```bash
+npx shadcn@latest add <component-name>
+```
+Components are added to `src/components/ui/`.
+
+### Adding a Database Field
+1. Update `convex/schema.ts`
+2. Convex handles migrations automatically
+3. Update any affected queries/mutations
+
+### Adding a Convex Function
+1. Add to appropriate file in `convex/` (or create new file)
+2. Export query/mutation/action
+3. Import via `api` object in React components
+
+## Important Considerations
+
+### Security
+- Admin tokens provide event management access - treat as secrets
+- Edit tokens allow response modification - treat as secrets
+- Never expose tokens in URLs visible to other users
+- Validate all inputs in Convex mutations
+
+### Performance
+- Convex queries are real-time subscriptions - minimize unnecessary queries
+- Use indexes for frequent query patterns
+- Large date ranges may impact grid rendering performance
+
+### Accessibility
+- Use semantic HTML elements
+- Include proper ARIA labels
+- Ensure keyboard navigation works
+- Test with screen readers for critical flows
+
+## What's Not Implemented Yet
+
+See `USER_STORIES.md` for full status. Major missing features:
+- User authentication (Epic 4)
+- Premium features / Stripe (Epic 5)
+- Event editing/deletion (Stories 1.3, 7.1, 7.2)
+- Email notifications (Story 6.2)
+
+## Documentation Files
+
+| File | Purpose |
+|------|---------|
+| `README.md` | Project setup and overview |
+| `FEATURES.md` | Implemented features list |
+| `USER_STORIES.md` | Requirements and implementation status |
+| `CLAUDE.md` | This file - AI assistant guidelines |

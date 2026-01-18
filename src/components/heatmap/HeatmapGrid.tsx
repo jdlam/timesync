@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, User, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Doc } from "../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
 import {
 	calculateHeatmap,
 	getBestTimeSlots,
@@ -14,14 +14,22 @@ import {
 	getDateColumnLabel,
 	groupSlotsByDate,
 } from "@/lib/time-utils";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import { HeatmapCell } from "./HeatmapCell";
 
 interface HeatmapGridProps {
 	event: Doc<"events">;
 	responses: Doc<"responses">[];
+	highlightedResponse?: Doc<"responses">;
+	onClearHighlight?: () => void;
 }
 
-export function HeatmapGrid({ event, responses }: HeatmapGridProps) {
+export function HeatmapGrid({
+	event,
+	responses,
+	highlightedResponse,
+	onClearHighlight,
+}: HeatmapGridProps) {
 	const [expandedDates, setExpandedDates] = useState<Set<string>>(
 		new Set(event.dates),
 	);
@@ -121,9 +129,28 @@ export function HeatmapGrid({ event, responses }: HeatmapGridProps) {
 
 			{/* Heatmap Grid */}
 			<div>
-				<h3 className="text-xl font-bold text-foreground mb-4">
-					Availability Heatmap
-				</h3>
+				<div className="flex items-center justify-between mb-4">
+					<h3 className="text-xl font-bold text-foreground">
+						Availability Heatmap
+					</h3>
+					{highlightedResponse && (
+						<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 bg-cyan-500/20 text-cyan-400 px-3 py-1.5 rounded-full text-sm">
+								<User className="w-4 h-4" />
+								<span>Viewing: {highlightedResponse.respondentName}</span>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={onClearHighlight}
+								className="text-muted-foreground hover:text-foreground"
+							>
+								<X className="w-4 h-4 mr-1" />
+								Show All
+							</Button>
+						</div>
+					)}
+				</div>
 
 				{/* Desktop Grid View */}
 				<div className="hidden md:block overflow-x-auto">
@@ -179,6 +206,10 @@ export function HeatmapGrid({ event, responses }: HeatmapGridProps) {
 												isDarkMode,
 											);
 
+											const isHighlighted = highlightedResponse
+												? highlightedResponse.selectedSlots.includes(slot)
+												: undefined;
+
 											return (
 												<td key={date} className="border border-border p-2">
 													<HeatmapCell
@@ -187,6 +218,11 @@ export function HeatmapGrid({ event, responses }: HeatmapGridProps) {
 														data={data}
 														bgColor={bgColor}
 														totalRespondents={responses.length}
+														isFiltered={!!highlightedResponse}
+														isHighlighted={isHighlighted}
+														highlightedName={
+															highlightedResponse?.respondentName
+														}
 													/>
 												</td>
 											);
@@ -244,6 +280,10 @@ export function HeatmapGrid({ event, responses }: HeatmapGridProps) {
 												isDarkMode,
 											);
 
+											const isHighlighted = highlightedResponse
+												? highlightedResponse.selectedSlots.includes(slot)
+												: undefined;
+
 											return (
 												<HeatmapCell
 													key={slot}
@@ -252,6 +292,9 @@ export function HeatmapGrid({ event, responses }: HeatmapGridProps) {
 													data={data}
 													bgColor={bgColor}
 													totalRespondents={responses.length}
+													isFiltered={!!highlightedResponse}
+													isHighlighted={isHighlighted}
+													highlightedName={highlightedResponse?.respondentName}
 												/>
 											);
 										})}

@@ -1,10 +1,8 @@
-import { useMutation, useQuery } from "convex/react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "convex/react";
 import { Link as LinkIcon, Loader2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
 import { EventHeader } from "@/components/EventHeader";
 import { HeatmapGrid } from "@/components/heatmap/HeatmapGrid";
 import { LinkCopy } from "@/components/LinkCopy";
@@ -20,6 +18,8 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/events/$eventId/admin/$adminToken")({
 	component: AdminDashboard,
@@ -43,6 +43,14 @@ function AdminDashboard() {
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
+	const [selectedResponseId, setSelectedResponseId] = useState<string | null>(
+		null,
+	);
+
+	// Find the highlighted response object
+	const highlightedResponse = selectedResponseId
+		? responses?.find((r) => r._id === selectedResponseId)
+		: undefined;
 
 	// Loading state
 	if (event === undefined || responses === undefined) {
@@ -166,7 +174,12 @@ function AdminDashboard() {
 
 				{/* Heatmap Section */}
 				<div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6 mb-6">
-					<HeatmapGrid event={event} responses={responses} />
+					<HeatmapGrid
+						event={event}
+						responses={responses}
+						highlightedResponse={highlightedResponse}
+						onClearHighlight={() => setSelectedResponseId(null)}
+					/>
 				</div>
 
 				{/* Responses List */}
@@ -175,6 +188,10 @@ function AdminDashboard() {
 						responses={responses}
 						onDeleteResponse={handleDeleteClick}
 						isDeletingId={deletingId}
+						selectedResponseId={selectedResponseId}
+						onSelectResponse={(id) =>
+							setSelectedResponseId((prev) => (prev === id ? null : id))
+						}
 					/>
 				</div>
 			</div>
