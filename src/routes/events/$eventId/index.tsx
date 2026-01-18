@@ -1,10 +1,8 @@
-import { useMutation, useQuery } from "convex/react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
 import { EventHeader } from "@/components/EventHeader";
 import { LinkCopy } from "@/components/LinkCopy";
@@ -20,7 +18,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { generateEditToken } from "@/lib/token-utils";
+import { api } from "../../../../convex/_generated/api";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/events/$eventId/")({
 	component: EventResponse,
@@ -33,17 +34,6 @@ function EventResponse() {
 	const eventData = useQuery(api.events.getByIdWithResponseCount, {
 		eventId: eventId as Id<"events">,
 	});
-	const submitResponseMutation = useMutation(api.responses.submit);
-
-	const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-	const [name, setName] = useState("");
-	const [comment, setComment] = useState("");
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [submittedResponse, setSubmittedResponse] = useState<{
-		responseId: string;
-		editToken: string;
-	} | null>(null);
 
 	// Loading state
 	if (eventData === undefined) {
@@ -65,6 +55,32 @@ function EventResponse() {
 	}
 
 	const { event, responseCount } = eventData;
+
+	return (
+		<TimezoneDisplayProvider eventTimezone={event.timeZone} eventId={event._id}>
+			<EventResponseContent event={event} responseCount={responseCount} />
+		</TimezoneDisplayProvider>
+	);
+}
+
+function EventResponseContent({
+	event,
+	responseCount,
+}: {
+	event: Doc<"events">;
+	responseCount: number;
+}) {
+	const submitResponseMutation = useMutation(api.responses.submit);
+
+	const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+	const [name, setName] = useState("");
+	const [comment, setComment] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [submittedResponse, setSubmittedResponse] = useState<{
+		responseId: string;
+		editToken: string;
+	} | null>(null);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();

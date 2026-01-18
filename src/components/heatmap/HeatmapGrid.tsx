@@ -24,10 +24,13 @@ import { useTheme } from "@/lib/theme";
 import {
 	formatDateDisplay,
 	formatTimeSlot,
+	formatTimeSlotWithDayOffset,
 	generateTimeSlots,
 	getDateColumnLabel,
 	groupSlotsByDate,
 } from "@/lib/time-utils";
+import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
+import { cn } from "@/lib/utils";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { HeatmapCell } from "./HeatmapCell";
 
@@ -46,6 +49,7 @@ export function HeatmapGrid({
 	onClearHighlight,
 	onSelectResponse,
 }: HeatmapGridProps) {
+	const timezoneContext = useTimezoneDisplaySafe();
 	const [expandedDates, setExpandedDates] = useState<Set<string>>(
 		new Set(event.dates),
 	);
@@ -53,6 +57,10 @@ export function HeatmapGrid({
 	const [currentDayIndex, setCurrentDayIndex] = useState(0);
 	const { effectiveTheme } = useTheme();
 	const isDarkMode = effectiveTheme === "dark";
+
+	// Determine display timezone (fallback to event timezone if not in provider)
+	const displayTimezone = timezoneContext?.displayTimezone ?? event.timeZone;
+	const isLocalMode = timezoneContext?.displayMode === "local";
 
 	// Generate all time slots
 	const allSlots = useMemo(
@@ -85,13 +93,24 @@ export function HeatmapGrid({
 		[allSlots, event.timeZone],
 	);
 
-	// Get unique time labels
-	const uniqueTimes = useMemo(() => {
+	// Get unique time labels with day offset info
+	const uniqueTimeLabels = useMemo(() => {
 		const firstDateSlots = Array.from(slotsByDate.values())[0] || [];
-		return firstDateSlots.map((slot) =>
-			formatTimeSlot(slot, event.timeZone, "short"),
-		);
-	}, [slotsByDate, event.timeZone]);
+		return firstDateSlots.map((slot) => {
+			if (isLocalMode && displayTimezone !== event.timeZone) {
+				return formatTimeSlotWithDayOffset(
+					slot,
+					event.timeZone,
+					displayTimezone,
+				);
+			}
+			return {
+				time: formatTimeSlot(slot, displayTimezone, "short"),
+				dayOffset: 0,
+				dayLabel: null,
+			};
+		});
+	}, [slotsByDate, displayTimezone, event.timeZone, isLocalMode]);
 
 	// Toggle date expansion in mobile view
 	const toggleDateExpansion = (date: string) => {
@@ -118,29 +137,51 @@ export function HeatmapGrid({
 						</h3>
 					</div>
 					<div className="space-y-2">
-						{bestSlots.map(([timestamp, data], index) => (
-							<div
-								key={timestamp}
-								className="flex items-center justify-between bg-card/50 rounded-lg p-3"
-							>
-								<div>
-									<span className="text-muted-foreground text-sm">
-										#{index + 1}
-									</span>
-									<span className="text-foreground font-semibold ml-3">
-										{formatTimeSlot(timestamp, event.timeZone, "long")}
-									</span>
-								</div>
-								<div className="text-right">
-									<div className="text-cyan-400 font-bold">
-										{data.count} / {responses.length}
+						{bestSlots.map(([timestamp, data], index) => {
+							const labelInfo =
+								isLocalMode && displayTimezone !== event.timeZone
+									? formatTimeSlotWithDayOffset(
+											timestamp,
+											event.timeZone,
+											displayTimezone,
+										)
+									: null;
+							return (
+								<div
+									key={timestamp}
+									className="flex items-center justify-between bg-card/50 rounded-lg p-3"
+								>
+									<div>
+										<span className="text-muted-foreground text-sm">
+											#{index + 1}
+										</span>
+										<span
+											className={cn(
+												"font-semibold ml-3",
+												labelInfo?.dayOffset !== 0
+													? "text-amber-400"
+													: "text-foreground",
+											)}
+										>
+											{formatTimeSlot(timestamp, displayTimezone, "long")}
+											{labelInfo?.dayLabel && (
+												<span className="ml-1 text-xs text-amber-500">
+													{labelInfo.dayLabel}
+												</span>
+											)}
+										</span>
 									</div>
-									<div className="text-muted-foreground text-xs">
-										{Math.round(data.percentage)}% available
+									<div className="text-right">
+										<div className="text-cyan-400 font-bold">
+											{data.count} / {responses.length}
+										</div>
+										<div className="text-muted-foreground text-xs">
+											{Math.round(data.percentage)}% available
+										</div>
 									</div>
 								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				</div>
 			)}
@@ -228,11 +269,23 @@ export function HeatmapGrid({
 								</tr>
 							</thead>
 							<tbody>
-								{uniqueTimes.map((timeLabel, timeIndex) => (
+								{uniqueTimeLabels.map((labelInfo, timeIndex) => (
 									<tr key={timeIndex}>
 										<td className="sticky left-0 z-10 bg-card border border-border p-3">
-											<span className="text-muted-foreground text-sm font-medium">
-												{timeLabel}
+											<span
+												className={cn(
+													"text-sm font-medium",
+													labelInfo.dayOffset !== 0
+														? "text-amber-400"
+														: "text-muted-foreground",
+												)}
+											>
+												{labelInfo.time}
+												{labelInfo.dayLabel && (
+													<span className="ml-1 text-xs text-amber-500">
+														{labelInfo.dayLabel}
+													</span>
+												)}
 											</span>
 										</td>
 										{Array.from(slotsByDate.entries()).map(([date, slots]) => {
@@ -261,7 +314,7 @@ export function HeatmapGrid({
 												<td key={date} className="border border-border p-2">
 													<HeatmapCell
 														timestamp={slot}
-														displayTime={timeLabel}
+														displayTime={labelInfo.time}
 														data={data}
 														bgColor={bgColor}
 														totalRespondents={responses.length}
@@ -358,11 +411,22 @@ export function HeatmapGrid({
 									const currentDate = event.dates[currentDayIndex];
 									const slots = slotsByDate.get(currentDate) || [];
 									return slots.map((slot) => {
-										const timeLabel = formatTimeSlot(
-											slot,
-											event.timeZone,
-											"short",
-										);
+										const labelInfo =
+											isLocalMode && displayTimezone !== event.timeZone
+												? formatTimeSlotWithDayOffset(
+														slot,
+														event.timeZone,
+														displayTimezone,
+													)
+												: {
+														time: formatTimeSlot(
+															slot,
+															displayTimezone,
+															"short",
+														),
+														dayOffset: 0,
+														dayLabel: null,
+													};
 										const data = heatmapData.get(slot);
 										if (!data) return null;
 
@@ -376,13 +440,25 @@ export function HeatmapGrid({
 
 										return (
 											<div key={slot} className="flex items-center gap-3">
-												<span className="text-muted-foreground text-sm font-medium w-20 shrink-0">
-													{timeLabel}
+												<span
+													className={cn(
+														"text-sm font-medium w-24 shrink-0",
+														labelInfo.dayOffset !== 0
+															? "text-amber-400"
+															: "text-muted-foreground",
+													)}
+												>
+													{labelInfo.time}
+													{labelInfo.dayLabel && (
+														<span className="ml-1 text-xs text-amber-500">
+															{labelInfo.dayLabel}
+														</span>
+													)}
 												</span>
 												<div className="flex-1">
 													<HeatmapCell
 														timestamp={slot}
-														displayTime={timeLabel}
+														displayTime={labelInfo.time}
 														data={data}
 														bgColor={bgColor}
 														totalRespondents={responses.length}
@@ -434,11 +510,22 @@ export function HeatmapGrid({
 									{isExpanded && (
 										<div className="p-4 pt-0 space-y-2">
 											{slots.map((slot) => {
-												const timeLabel = formatTimeSlot(
-													slot,
-													event.timeZone,
-													"short",
-												);
+												const labelInfo =
+													isLocalMode && displayTimezone !== event.timeZone
+														? formatTimeSlotWithDayOffset(
+																slot,
+																event.timeZone,
+																displayTimezone,
+															)
+														: {
+																time: formatTimeSlot(
+																	slot,
+																	displayTimezone,
+																	"short",
+																),
+																dayOffset: 0,
+																dayLabel: null,
+															};
 												const data = heatmapData.get(slot);
 												if (!data) return null;
 
@@ -453,13 +540,25 @@ export function HeatmapGrid({
 
 												return (
 													<div key={slot} className="flex items-center gap-3">
-														<span className="text-muted-foreground text-sm font-medium w-20 shrink-0">
-															{timeLabel}
+														<span
+															className={cn(
+																"text-sm font-medium w-24 shrink-0",
+																labelInfo.dayOffset !== 0
+																	? "text-amber-400"
+																	: "text-muted-foreground",
+															)}
+														>
+															{labelInfo.time}
+															{labelInfo.dayLabel && (
+																<span className="ml-1 text-xs text-amber-500">
+																	{labelInfo.dayLabel}
+																</span>
+															)}
 														</span>
 														<div className="flex-1">
 															<HeatmapCell
 																timestamp={slot}
-																displayTime={timeLabel}
+																displayTime={labelInfo.time}
 																data={data}
 																bgColor={bgColor}
 																totalRespondents={responses.length}

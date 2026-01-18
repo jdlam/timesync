@@ -18,8 +18,9 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/events/$eventId/admin/$adminToken")({
 	component: AdminDashboard,
@@ -37,20 +38,6 @@ function AdminDashboard() {
 	const responses = useQuery(api.responses.getByEventId, {
 		eventId: eventId as Id<"events">,
 	});
-
-	const deleteResponseMutation = useMutation(api.responses.remove);
-
-	const [deletingId, setDeletingId] = useState<string | null>(null);
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
-	const [selectedResponseId, setSelectedResponseId] = useState<string | null>(
-		null,
-	);
-
-	// Find the highlighted response object
-	const highlightedResponse = selectedResponseId
-		? responses?.find((r) => r._id === selectedResponseId)
-		: undefined;
 
 	// Loading state
 	if (event === undefined || responses === undefined) {
@@ -70,6 +57,34 @@ function AdminDashboard() {
 			/>
 		);
 	}
+
+	return (
+		<TimezoneDisplayProvider eventTimezone={event.timeZone} eventId={event._id}>
+			<AdminDashboardContent event={event} responses={responses} />
+		</TimezoneDisplayProvider>
+	);
+}
+
+function AdminDashboardContent({
+	event,
+	responses,
+}: {
+	event: Doc<"events">;
+	responses: Doc<"responses">[];
+}) {
+	const deleteResponseMutation = useMutation(api.responses.remove);
+
+	const [deletingId, setDeletingId] = useState<string | null>(null);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
+	const [selectedResponseId, setSelectedResponseId] = useState<string | null>(
+		null,
+	);
+
+	// Find the highlighted response object
+	const highlightedResponse = selectedResponseId
+		? responses?.find((r) => r._id === selectedResponseId)
+		: undefined;
 
 	const handleDeleteClick = (responseId: string) => {
 		setResponseToDelete(responseId);

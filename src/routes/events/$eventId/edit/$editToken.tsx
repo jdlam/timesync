@@ -1,10 +1,8 @@
-import { useMutation, useQuery } from "convex/react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../../../../convex/_generated/api";
-import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
 import { EventHeader } from "@/components/EventHeader";
 import { NotFound } from "@/components/NotFound";
@@ -12,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TimezoneDisplayProvider } from "@/lib/timezone-display";
+import { api } from "../../../../../convex/_generated/api";
+import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/events/$eventId/edit/$editToken")({
 	component: EditResponseWrapper,
@@ -50,7 +51,11 @@ function EditResponseWrapper() {
 		);
 	}
 
-	return <EditResponseForm event={event} response={response} />;
+	return (
+		<TimezoneDisplayProvider eventTimezone={event.timeZone} eventId={event._id}>
+			<EditResponseForm event={event} response={response} />
+		</TimezoneDisplayProvider>
+	);
 }
 
 function EditResponseForm({

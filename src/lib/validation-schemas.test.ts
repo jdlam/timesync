@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	createEventSchema,
-	submitResponseSchema,
 	type CreateEventInput,
+	createEventSchema,
 	type SubmitResponseInput,
+	submitResponseSchema,
 } from "./validation-schemas";
 
 describe("validation-schemas", () => {

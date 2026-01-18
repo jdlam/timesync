@@ -1,14 +1,17 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { Doc } from "../../../convex/_generated/dataModel";
 import type { HeatmapSlotData } from "@/lib/heatmap-utils";
 import {
 	formatDateDisplay,
 	formatTimeSlot,
+	formatTimeSlotWithDayOffset,
 	generateTimeSlots,
 	getDateColumnLabel,
 	groupSlotsByDate,
 } from "@/lib/time-utils";
+import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
+import { cn } from "@/lib/utils";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import { GridCell } from "./GridCell";
 
 interface AvailabilityGridProps {
@@ -28,6 +31,7 @@ export function AvailabilityGrid({
 	heatmapData,
 	getHeatmapColor,
 }: AvailabilityGridProps) {
+	const timezoneContext = useTimezoneDisplaySafe();
 	const [selectedSlots, setSelectedSlots] = useState<Set<string>>(
 		new Set(initialSelections),
 	);
@@ -39,6 +43,10 @@ export function AvailabilityGrid({
 	const [expandedDates, setExpandedDates] = useState<Set<string>>(
 		new Set(event.dates),
 	);
+
+	// Determine display timezone (fallback to event timezone if not in provider)
+	const displayTimezone = timezoneContext?.displayTimezone ?? event.timeZone;
+	const isLocalMode = timezoneContext?.displayMode === "local";
 
 	// Generate all time slots
 	const allSlots = useMemo(
@@ -59,13 +67,24 @@ export function AvailabilityGrid({
 		[allSlots, event.timeZone],
 	);
 
-	// Get unique time labels (for desktop table header)
-	const uniqueTimes = useMemo(() => {
+	// Get unique time labels with day offset info (for desktop table header)
+	const uniqueTimeLabels = useMemo(() => {
 		const firstDateSlots = Array.from(slotsByDate.values())[0] || [];
-		return firstDateSlots.map((slot) =>
-			formatTimeSlot(slot, event.timeZone, "short"),
-		);
-	}, [slotsByDate, event.timeZone]);
+		return firstDateSlots.map((slot) => {
+			if (isLocalMode && displayTimezone !== event.timeZone) {
+				return formatTimeSlotWithDayOffset(
+					slot,
+					event.timeZone,
+					displayTimezone,
+				);
+			}
+			return {
+				time: formatTimeSlot(slot, displayTimezone, "short"),
+				dayOffset: 0,
+				dayLabel: null,
+			};
+		});
+	}, [slotsByDate, displayTimezone, event.timeZone, isLocalMode]);
 
 	// Handle slot interaction
 	const handleSlotInteraction = useCallback(
@@ -201,11 +220,23 @@ export function AvailabilityGrid({
 							</tr>
 						</thead>
 						<tbody>
-							{uniqueTimes.map((timeLabel, timeIndex) => (
+							{uniqueTimeLabels.map((labelInfo, timeIndex) => (
 								<tr key={timeIndex}>
 									<td className="sticky left-0 z-10 bg-card border border-border p-3">
-										<span className="text-muted-foreground text-sm font-medium">
-											{timeLabel}
+										<span
+											className={cn(
+												"text-sm font-medium",
+												labelInfo.dayOffset !== 0
+													? "text-amber-400"
+													: "text-muted-foreground",
+											)}
+										>
+											{labelInfo.time}
+											{labelInfo.dayLabel && (
+												<span className="ml-1 text-xs text-amber-500">
+													{labelInfo.dayLabel}
+												</span>
+											)}
 										</span>
 									</td>
 									{Array.from(slotsByDate.entries()).map(([date, slots]) => {
@@ -217,7 +248,7 @@ export function AvailabilityGrid({
 											<td key={date} className="border border-border p-2">
 												<GridCell
 													timestamp={slot}
-													displayTime={timeLabel}
+													displayTime={labelInfo.time}
 													isSelected={selectedSlots.has(slot)}
 													mode={mode}
 													onInteraction={handleSlotInteraction}
@@ -268,21 +299,36 @@ export function AvailabilityGrid({
 							{isExpanded && (
 								<div className="p-4 pt-0 space-y-2">
 									{slots.map((slot) => {
-										const timeLabel = formatTimeSlot(
-											slot,
-											event.timeZone,
-											"short",
-										);
+										const labelInfo =
+											isLocalMode && displayTimezone !== event.timeZone
+												? formatTimeSlotWithDayOffset(
+														slot,
+														event.timeZone,
+														displayTimezone,
+													)
+												: {
+														time: formatTimeSlot(
+															slot,
+															displayTimezone,
+															"short",
+														),
+														dayOffset: 0,
+														dayLabel: null,
+													};
+										const displayTime = labelInfo.dayLabel
+											? `${labelInfo.time} ${labelInfo.dayLabel}`
+											: labelInfo.time;
 										return (
 											<GridCell
 												key={slot}
 												timestamp={slot}
-												displayTime={timeLabel}
+												displayTime={displayTime}
 												isSelected={selectedSlots.has(slot)}
 												mode={mode}
 												onInteraction={handleSlotInteraction}
 												heatmapData={heatmapData?.get(slot)}
 												heatmapColor={getHeatmapColor?.(slot)}
+												hasDayOffset={labelInfo.dayOffset !== 0}
 											/>
 										);
 									})}
