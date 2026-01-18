@@ -21,7 +21,7 @@ export function SubscribeButton({ label }: { label: string }) {
 	);
 }
 
-function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown): string {
 	if (typeof error === "string") {
 		return error;
 	}
@@ -31,11 +31,7 @@ function getErrorMessage(error: unknown): string {
 	return "Validation error";
 }
 
-function ErrorMessages({
-	errors,
-}: {
-	errors: Array<unknown>;
-}) {
+function ErrorMessages({ errors }: { errors: Array<unknown> }) {
 	return (
 		<>
 			{errors.map((error, index) => {
