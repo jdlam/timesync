@@ -97,6 +97,26 @@ jlam/feat-admin-view-response
 jlam/bug-multiselect-fix
 ```
 
+## Design Philosophy
+
+### Mobile-First Priority
+
+**All new features and UI changes must prioritize mobile design.**
+
+- Design for mobile screens first, then enhance for larger screens
+- Test on mobile viewports before desktop
+- Ensure touch targets are at least 44x44px
+- Avoid horizontal scrolling where possible
+- Use responsive patterns: accordions, collapsible sections, bottom sheets
+- Time-based grids should always show time labels, even on narrow screens
+
+### Key Mobile Considerations
+
+- Admin dashboard must be fully usable on mobile
+- Response selection should be accessible without excessive scrolling
+- All interactive elements must be reachable with one hand
+- Use sticky headers/footers for key actions when appropriate
+
 ## Code Style Guidelines
 
 ### TypeScript
