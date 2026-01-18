@@ -59,6 +59,10 @@ export function GridCell({
 				// Prevent container from starting drag mode during shift+click
 				e.stopPropagation();
 			} else {
+				// Skip if already handled by touch event (prevents double-toggle on mobile)
+				if (interactionHandled.current) {
+					return;
+				}
 				// Start drag selection (also handles single click)
 				interactionHandled.current = true;
 				onInteraction(timestamp, "start");
