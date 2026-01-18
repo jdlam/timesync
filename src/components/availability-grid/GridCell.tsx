@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { HeatmapSlotData } from "@/lib/heatmap-utils";
 import { cn } from "@/lib/utils";
 
@@ -28,13 +29,28 @@ export function GridCell({
 	isDragging,
 	hasDayOffset,
 }: GridCellProps) {
+	// Track if interaction was handled by mousedown to prevent double-firing
+	const handledByMouseDown = useRef(false);
+
 	const handleClick = (e: React.MouseEvent) => {
-		// Only handle shift+click here, regular clicks are handled by mousedown
-		if (mode === "select" && e.shiftKey) {
+		if (mode !== "select") return;
+
+		// Handle shift+click for range selection
+		if (e.shiftKey) {
 			e.preventDefault();
-			e.stopPropagation(); // Prevent container from handling this
+			e.stopPropagation();
 			onInteraction(timestamp, "click", true);
+			return;
 		}
+
+		// If already handled by mousedown (desktop), skip
+		if (handledByMouseDown.current) {
+			handledByMouseDown.current = false;
+			return;
+		}
+
+		// Fallback for cases where mousedown didn't fire (shouldn't happen on desktop)
+		onInteraction(timestamp, "start");
 	};
 
 	const handleMouseDown = (e: React.MouseEvent) => {
@@ -44,6 +60,7 @@ export function GridCell({
 				e.stopPropagation();
 			} else {
 				// Start drag selection (also handles single click)
+				handledByMouseDown.current = true;
 				onInteraction(timestamp, "start");
 			}
 		}
@@ -55,9 +72,10 @@ export function GridCell({
 		}
 	};
 
-	const handleTouchStart = (e: React.TouchEvent) => {
+	const handleTouchEnd = () => {
 		if (mode === "select") {
-			e.preventDefault();
+			// Handle tap selection on mobile
+			// touchend is more reliable than touchstart for quick taps
 			onInteraction(timestamp, "start");
 		}
 	};
@@ -90,7 +108,7 @@ export function GridCell({
 			onClick={handleClick}
 			onMouseDown={handleMouseDown}
 			onMouseEnter={handleMouseEnter}
-			onTouchStart={handleTouchStart}
+			onTouchEnd={handleTouchEnd}
 			className={cn(
 				"h-12 w-full border rounded transition-all",
 				"focus:outline-none focus:ring-2 focus:ring-cyan-500",
