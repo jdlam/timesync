@@ -48,6 +48,55 @@ npm run check        # Biome lint + format check
 npm run build        # Production build
 ```
 
+## Git Conventions
+
+### Commit & PR Title Format
+
+Use this format for commit messages and PR titles:
+
+```
+<Type>: <Short description>
+```
+
+**Types:**
+| Type | Use For |
+|------|---------|
+| `Feat` | New features or functionality |
+| `Bug` | Bug fixes |
+| `Refactor` | Code refactoring (no behavior change) |
+| `Docs` | Documentation updates |
+| `Test` | Adding or updating tests |
+| `Chore` | Maintenance, dependencies, config |
+| `Style` | Formatting, styling changes |
+
+**Examples:**
+```
+Feat: Admin can see individual response's selections
+Bug: Multi-select fix
+Refactor: Extract heatmap calculation to utility
+Docs: Update README with deployment instructions
+Test: Add unit tests for time-utils
+Chore: Update Convex to v1.32
+```
+
+**Guidelines:**
+- Keep titles concise (50 chars or less ideal)
+- Use sentence case after the colon
+- No period at the end
+- Be specific about what changed
+
+### Branch Naming
+
+```
+<username>/<type>-<short-description>
+```
+
+**Examples:**
+```
+jlam/feat-admin-view-response
+jlam/bug-multiselect-fix
+```
+
 ## Code Style Guidelines
 
 ### TypeScript
