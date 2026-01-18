@@ -179,6 +179,7 @@ function AdminDashboard() {
 						responses={responses}
 						highlightedResponse={highlightedResponse}
 						onClearHighlight={() => setSelectedResponseId(null)}
+						onSelectResponse={(id) => setSelectedResponseId(id)}
 					/>
 				</div>
 

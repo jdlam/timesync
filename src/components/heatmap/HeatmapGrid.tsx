@@ -2,6 +2,13 @@ import { ChevronDown, ChevronRight, TrendingUp, User, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	calculateHeatmap,
 	getBestTimeSlots,
 	getHeatmapColor,
@@ -22,6 +29,7 @@ interface HeatmapGridProps {
 	responses: Doc<"responses">[];
 	highlightedResponse?: Doc<"responses">;
 	onClearHighlight?: () => void;
+	onSelectResponse?: (responseId: string | null) => void;
 }
 
 export function HeatmapGrid({
@@ -29,6 +37,7 @@ export function HeatmapGrid({
 	responses,
 	highlightedResponse,
 	onClearHighlight,
+	onSelectResponse,
 }: HeatmapGridProps) {
 	const [expandedDates, setExpandedDates] = useState<Set<string>>(
 		new Set(event.dates),
@@ -133,8 +142,9 @@ export function HeatmapGrid({
 					<h3 className="text-xl font-bold text-foreground">
 						Availability Heatmap
 					</h3>
+					{/* Desktop: Show highlighted response badge */}
 					{highlightedResponse && (
-						<div className="flex items-center gap-2">
+						<div className="hidden md:flex items-center gap-2">
 							<div className="flex items-center gap-2 bg-cyan-500/20 text-cyan-400 px-3 py-1.5 rounded-full text-sm">
 								<User className="w-4 h-4" />
 								<span>Viewing: {highlightedResponse.respondentName}</span>
@@ -151,6 +161,34 @@ export function HeatmapGrid({
 						</div>
 					)}
 				</div>
+
+				{/* Mobile: Response selector dropdown */}
+				{responses.length > 0 && onSelectResponse && (
+					<div className="md:hidden mb-4">
+						<label className="text-sm text-muted-foreground mb-2 block">
+							View individual response:
+						</label>
+						<Select
+							value={highlightedResponse?._id ?? "all"}
+							onValueChange={(value) =>
+								onSelectResponse(value === "all" ? null : value)
+							}
+						>
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="Select a response to highlight" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">Show all responses</SelectItem>
+								{responses.map((response) => (
+									<SelectItem key={response._id} value={response._id}>
+										{response.respondentName} ({response.selectedSlots.length}{" "}
+										slots)
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
 
 				{/* Desktop Grid View */}
 				<div className="hidden md:block overflow-x-auto">
@@ -285,17 +323,25 @@ export function HeatmapGrid({
 												: undefined;
 
 											return (
-												<HeatmapCell
-													key={slot}
-													timestamp={slot}
-													displayTime={timeLabel}
-													data={data}
-													bgColor={bgColor}
-													totalRespondents={responses.length}
-													isFiltered={!!highlightedResponse}
-													isHighlighted={isHighlighted}
-													highlightedName={highlightedResponse?.respondentName}
-												/>
+												<div key={slot} className="flex items-center gap-3">
+													<span className="text-muted-foreground text-sm font-medium w-20 shrink-0">
+														{timeLabel}
+													</span>
+													<div className="flex-1">
+														<HeatmapCell
+															timestamp={slot}
+															displayTime={timeLabel}
+															data={data}
+															bgColor={bgColor}
+															totalRespondents={responses.length}
+															isFiltered={!!highlightedResponse}
+															isHighlighted={isHighlighted}
+															highlightedName={
+																highlightedResponse?.respondentName
+															}
+														/>
+													</div>
+												</div>
 											);
 										})}
 									</div>
