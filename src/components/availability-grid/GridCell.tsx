@@ -78,7 +78,11 @@ export function GridCell({
 
 	const handleTouchEnd = () => {
 		if (mode === "select") {
-			// Handle tap selection on mobile
+			// Handle tap selection on mobile. We intentionally use touchend instead of
+			// touchstart because quick taps often begin as scroll gestures, and firing
+			// on touchstart can cause accidental selections before the browser knows
+			// whether the user is scrolling or tapping. Using touchend more closely
+			// matches click behavior and avoids these false positives on touch devices.
 			interactionHandled.current = true;
 			onInteraction(timestamp, "start");
 		}
