@@ -9,6 +9,16 @@ import { ThemeProvider } from "../lib/theme";
 
 import appCss from "../styles.css?url";
 
+// Inline script to set theme before paint (prevents flash)
+const themeScript = `
+(function() {
+  const stored = localStorage.getItem('theme');
+  const theme = stored || 'system';
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.add(isDark ? 'dark' : 'light');
+})();
+`;
+
 export const Route = createRootRoute({
 	head: () => ({
 		meta: [
@@ -27,6 +37,11 @@ export const Route = createRootRoute({
 			{
 				rel: "stylesheet",
 				href: appCss,
+			},
+		],
+		scripts: [
+			{
+				children: themeScript,
 			},
 		],
 	}),
