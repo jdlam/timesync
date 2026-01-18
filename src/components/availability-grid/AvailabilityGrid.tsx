@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HeatmapSlotData } from "@/lib/heatmap-utils";
 import {
 	formatDateDisplay,
@@ -43,6 +43,19 @@ export function AvailabilityGrid({
 	const [expandedDates, setExpandedDates] = useState<Set<string>>(
 		new Set(event.dates),
 	);
+	// Track if this is the initial render to avoid calling onChange on mount
+	const isInitialRender = useRef(true);
+
+	// Notify parent when selection changes (but not on initial render)
+	useEffect(() => {
+		if (isInitialRender.current) {
+			isInitialRender.current = false;
+			return;
+		}
+		if (onChange) {
+			onChange(Array.from(selectedSlots));
+		}
+	}, [selectedSlots, onChange]);
 
 	// Determine display timezone (fallback to event timezone if not in provider)
 	const displayTimezone = timezoneContext?.displayTimezone ?? event.timeZone;
@@ -147,15 +160,10 @@ export function AvailabilityGrid({
 					lastClickedRef.current = timestamp;
 				}
 
-				// Notify parent of change
-				if (onChange) {
-					onChange(Array.from(newSelected));
-				}
-
 				return newSelected;
 			});
 		},
-		[mode, onChange, isDragging, allSlots],
+		[mode, isDragging, allSlots],
 	);
 
 	// Handle mouse down to start dragging

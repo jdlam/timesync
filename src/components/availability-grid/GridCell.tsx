@@ -29,8 +29,8 @@ export function GridCell({
 	isDragging,
 	hasDayOffset,
 }: GridCellProps) {
-	// Track if interaction was handled by mousedown to prevent double-firing
-	const handledByMouseDown = useRef(false);
+	// Track if interaction was already handled to prevent double-firing
+	const interactionHandled = useRef(false);
 
 	const handleClick = (e: React.MouseEvent) => {
 		if (mode !== "select") return;
@@ -43,13 +43,13 @@ export function GridCell({
 			return;
 		}
 
-		// If already handled by mousedown (desktop), skip
-		if (handledByMouseDown.current) {
-			handledByMouseDown.current = false;
+		// If already handled by mousedown or touchend, skip
+		if (interactionHandled.current) {
+			interactionHandled.current = false;
 			return;
 		}
 
-		// Fallback for cases where mousedown didn't fire (shouldn't happen on desktop)
+		// Fallback - shouldn't normally reach here
 		onInteraction(timestamp, "start");
 	};
 
@@ -59,8 +59,12 @@ export function GridCell({
 				// Prevent container from starting drag mode during shift+click
 				e.stopPropagation();
 			} else {
+				// Skip if already handled by touch event (prevents double-toggle on mobile)
+				if (interactionHandled.current) {
+					return;
+				}
 				// Start drag selection (also handles single click)
-				handledByMouseDown.current = true;
+				interactionHandled.current = true;
 				onInteraction(timestamp, "start");
 			}
 		}
@@ -74,8 +78,12 @@ export function GridCell({
 
 	const handleTouchEnd = () => {
 		if (mode === "select") {
-			// Handle tap selection on mobile
-			// touchend is more reliable than touchstart for quick taps
+			// Handle tap selection on mobile. We intentionally use touchend instead of
+			// touchstart because quick taps often begin as scroll gestures, and firing
+			// on touchstart can cause accidental selections before the browser knows
+			// whether the user is scrolling or tapping. Using touchend more closely
+			// matches click behavior and avoids these false positives on touch devices.
+			interactionHandled.current = true;
 			onInteraction(timestamp, "start");
 		}
 	};

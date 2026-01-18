@@ -1,10 +1,17 @@
 import { Monitor, Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTheme } from "@/lib/theme";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 export function ThemeToggle() {
 	const { theme, setTheme, effectiveTheme } = useTheme();
+	// Prevent hydration mismatch by only rendering theme-dependent content after mount
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	return (
 		<Popover>
@@ -15,7 +22,10 @@ export function ThemeToggle() {
 					className="text-muted-foreground hover:text-foreground hover:bg-accent"
 					aria-label="Toggle theme"
 				>
-					{effectiveTheme === "dark" ? (
+					{!mounted ? (
+						// Render a placeholder with same dimensions during SSR/hydration
+						<div className="h-5 w-5" />
+					) : effectiveTheme === "dark" ? (
 						<Moon className="h-5 w-5" />
 					) : (
 						<Sun className="h-5 w-5" />
