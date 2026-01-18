@@ -29,8 +29,8 @@ export function GridCell({
 	isDragging,
 	hasDayOffset,
 }: GridCellProps) {
-	// Track if interaction was handled by mousedown to prevent double-firing
-	const handledByMouseDown = useRef(false);
+	// Track if interaction was already handled to prevent double-firing
+	const interactionHandled = useRef(false);
 
 	const handleClick = (e: React.MouseEvent) => {
 		if (mode !== "select") return;
@@ -43,13 +43,13 @@ export function GridCell({
 			return;
 		}
 
-		// If already handled by mousedown (desktop), skip
-		if (handledByMouseDown.current) {
-			handledByMouseDown.current = false;
+		// If already handled by mousedown or touchend, skip
+		if (interactionHandled.current) {
+			interactionHandled.current = false;
 			return;
 		}
 
-		// Fallback for cases where mousedown didn't fire (shouldn't happen on desktop)
+		// Fallback - shouldn't normally reach here
 		onInteraction(timestamp, "start");
 	};
 
@@ -60,7 +60,7 @@ export function GridCell({
 				e.stopPropagation();
 			} else {
 				// Start drag selection (also handles single click)
-				handledByMouseDown.current = true;
+				interactionHandled.current = true;
 				onInteraction(timestamp, "start");
 			}
 		}
@@ -75,7 +75,7 @@ export function GridCell({
 	const handleTouchEnd = () => {
 		if (mode === "select") {
 			// Handle tap selection on mobile
-			// touchend is more reliable than touchstart for quick taps
+			interactionHandled.current = true;
 			onInteraction(timestamp, "start");
 		}
 	};
