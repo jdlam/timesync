@@ -14,6 +14,7 @@ interface GridCellProps {
 	heatmapData?: HeatmapSlotData;
 	heatmapColor?: string;
 	isDragging?: boolean;
+	hasDayOffset?: boolean;
 }
 
 export function GridCell({
@@ -25,6 +26,7 @@ export function GridCell({
 	heatmapData,
 	heatmapColor,
 	isDragging,
+	hasDayOffset,
 }: GridCellProps) {
 	const handleClick = (e: React.MouseEvent) => {
 		// Only handle shift+click here, regular clicks are handled by mousedown
@@ -97,11 +99,19 @@ export function GridCell({
 					? "bg-cyan-600 border-cyan-500 text-white hover:bg-cyan-700"
 					: "bg-muted border-border text-muted-foreground hover:bg-accent",
 				"active:scale-95",
+				hasDayOffset && !isSelected && "border-amber-500/50",
 			)}
 			aria-label={`${displayTime} - ${isSelected ? "Selected" : "Not selected"}`}
 			aria-pressed={isSelected}
 		>
-			<span className="text-sm font-medium">{displayTime}</span>
+			<span
+				className={cn(
+					"text-sm font-medium",
+					hasDayOffset && !isSelected && "text-amber-400",
+				)}
+			>
+				{displayTime}
+			</span>
 		</button>
 	);
 }

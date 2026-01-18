@@ -1,15 +1,19 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	generateTimeSlots,
-	parseTimeInZone,
-	formatTimeSlot,
 	formatDate,
 	formatDateDisplay,
-	groupSlotsByDate,
-	getDateColumnLabel,
-	validateTimeRange,
-	isDateInPast,
+	formatTimeSlot,
+	formatTimeSlotWithDayOffset,
+	formatTimezoneOffset,
+	generateTimeSlots,
 	getBrowserTimezone,
+	getDateColumnLabel,
+	getDayOffset,
+	getTimezoneOffsetDifference,
+	groupSlotsByDate,
+	isDateInPast,
+	parseTimeInZone,
+	validateTimeRange,
 } from "./time-utils";
 
 describe("time-utils", () => {
@@ -110,7 +114,7 @@ describe("time-utils", () => {
 	});
 
 	describe("formatTimeSlot", () => {
-		it('should format time in short format', () => {
+		it("should format time in short format", () => {
 			// 2025-01-15T14:00:00Z is 9:00 AM EST
 			const formatted = formatTimeSlot(
 				"2025-01-15T14:00:00.000Z",
@@ -121,7 +125,7 @@ describe("time-utils", () => {
 			expect(formatted).toBe("9:00 AM");
 		});
 
-		it('should format time in long format', () => {
+		it("should format time in long format", () => {
 			const formatted = formatTimeSlot(
 				"2025-01-15T14:00:00.000Z",
 				"America/New_York",
@@ -243,6 +247,143 @@ describe("time-utils", () => {
 
 			expect(typeof tz).toBe("string");
 			expect(tz.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe("getDayOffset", () => {
+		it("should return 0 when timezones are the same", () => {
+			const offset = getDayOffset(
+				"2025-01-15T14:00:00.000Z",
+				"America/New_York",
+				"America/New_York",
+			);
+
+			expect(offset).toBe(0);
+		});
+
+		it("should return +1 when display timezone is ahead and crosses midnight", () => {
+			// 11 PM EST on Jan 15 = 4:00 UTC Jan 16 = 5 AM in London (Jan 16)
+			// This is 4:00 AM UTC, which is still Jan 15 in EST but Jan 16 in London
+			const offset = getDayOffset(
+				"2025-01-16T04:00:00.000Z", // 11 PM EST Jan 15, 4 AM GMT Jan 16
+				"America/New_York",
+				"Europe/London",
+			);
+
+			expect(offset).toBe(1);
+		});
+
+		it("should return -1 when display timezone is behind and crosses midnight", () => {
+			// Early morning in London can be previous day in LA
+			// 2 AM London Jan 16 = 2:00 UTC Jan 16 = 6 PM PST Jan 15
+			const offset = getDayOffset(
+				"2025-01-16T02:00:00.000Z", // 2 AM GMT Jan 16, 6 PM PST Jan 15
+				"Europe/London",
+				"America/Los_Angeles",
+			);
+
+			expect(offset).toBe(-1);
+		});
+
+		it("should return 0 when times don't cross midnight", () => {
+			// Noon EST = 5 PM London, same day
+			const offset = getDayOffset(
+				"2025-01-15T17:00:00.000Z", // Noon EST, 5 PM London
+				"America/New_York",
+				"Europe/London",
+			);
+
+			expect(offset).toBe(0);
+		});
+	});
+
+	describe("formatTimeSlotWithDayOffset", () => {
+		it("should return time without offset when timezones are similar", () => {
+			const result = formatTimeSlotWithDayOffset(
+				"2025-01-15T17:00:00.000Z",
+				"America/New_York",
+				"America/New_York",
+			);
+
+			expect(result.time).toBe("12:00 PM");
+			expect(result.dayOffset).toBe(0);
+			expect(result.dayLabel).toBeNull();
+		});
+
+		it("should return +1d label when crossing to next day", () => {
+			// 11 PM EST = 4 AM GMT next day
+			const result = formatTimeSlotWithDayOffset(
+				"2025-01-16T04:00:00.000Z",
+				"America/New_York",
+				"Europe/London",
+			);
+
+			expect(result.time).toBe("4:00 AM");
+			expect(result.dayOffset).toBe(1);
+			expect(result.dayLabel).toBe("+1d");
+		});
+
+		it("should return -1d label when crossing to previous day", () => {
+			// 2 AM GMT = 6 PM PST previous day
+			const result = formatTimeSlotWithDayOffset(
+				"2025-01-16T02:00:00.000Z",
+				"Europe/London",
+				"America/Los_Angeles",
+			);
+
+			expect(result.time).toBe("6:00 PM");
+			expect(result.dayOffset).toBe(-1);
+			expect(result.dayLabel).toBe("-1d");
+		});
+	});
+
+	describe("getTimezoneOffsetDifference", () => {
+		it("should return 0 for same timezone", () => {
+			const diff = getTimezoneOffsetDifference(
+				"America/New_York",
+				"America/New_York",
+			);
+
+			expect(diff).toBe(0);
+		});
+
+		it("should return positive value when second timezone is ahead", () => {
+			// London is 5 hours ahead of New York in winter
+			const diff = getTimezoneOffsetDifference(
+				"America/New_York",
+				"Europe/London",
+			);
+
+			expect(diff).toBe(5);
+		});
+
+		it("should return negative value when second timezone is behind", () => {
+			// LA is 3 hours behind New York
+			const diff = getTimezoneOffsetDifference(
+				"America/New_York",
+				"America/Los_Angeles",
+			);
+
+			expect(diff).toBe(-3);
+		});
+	});
+
+	describe("formatTimezoneOffset", () => {
+		it("should format positive offset", () => {
+			expect(formatTimezoneOffset(5)).toBe("+5 hours");
+		});
+
+		it("should format negative offset", () => {
+			expect(formatTimezoneOffset(-3)).toBe("-3 hours");
+		});
+
+		it("should use singular 'hour' for 1", () => {
+			expect(formatTimezoneOffset(1)).toBe("+1 hour");
+			expect(formatTimezoneOffset(-1)).toBe("-1 hour");
+		});
+
+		it("should handle zero offset", () => {
+			expect(formatTimezoneOffset(0)).toBe("+0 hours");
 		});
 	});
 });

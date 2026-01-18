@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-	TIER_LIMITS,
 	getTierLimits,
 	hasUnlimitedParticipants,
+	TIER_LIMITS,
 } from "./tier-config";
 
 describe("tier-config", () => {
