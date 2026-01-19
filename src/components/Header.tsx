@@ -5,13 +5,17 @@ import {
 	UserButton,
 } from "@clerk/clerk-react";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
 import { Calendar, Home, LogIn, Menu, Shield, X } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../convex/_generated/api";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
 export default function Header() {
 	const [isOpen, setIsOpen] = useState(false);
+	const accessCheck = useQuery(api.admin.checkAccess);
+	const isSuperAdmin = accessCheck?.isSuperAdmin ?? false;
 
 	return (
 		<>
@@ -37,7 +41,7 @@ export default function Header() {
 							>
 								Home
 							</Link>
-							<SignedIn>
+							{isSuperAdmin && (
 								<Link
 									to="/admin"
 									className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
@@ -45,7 +49,7 @@ export default function Header() {
 									<Shield size={16} />
 									Admin
 								</Link>
-							</SignedIn>
+							)}
 							<ThemeToggle />
 							<SignedOut>
 								<SignInButton mode="modal">
@@ -130,7 +134,7 @@ export default function Header() {
 						<span className="font-medium">Create Event</span>
 					</Link>
 
-					<SignedIn>
+					{isSuperAdmin && (
 						<Link
 							to="/admin"
 							onClick={() => setIsOpen(false)}
@@ -143,7 +147,7 @@ export default function Header() {
 							<Shield size={20} />
 							<span className="font-medium">Admin</span>
 						</Link>
-					</SignedIn>
+					)}
 
 					<SignedOut>
 						<SignInButton mode="modal">
