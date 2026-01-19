@@ -11,11 +11,14 @@ This document lists all features currently implemented in TimeSync.
   - Optional description/notes
   - Timezone selection with searchable dropdown (all IANA timezones)
   - Multi-date calendar picker (up to 14 dates for free tier)
+  - Date chips sorted chronologically (oldest to newest)
   - Time range selection (start and end times)
   - Slot duration options (15, 30, or 60 minutes)
   - Form validation with clear error messages
   - Success dialog with public link and admin link
   - One-click copy for both links
+  - Signed-in users: events linked to account (viewable in My Events)
+  - Guest users: events accessible via admin link only
 
 ---
 
@@ -160,6 +163,36 @@ This document lists all features currently implemented in TimeSync.
 - Logged actions: delete event, delete response, toggle status
 - Shows who, what, when, and target details
 - Paginated chronological list
+
+---
+
+## My Events Dashboard
+
+- **My Events List** at `/my-events`
+  - Accessible to signed-in users via header navigation
+  - Shows all events created by the current user
+  - Table/card view with event details:
+    - Title and description
+    - Created date
+    - Response count
+    - Status (Active/Inactive)
+  - Search events by title or description
+  - Filter by status (All/Active/Inactive)
+  - Pagination with "Load More"
+  - Empty state with link to create first event
+
+- **My Event Detail** at `/my-events/:eventId`
+  - Event configuration overview (dates, time range, slot duration)
+  - List of all responses with names and slot counts
+  - Toggle event status (active/inactive)
+  - Delete event with confirmation dialog
+  - Link to view public event page
+
+- **Event Ownership**
+  - Events created while signed in are linked to user's Clerk ID
+  - Guest-created events have no owner (creatorId undefined)
+  - Ownership verified server-side for all mutations
+  - Users cannot access other users' events
 
 ---
 

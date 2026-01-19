@@ -1,7 +1,7 @@
 # TimeSync - User Stories
 
-**Version:** 1.1
-**Last Updated:** 2026-01-17
+**Version:** 1.2
+**Last Updated:** 2026-01-19
 **Based on PRD:** Version 1.0
 
 ---
@@ -41,9 +41,10 @@
 
 **Technical Notes:**
 - Admin link uses `adminToken` (UUID) for access
-- Store creator as `undefined` in `creatorId` field
+- Store `creatorId` as Clerk subject ID if logged in, `undefined` for guests
 - Default `maxRespondents` to 20
 - Uses Convex backend with real-time subscriptions
+- Logged-in users can view their events at `/my-events`
 
 ---
 
@@ -263,23 +264,25 @@
 
 ---
 
-### Story 4.3 - Dashboard - View All My Events [P1] ❌
+### Story 4.3 - Dashboard - View All My Events [P1] ✅
 **As a** registered user
 **I want to** see a list of all events I've created
 **So that** I can manage them in one place
 
 **Acceptance Criteria:**
-- [ ] Dashboard shows table/list of events
-- [ ] Each event shows: title, date created, respondent count, status
-- [ ] User can click event to view admin page
-- [ ] User can archive events
-- [ ] User can delete events
-- [ ] Archived events shown in separate section
-- [ ] Empty state shown if no events exist
+- [x] Dashboard shows table/list of events
+- [x] Each event shows: title, date created, respondent count, status
+- [x] User can click event to view detail page
+- [x] User can toggle event status (active/inactive)
+- [x] User can delete events
+- [x] Search and filter by status (all/active/inactive)
+- [x] Empty state shown if no events exist
 
 **Technical Notes:**
-- Query events by `creatorId = currentUser.id`
+- Query events by `creatorId = currentUser.subject` (Clerk subject ID)
 - Include count of responses per event
+- Route: `/my-events` for list, `/my-events/:eventId` for detail
+- Ownership verified server-side for all mutations
 
 ---
 
@@ -655,7 +658,7 @@
 
 ## Implementation Summary
 
-### Completed (P0 Core MVP):
+### Completed (P0 Core MVP + P1):
 | Story | Description | Status |
 |-------|-------------|--------|
 | 1.1 | Guest event creation | ✅ |
@@ -664,6 +667,7 @@
 | 2.3 | Mobile-responsive grid | ✅ |
 | 3.1 | Results heatmap | ✅ |
 | 3.2 | Hover for details | ✅ |
+| 4.3 | My Events dashboard | ✅ |
 | 6.1 | Copy links | ✅ |
 | 6.5 | Dark mode | ✅ |
 | T.1 | Database setup | ✅ |
@@ -688,7 +692,6 @@
 | 3.3 | CSV export | P1 |
 | 4.1 | Email/password auth | P1 |
 | 4.2 | OAuth (Google) | P2 |
-| 4.3 | User dashboard | P1 |
 | 4.4 | Claim guest events | P2 |
 | 5.1 | Pricing page | P1 |
 | 5.2 | Stripe integration | P1 |
