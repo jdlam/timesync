@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { checkSuperAdmin, requireSuperAdmin } from "./lib/auth";
 
+// Maximum records to load for in-memory filtering/pagination
+// This prevents OOM issues while keeping reasonable admin functionality
+const MAX_RECORDS_LIMIT = 1000;
+
 // Query: Check if user is super admin (for frontend access control)
 export const checkAccess = query({
 	args: {},
@@ -25,22 +29,26 @@ export const checkAccess = query({
 });
 
 // Query: Get admin statistics
+// Note: For very large datasets, consider maintaining separate counter documents
 export const getStats = query({
 	args: {},
 	handler: async (ctx) => {
 		const identity = await checkSuperAdmin(ctx);
 		if (!identity) return null;
 
-		const events = await ctx.db.query("events").collect();
-		const responses = await ctx.db.query("responses").collect();
+		// Use take() to limit memory usage - stats will be approximate for very large datasets
+		const events = await ctx.db.query("events").take(MAX_RECORDS_LIMIT);
+		const responses = await ctx.db.query("responses").take(MAX_RECORDS_LIMIT);
 
 		const now = Date.now();
 		const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
 
 		const activeEvents = events.filter((e) => e.isActive).length;
-		const eventsThisWeek = events.filter((e) => e.createdAt >= oneWeekAgo).length;
+		const eventsThisWeek = events.filter(
+			(e) => e.createdAt >= oneWeekAgo,
+		).length;
 		const responsesThisWeek = responses.filter(
-			(r) => r.createdAt >= oneWeekAgo
+			(r) => r.createdAt >= oneWeekAgo,
 		).length;
 
 		return {
@@ -55,12 +63,15 @@ export const getStats = query({
 });
 
 // Query: Get all events with pagination
+// Note: Uses in-memory filtering for search. For very large datasets, consider using Convex search indexes.
 export const getAllEvents = query({
 	args: {
 		limit: v.optional(v.number()),
 		cursor: v.optional(v.string()),
 		search: v.optional(v.string()),
-		statusFilter: v.optional(v.union(v.literal("all"), v.literal("active"), v.literal("inactive"))),
+		statusFilter: v.optional(
+			v.union(v.literal("all"), v.literal("active"), v.literal("inactive")),
+		),
 	},
 	handler: async (ctx, args) => {
 		const identity = await checkSuperAdmin(ctx);
@@ -68,8 +79,11 @@ export const getAllEvents = query({
 
 		const limit = args.limit ?? 20;
 
-		// Get all events
-		let events = await ctx.db.query("events").order("desc").collect();
+		// Use take() to limit memory usage
+		let events = await ctx.db
+			.query("events")
+			.order("desc")
+			.take(MAX_RECORDS_LIMIT);
 
 		// Apply search filter
 		if (args.search) {
@@ -151,6 +165,7 @@ export const getEventById = query({
 });
 
 // Query: Get all responses with pagination
+// Note: Uses in-memory filtering for search. For very large datasets, consider using Convex search indexes.
 export const getAllResponses = query({
 	args: {
 		limit: v.optional(v.number()),
@@ -163,8 +178,11 @@ export const getAllResponses = query({
 
 		const limit = args.limit ?? 20;
 
-		// Get all responses
-		let responses = await ctx.db.query("responses").order("desc").collect();
+		// Use take() to limit memory usage
+		let responses = await ctx.db
+			.query("responses")
+			.order("desc")
+			.take(MAX_RECORDS_LIMIT);
 
 		// Apply search filter
 		if (args.search) {
@@ -222,11 +240,12 @@ export const getAuditLogs = query({
 
 		const limit = args.limit ?? 50;
 
+		// Use take() to limit memory usage
 		const logs = await ctx.db
 			.query("auditLogs")
 			.withIndex("by_created")
 			.order("desc")
-			.collect();
+			.take(MAX_RECORDS_LIMIT);
 
 		// Handle cursor-based pagination
 		let startIndex = 0;
