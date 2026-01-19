@@ -1,11 +1,21 @@
+import {
+	SignedIn,
+	SignedOut,
+	SignInButton,
+	UserButton,
+} from "@clerk/clerk-react";
 import { Link } from "@tanstack/react-router";
-import { Calendar, Home, Menu, X } from "lucide-react";
+import { useQuery } from "convex/react";
+import { Calendar, Home, LogIn, Menu, Shield, X } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../convex/_generated/api";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
 export default function Header() {
 	const [isOpen, setIsOpen] = useState(false);
+	const accessCheck = useQuery(api.admin.checkAccess);
+	const isSuperAdmin = accessCheck?.isSuperAdmin ?? false;
 
 	return (
 		<>
@@ -31,7 +41,27 @@ export default function Header() {
 							>
 								Home
 							</Link>
+							{isSuperAdmin && (
+								<Link
+									to="/admin"
+									className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+								>
+									<Shield size={16} />
+									Admin
+								</Link>
+							)}
 							<ThemeToggle />
+							<SignedOut>
+								<SignInButton mode="modal">
+									<Button variant="outline" size="sm">
+										<LogIn size={16} className="mr-2" />
+										Sign In
+									</Button>
+								</SignInButton>
+							</SignedOut>
+							<SignedIn>
+								<UserButton afterSignOutUrl="/" />
+							</SignedIn>
 							<Link to="/events/create">
 								<Button>Create Event</Button>
 							</Link>
@@ -40,6 +70,9 @@ export default function Header() {
 						{/* Mobile Navigation */}
 						<div className="md:hidden flex items-center gap-2">
 							<ThemeToggle />
+							<SignedIn>
+								<UserButton afterSignOutUrl="/" />
+							</SignedIn>
 							<button
 								onClick={() => setIsOpen(true)}
 								className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground cursor-pointer"
@@ -100,6 +133,33 @@ export default function Header() {
 						<Calendar size={20} />
 						<span className="font-medium">Create Event</span>
 					</Link>
+
+					{isSuperAdmin && (
+						<Link
+							to="/admin"
+							onClick={() => setIsOpen(false)}
+							className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
+							activeProps={{
+								className:
+									"flex items-center gap-3 p-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors mb-2 text-primary-foreground",
+							}}
+						>
+							<Shield size={20} />
+							<span className="font-medium">Admin</span>
+						</Link>
+					)}
+
+					<SignedOut>
+						<SignInButton mode="modal">
+							<button
+								type="button"
+								className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground w-full"
+							>
+								<LogIn size={20} />
+								<span className="font-medium">Sign In</span>
+							</button>
+						</SignInButton>
+					</SignedOut>
 				</nav>
 			</aside>
 

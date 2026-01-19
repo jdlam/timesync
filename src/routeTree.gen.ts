@@ -10,8 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
+import { Route as AdminResponsesRouteImport } from './routes/admin/responses'
+import { Route as AdminLogsRouteImport } from './routes/admin/logs'
+import { Route as AdminEventsRouteImport } from './routes/admin/events'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as EventsEventIdIndexRouteImport } from './routes/events/$eventId/index'
+import { Route as AdminEventsEventIdRouteImport } from './routes/admin/events.$eventId'
 import { Route as EventsEventIdEditEditTokenRouteImport } from './routes/events/$eventId/edit/$editToken'
 import { Route as EventsEventIdAdminAdminTokenRouteImport } from './routes/events/$eventId/admin/$adminToken'
 
@@ -20,15 +26,45 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsCreateRoute = EventsCreateRouteImport.update({
   id: '/events/create',
   path: '/events/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminResponsesRoute = AdminResponsesRouteImport.update({
+  id: '/admin/responses',
+  path: '/admin/responses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLogsRoute = AdminLogsRouteImport.update({
+  id: '/admin/logs',
+  path: '/admin/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEventsRoute = AdminEventsRouteImport.update({
+  id: '/admin/events',
+  path: '/admin/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsEventIdIndexRoute = EventsEventIdIndexRouteImport.update({
   id: '/events/$eventId/',
   path: '/events/$eventId/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEventsEventIdRoute = AdminEventsEventIdRouteImport.update({
+  id: '/$eventId',
+  path: '/$eventId',
+  getParentRoute: () => AdminEventsRoute,
 } as any)
 const EventsEventIdEditEditTokenRoute =
   EventsEventIdEditEditTokenRouteImport.update({
@@ -45,14 +81,26 @@ const EventsEventIdAdminAdminTokenRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/events': typeof AdminEventsRouteWithChildren
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/events/$eventId': typeof AdminEventsEventIdRoute
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
   '/events/$eventId/edit/$editToken': typeof EventsEventIdEditEditTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/events': typeof AdminEventsRouteWithChildren
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/events/$eventId': typeof AdminEventsEventIdRoute
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
   '/events/$eventId/edit/$editToken': typeof EventsEventIdEditEditTokenRoute
@@ -60,7 +108,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/events': typeof AdminEventsRouteWithChildren
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/events/$eventId': typeof AdminEventsEventIdRoute
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
   '/events/$eventId/edit/$editToken': typeof EventsEventIdEditEditTokenRoute
@@ -69,21 +123,39 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin/dashboard'
+    | '/admin/events'
+    | '/admin/logs'
+    | '/admin/responses'
     | '/events/create'
+    | '/admin'
+    | '/admin/events/$eventId'
     | '/events/$eventId'
     | '/events/$eventId/admin/$adminToken'
     | '/events/$eventId/edit/$editToken'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/dashboard'
+    | '/admin/events'
+    | '/admin/logs'
+    | '/admin/responses'
     | '/events/create'
+    | '/admin'
+    | '/admin/events/$eventId'
     | '/events/$eventId'
     | '/events/$eventId/admin/$adminToken'
     | '/events/$eventId/edit/$editToken'
   id:
     | '__root__'
     | '/'
+    | '/admin/dashboard'
+    | '/admin/events'
+    | '/admin/logs'
+    | '/admin/responses'
     | '/events/create'
+    | '/admin/'
+    | '/admin/events/$eventId'
     | '/events/$eventId/'
     | '/events/$eventId/admin/$adminToken'
     | '/events/$eventId/edit/$editToken'
@@ -91,7 +163,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminEventsRoute: typeof AdminEventsRouteWithChildren
+  AdminLogsRoute: typeof AdminLogsRoute
+  AdminResponsesRoute: typeof AdminResponsesRoute
   EventsCreateRoute: typeof EventsCreateRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   EventsEventIdIndexRoute: typeof EventsEventIdIndexRoute
   EventsEventIdAdminAdminTokenRoute: typeof EventsEventIdAdminAdminTokenRoute
   EventsEventIdEditEditTokenRoute: typeof EventsEventIdEditEditTokenRoute
@@ -106,11 +183,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events/create': {
       id: '/events/create'
       path: '/events/create'
       fullPath: '/events/create'
       preLoaderRoute: typeof EventsCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/responses': {
+      id: '/admin/responses'
+      path: '/admin/responses'
+      fullPath: '/admin/responses'
+      preLoaderRoute: typeof AdminResponsesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/logs': {
+      id: '/admin/logs'
+      path: '/admin/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AdminLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/events': {
+      id: '/admin/events'
+      path: '/admin/events'
+      fullPath: '/admin/events'
+      preLoaderRoute: typeof AdminEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events/$eventId/': {
@@ -119,6 +231,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/$eventId'
       preLoaderRoute: typeof EventsEventIdIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/events/$eventId': {
+      id: '/admin/events/$eventId'
+      path: '/$eventId'
+      fullPath: '/admin/events/$eventId'
+      preLoaderRoute: typeof AdminEventsEventIdRouteImport
+      parentRoute: typeof AdminEventsRoute
     }
     '/events/$eventId/edit/$editToken': {
       id: '/events/$eventId/edit/$editToken'
@@ -137,9 +256,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminEventsRouteChildren {
+  AdminEventsEventIdRoute: typeof AdminEventsEventIdRoute
+}
+
+const AdminEventsRouteChildren: AdminEventsRouteChildren = {
+  AdminEventsEventIdRoute: AdminEventsEventIdRoute,
+}
+
+const AdminEventsRouteWithChildren = AdminEventsRoute._addFileChildren(
+  AdminEventsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminEventsRoute: AdminEventsRouteWithChildren,
+  AdminLogsRoute: AdminLogsRoute,
+  AdminResponsesRoute: AdminResponsesRoute,
   EventsCreateRoute: EventsCreateRoute,
+  AdminIndexRoute: AdminIndexRoute,
   EventsEventIdIndexRoute: EventsEventIdIndexRoute,
   EventsEventIdAdminAdminTokenRoute: EventsEventIdAdminAdminTokenRoute,
   EventsEventIdEditEditTokenRoute: EventsEventIdEditEditTokenRoute,

@@ -82,4 +82,15 @@ export default defineSchema({
 	})
 		.index("by_event", ["eventId"])
 		.index("by_edit_token", ["editToken"]),
+
+	// Audit logs table (for tracking super admin actions)
+	auditLogs: defineTable({
+		userId: v.string(),
+		userEmail: v.string(),
+		action: v.string(), // "delete_event", "delete_response", "toggle_event_status"
+		targetType: v.string(), // "event", "response"
+		targetId: v.string(),
+		metadata: v.optional(v.any()),
+		createdAt: v.number(),
+	}).index("by_created", ["createdAt"]),
 });

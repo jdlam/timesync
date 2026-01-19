@@ -14,6 +14,7 @@ TimeSync is a modern scheduling app for coordinating group availability. Users c
 |-------|------------|
 | Frontend | React 19, TanStack Router, TanStack Form |
 | Backend | Convex (real-time database + serverless functions) |
+| Authentication | Clerk |
 | Styling | Tailwind CSS v4, shadcn/ui components |
 | Validation | Zod |
 | Date Handling | date-fns, date-fns-tz |
@@ -25,17 +26,23 @@ TimeSync is a modern scheduling app for coordinating group availability. Users c
 ```
 src/
 ├── components/           # React components
+│   ├── admin/               # Super admin dashboard components
 │   ├── availability-grid/   # Availability selection grid
 │   ├── heatmap/             # Heatmap visualization
 │   └── ui/                  # shadcn/ui components
 ├── hooks/                # Custom React hooks
 ├── lib/                  # Utilities and helpers
 └── routes/               # TanStack Router file-based routing
+    └── admin/               # Super admin dashboard routes
 
 convex/
 ├── schema.ts             # Database schema (source of truth)
 ├── events.ts             # Event queries/mutations
-└── responses.ts          # Response queries/mutations
+├── responses.ts          # Response queries/mutations
+├── admin.ts              # Super admin queries/mutations
+├── auth.config.ts        # Clerk JWT verification config
+└── lib/
+    └── auth.ts           # Authentication utilities
 ```
 
 ## Commands
@@ -228,16 +235,18 @@ function MyForm() {
 
 ## Database Schema
 
-The Convex schema (`convex/schema.ts`) defines three tables:
+The Convex schema (`convex/schema.ts`) defines four tables:
 
-1. **users** - Registered accounts (not implemented yet)
+1. **users** - Registered accounts (for future use)
 2. **events** - Scheduling events with configuration
 3. **responses** - User availability submissions
+4. **auditLogs** - Super admin action tracking
 
 Key fields:
-- `events.adminToken` - Secret token for admin access
+- `events.adminToken` - Secret token for event admin access
 - `responses.editToken` - Secret token for editing responses
 - `events.isActive` - Soft delete flag
+- `auditLogs.action` - Type of admin action (delete_event, toggle_event_status, etc.)
 
 ## Testing
 
@@ -306,13 +315,40 @@ Components are added to `src/components/ui/`.
 - Ensure keyboard navigation works
 - Test with screen readers for critical flows
 
+## Authentication & Authorization
+
+### Clerk Integration
+- Authentication is handled via Clerk
+- `ClerkProvider` wraps the app in `ConvexClientProvider.tsx`
+- Sign in/out buttons in the header
+- JWT verification configured in `convex/auth.config.ts`
+
+### Super Admin Dashboard
+- Access controlled via `SUPER_ADMIN_EMAILS` environment variable (Convex Dashboard)
+- Routes under `/admin/*` require super admin access
+- Features: view all events/responses, toggle event status, delete events/responses
+- All admin actions are logged to `auditLogs` table
+
+#### Security Behavior
+- Admin queries return `null` (not throw) when unauthorized to avoid error modals during auth loading
+- Admin mutations throw errors for hard failures (correct behavior for write operations)
+- Unauthorized access attempts are logged server-side: `console.warn` with user email and subject ID
+- `UnauthorizedPage` component shows email only in development (`import.meta.env.DEV`)
+- Unauthorized users on admin sub-routes are redirected to `/admin` with `replace: true` (hides URL from history)
+
+### Environment Variables (Convex Dashboard)
+```bash
+CLERK_JWT_ISSUER_DOMAIN=https://your-instance.clerk.accounts.dev
+SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
+```
+
 ## What's Not Implemented Yet
 
 See `USER_STORIES.md` for full status. Major missing features:
-- User authentication (Epic 4)
 - Premium features / Stripe (Epic 5)
-- Event editing/deletion (Stories 1.3, 7.1, 7.2)
+- Event editing/deletion for event creators (Stories 1.3, 7.1, 7.2)
 - Email notifications (Story 6.2)
+- User accounts linked to events (Epic 4 partially done - auth exists but not linked to event creation)
 
 ## Documentation Files
 
