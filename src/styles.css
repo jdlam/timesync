@@ -140,19 +140,19 @@ code {
     @apply bg-background text-foreground;
   }
 
-  /* Ensure all interactive elements show pointer cursor */
-  button,
-  a,
-  [role='button'],
-  [role='link'],
-  [role='tab'],
-  [role='menuitem'],
-  [role='option'],
-  [tabindex]:not([tabindex='-1']),
-  label[for],
-  select,
-  summary,
-  [onclick] {
+  /* Ensure all interactive elements show pointer cursor (except disabled) */
+  button:not(:disabled):not(.disabled),
+  a:not(.disabled),
+  [role='button']:not([aria-disabled='true']):not(.disabled),
+  [role='link']:not(.disabled),
+  [role='tab']:not([aria-disabled='true']):not(.disabled),
+  [role='menuitem']:not([aria-disabled='true']):not(.disabled),
+  [role='option']:not([aria-disabled='true']):not(.disabled),
+  [tabindex]:not([tabindex='-1']):not(.disabled),
+  label[for]:not(.disabled),
+  select:not(:disabled):not(.disabled),
+  summary:not(.disabled),
+  [onclick]:not(.disabled) {
     @apply cursor-pointer;
   }
 }

@@ -148,7 +148,7 @@ jlam/bug-multiselect-fix
 - Use `cn()` helper from `@/lib/utils` for conditional classes
 - Follow shadcn/ui patterns for new components
 - Support dark mode with `dark:` variants
-- **Cursor pointer**: All clickable elements must show `cursor: pointer` on hover. This is enforced globally in `src/styles.css` for buttons, links, and elements with interactive roles. If adding custom clickable elements, ensure they use appropriate semantic HTML or ARIA roles.
+- **Cursor pointer**: All clickable elements must show `cursor: pointer` on hover. This is enforced globally in `src/styles.css` for buttons, links, and elements with interactive roles. Disabled elements (`:disabled`, `.disabled` class, or `aria-disabled="true"`) are excluded. If adding custom clickable elements, ensure they use appropriate semantic HTML or ARIA roles.
 
 ### Formatting
 - Biome handles formatting (not Prettier)
