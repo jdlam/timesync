@@ -8,9 +8,9 @@ import {
 	Loader2,
 	MessageSquare,
 	Shield,
-	ShieldAlert,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { UnauthorizedPage } from "@/components/admin/UnauthorizedPage";
 import { api } from "../../../convex/_generated/api";
 
 interface AdminLayoutProps {
@@ -54,19 +54,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 	}
 
 	if (!isSignedIn || !accessCheck.isSuperAdmin) {
-		return (
-			<div className="min-h-screen flex items-center justify-center px-4">
-				<div className="text-center max-w-md">
-					<div className="mb-6">
-						<ShieldAlert className="w-16 h-16 mx-auto text-destructive" />
-					</div>
-					<h1 className="text-3xl font-bold mb-4">Access Denied</h1>
-					<p className="text-muted-foreground">
-						You don't have permission to access this page.
-					</p>
-				</div>
-			</div>
-		);
+		return <UnauthorizedPage email={accessCheck.email} />;
 	}
 
 	return (

@@ -1,8 +1,9 @@
 import { SignInButton, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Loader2, LogIn, Shield, ShieldAlert } from "lucide-react";
+import { Loader2, LogIn, Shield } from "lucide-react";
 import { useEffect } from "react";
+import { UnauthorizedPage } from "@/components/admin/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import { api } from "../../../convex/_generated/api";
 
@@ -63,22 +64,7 @@ function AdminIndex() {
 
 	// User is signed in but not a super admin
 	if (!accessCheck.isSuperAdmin) {
-		return (
-			<div className="min-h-screen flex items-center justify-center px-4">
-				<div className="text-center max-w-md">
-					<div className="mb-6">
-						<ShieldAlert className="w-16 h-16 mx-auto text-destructive" />
-					</div>
-					<h1 className="text-3xl font-bold mb-4">Access Denied</h1>
-					<p className="text-muted-foreground mb-4">
-						You don't have permission to access the admin dashboard.
-					</p>
-					<p className="text-sm text-muted-foreground">
-						Signed in as: {accessCheck.email}
-					</p>
-				</div>
-			</div>
-		);
+		return <UnauthorizedPage email={accessCheck.email} />;
 	}
 
 	// Will redirect to dashboard via useEffect

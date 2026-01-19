@@ -6,10 +6,19 @@ import { checkSuperAdmin, requireSuperAdmin } from "./lib/auth";
 export const checkAccess = query({
 	args: {},
 	handler: async (ctx) => {
-		const identity = await checkSuperAdmin(ctx);
+		const identity = await ctx.auth.getUserIdentity();
+		const superAdminIdentity = await checkSuperAdmin(ctx);
+
+		// Log unauthorized access attempts (authenticated but not super admin)
+		if (identity && !superAdminIdentity) {
+			console.warn(
+				`[UNAUTHORIZED] Admin access attempt by non-super-admin user: ${identity.email} (${identity.subject})`,
+			);
+		}
+
 		return {
 			isAuthenticated: identity !== null,
-			isSuperAdmin: identity !== null,
+			isSuperAdmin: superAdminIdentity !== null,
 			email: identity?.email,
 		};
 	},
