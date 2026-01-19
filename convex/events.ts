@@ -52,6 +52,59 @@ export const getByAdminToken = query({
 	},
 });
 
+// Query: Get response count for an event (used for edit warning)
+export const getResponseCount = query({
+	args: { eventId: v.id("events"), adminToken: v.string() },
+	handler: async (ctx, args) => {
+		const event = await ctx.db.get(args.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			return null;
+		}
+
+		const responses = await ctx.db
+			.query("responses")
+			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+			.collect();
+
+		return { count: responses.length };
+	},
+});
+
+// Mutation: Update an event (admin only)
+export const update = mutation({
+	args: {
+		eventId: v.id("events"),
+		adminToken: v.string(),
+		title: v.optional(v.string()),
+		description: v.optional(v.union(v.string(), v.null())),
+		dates: v.optional(v.array(v.string())),
+		timeRangeStart: v.optional(v.string()),
+		timeRangeEnd: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		// Validate admin token
+		const event = await ctx.db.get(args.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			throw new Error("Event not found or invalid admin token");
+		}
+
+		// Build update object with only provided fields
+		const updates: Record<string, unknown> = { updatedAt: Date.now() };
+		if (args.title !== undefined) updates.title = args.title;
+		if (args.description !== undefined)
+			updates.description = args.description ?? undefined;
+		if (args.dates !== undefined) updates.dates = args.dates;
+		if (args.timeRangeStart !== undefined)
+			updates.timeRangeStart = args.timeRangeStart;
+		if (args.timeRangeEnd !== undefined)
+			updates.timeRangeEnd = args.timeRangeEnd;
+
+		// Apply update
+		await ctx.db.patch(args.eventId, updates);
+		return await ctx.db.get(args.eventId);
+	},
+});
+
 // Mutation: Create a new event
 export const create = mutation({
 	args: {
@@ -65,6 +118,7 @@ export const create = mutation({
 		adminToken: v.string(),
 		maxRespondents: v.number(),
 		creatorId: v.optional(v.string()),
+		creatorEmail: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const now = Date.now();
@@ -80,6 +134,7 @@ export const create = mutation({
 			isPremium: false,
 			maxRespondents: args.maxRespondents,
 			creatorId: args.creatorId, // Clerk subject ID or undefined for guests
+			creatorEmail: args.creatorEmail, // Creator's email or undefined for guests
 			isActive: true,
 			createdAt: now,
 			updatedAt: now,

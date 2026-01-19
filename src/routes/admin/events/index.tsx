@@ -13,10 +13,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
-export const Route = createFileRoute("/admin/events")({
+export const Route = createFileRoute("/admin/events/")({
 	component: AdminEvents,
 });
 
@@ -28,6 +28,7 @@ interface EventWithCount {
 	isActive: boolean;
 	createdAt: number;
 	responseCount: number;
+	creatorEmail?: string;
 }
 
 function AdminEvents() {

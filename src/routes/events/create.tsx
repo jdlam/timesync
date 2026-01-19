@@ -72,10 +72,11 @@ function CreateEvent() {
 					dates: value.dates,
 					timeRangeStart: value.timeRangeStart,
 					timeRangeEnd: value.timeRangeEnd,
-					slotDuration: Number.parseInt(value.slotDuration),
+					slotDuration: Number.parseInt(value.slotDuration, 10),
 					adminToken,
 					maxRespondents: TIER_LIMITS.free.maxParticipants,
 					creatorId: user?.id, // Clerk subject ID or undefined for guests
+					creatorEmail: user?.primaryEmailAddress?.emailAddress, // Creator's email or undefined for guests
 				});
 				setCreatedEvent({
 					eventId: result.eventId,

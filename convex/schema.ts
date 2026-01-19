@@ -22,6 +22,7 @@ export default defineSchema({
 	events: defineTable({
 		// Creator info - Clerk subject ID (nullable for guest users)
 		creatorId: v.optional(v.string()),
+		creatorEmail: v.optional(v.string()),
 
 		// Guest access token (unique secret URL for non-authenticated creators)
 		adminToken: v.string(),

@@ -139,4 +139,20 @@ code {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Ensure all interactive elements show pointer cursor */
+  button,
+  a,
+  [role='button'],
+  [role='link'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='option'],
+  [tabindex]:not([tabindex='-1']),
+  label[for],
+  select,
+  summary,
+  [onclick] {
+    @apply cursor-pointer;
+  }
 }

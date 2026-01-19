@@ -8,7 +8,7 @@ import {
 	PowerOff,
 	Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
 	AlertDialog,
@@ -36,6 +36,7 @@ interface Event {
 	isActive: boolean;
 	createdAt: number;
 	responseCount: number;
+	creatorEmail?: string;
 }
 
 interface EventsTableProps {
@@ -46,9 +47,15 @@ interface EventsTableProps {
 export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 	const [deleteEventId, setDeleteEventId] = useState<Id<"events"> | null>(null);
 	const [actionLoading, setActionLoading] = useState<Id<"events"> | null>(null);
+	const [openPopoverId, setOpenPopoverId] = useState<Id<"events"> | null>(null);
 
 	const toggleStatus = useMutation(api.admin.toggleEventStatus);
 	const deleteEvent = useMutation(api.admin.deleteEvent);
+
+	// Close popover when performing an action
+	const closePopover = useCallback(() => {
+		setOpenPopoverId(null);
+	}, []);
 
 	const handleToggleStatus = async (eventId: Id<"events">) => {
 		setActionLoading(eventId);
@@ -114,8 +121,11 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 							</span>
 						</div>
 
-						<p className="text-sm text-muted-foreground mb-3">
+						<p className="text-sm text-muted-foreground mb-1">
 							{event.responseCount} responses
+						</p>
+						<p className="text-xs text-muted-foreground mb-3">
+							Creator: {event.creatorEmail || "Guest"}
 						</p>
 
 						<div className="flex gap-2">
@@ -165,6 +175,9 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 								Title
 							</th>
 							<th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+								Creator
+							</th>
+							<th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
 								Created
 							</th>
 							<th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
@@ -195,6 +208,13 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 									</div>
 								</td>
 								<td className="py-3 px-4 text-sm text-muted-foreground">
+									{event.creatorEmail || (
+										<span className="text-muted-foreground/60 italic">
+											Guest
+										</span>
+									)}
+								</td>
+								<td className="py-3 px-4 text-sm text-muted-foreground">
 									{format(new Date(event.createdAt), "MMM d, yyyy")}
 								</td>
 								<td className="py-3 px-4 text-sm">{event.responseCount}</td>
@@ -210,7 +230,12 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 									</span>
 								</td>
 								<td className="py-3 px-4 text-right">
-									<Popover>
+									<Popover
+										open={openPopoverId === event._id}
+										onOpenChange={(open) =>
+											setOpenPopoverId(open ? event._id : null)
+										}
+									>
 										<PopoverTrigger asChild>
 											<Button variant="ghost" size="sm">
 												<MoreVertical className="w-4 h-4" />
@@ -220,7 +245,10 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => onViewEvent(event._id)}
+												onClick={() => {
+													closePopover();
+													onViewEvent(event._id);
+												}}
 											>
 												<Eye className="w-4 h-4" />
 												View Details
@@ -228,7 +256,10 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => handleToggleStatus(event._id)}
+												onClick={() => {
+													closePopover();
+													handleToggleStatus(event._id);
+												}}
 												disabled={actionLoading === event._id}
 											>
 												{actionLoading === event._id ? (
@@ -248,7 +279,10 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors text-destructive"
-												onClick={() => setDeleteEventId(event._id)}
+												onClick={() => {
+													closePopover();
+													setDeleteEventId(event._id);
+												}}
 											>
 												<Trash2 className="w-4 h-4" />
 												Delete
