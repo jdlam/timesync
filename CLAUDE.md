@@ -251,6 +251,16 @@ Key fields:
 
 ## Testing
 
+### Test Requirements
+
+**All new features must include unit tests.** This is a mandatory part of feature implementation, not a follow-up task.
+
+When implementing a new feature, you must:
+1. Add tests for new Convex queries/mutations in `convex/*.test.ts`
+2. Add tests for new validation schemas in `src/lib/validation-schemas.test.ts`
+3. Add tests for new utility functions in `src/lib/*.test.ts`
+4. Run `npm run test` before considering a feature complete
+
 ### Unit Tests
 ```bash
 npm run test              # Run all tests
@@ -270,6 +280,24 @@ describe("events", () => {
     const t = convexTest(schema);
     const eventId = await t.mutation(api.events.create, { ... });
     expect(eventId).toBeDefined();
+  });
+});
+```
+
+```typescript
+// Validation schema tests
+import { describe, expect, it } from "vitest";
+import { mySchema } from "./validation-schemas";
+
+describe("mySchema", () => {
+  it("should accept valid data", () => {
+    const result = mySchema.safeParse({ field: "value" });
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject invalid data", () => {
+    const result = mySchema.safeParse({ field: "" });
+    expect(result.success).toBe(false);
   });
 });
 ```
@@ -295,7 +323,9 @@ Components are added to `src/components/ui/`.
 ### Adding a Convex Function
 1. Add to appropriate file in `convex/` (or create new file)
 2. Export query/mutation/action
-3. Import via `api` object in React components
+3. **Add tests** in the corresponding `convex/*.test.ts` file
+4. Import via `api` object in React components
+5. Run `npm run test` to verify tests pass
 
 ## Important Considerations
 
@@ -347,7 +377,7 @@ SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
 
 See `USER_STORIES.md` for full status. Major missing features:
 - Premium features / Stripe (Epic 5)
-- Event editing/deletion for event creators (Stories 1.3, 7.1, 7.2)
+- Event deletion for event creators (Stories 7.1, 7.2)
 - Email notifications (Story 6.2)
 - User accounts linked to events (Epic 4 partially done - auth exists but not linked to event creation)
 
