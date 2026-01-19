@@ -1,26 +1,66 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Loader2, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ResponsesTable } from "@/components/admin/ResponsesTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/admin/responses")({
 	component: AdminResponses,
 });
 
+interface ResponseItem {
+	_id: Id<"responses">;
+	_creationTime: number;
+	respondentName: string;
+	selectedSlots: string[];
+	eventId: Id<"events">;
+	createdAt: number;
+	eventTitle: string;
+	eventIsActive: boolean;
+}
+
 function AdminResponses() {
 	const [search, setSearch] = useState("");
 	const [cursor, setCursor] = useState<string | undefined>(undefined);
+	const [accumulatedResponses, setAccumulatedResponses] = useState<
+		ResponseItem[]
+	>([]);
 
 	const responsesData = useQuery(api.admin.getAllResponses, {
 		limit: 20,
 		cursor,
 		search: search || undefined,
 	});
+
+	// Accumulate responses when new data arrives
+	useEffect(() => {
+		if (responsesData?.responses) {
+			if (cursor === undefined) {
+				// First page or filter changed - replace all
+				setAccumulatedResponses(responsesData.responses as ResponseItem[]);
+			} else {
+				// Subsequent pages - append new responses
+				setAccumulatedResponses((prev) => {
+					const existingIds = new Set(prev.map((r) => r._id));
+					const newResponses = (
+						responsesData.responses as ResponseItem[]
+					).filter((r) => !existingIds.has(r._id));
+					return [...prev, ...newResponses];
+				});
+			}
+		}
+	}, [responsesData?.responses, cursor]);
+
+	// Memoize the display responses to avoid unnecessary re-renders
+	const displayResponses = useMemo(
+		() => accumulatedResponses,
+		[accumulatedResponses],
+	);
 
 	const handleLoadMore = () => {
 		if (responsesData?.nextCursor) {
@@ -48,6 +88,7 @@ function AdminResponses() {
 						onChange={(e) => {
 							setSearch(e.target.value);
 							setCursor(undefined);
+							setAccumulatedResponses([]);
 						}}
 						className="pl-9"
 					/>
@@ -56,15 +97,15 @@ function AdminResponses() {
 				{/* Results Count */}
 				{responsesData && (
 					<p className="text-sm text-muted-foreground">
-						Showing {responsesData.responses.length} of{" "}
-						{responsesData.totalCount} responses
+						Showing {displayResponses.length} of {responsesData.totalCount}{" "}
+						responses
 					</p>
 				)}
 
 				{/* Responses Table */}
 				{responsesData ? (
 					<>
-						<ResponsesTable responses={responsesData.responses} />
+						<ResponsesTable responses={displayResponses} />
 
 						{responsesData.nextCursor && (
 							<div className="flex justify-center pt-4">

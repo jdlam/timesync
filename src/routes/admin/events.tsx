@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Loader2, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { EventsTable } from "@/components/admin/EventsTable";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,16 @@ export const Route = createFileRoute("/admin/events")({
 	component: AdminEvents,
 });
 
+interface EventWithCount {
+	_id: Id<"events">;
+	_creationTime: number;
+	title: string;
+	description?: string;
+	isActive: boolean;
+	createdAt: number;
+	responseCount: number;
+}
+
 function AdminEvents() {
 	const navigate = useNavigate();
 	const [search, setSearch] = useState("");
@@ -27,6 +37,9 @@ function AdminEvents() {
 		"all" | "active" | "inactive"
 	>("all");
 	const [cursor, setCursor] = useState<string | undefined>(undefined);
+	const [accumulatedEvents, setAccumulatedEvents] = useState<EventWithCount[]>(
+		[],
+	);
 
 	const eventsData = useQuery(api.admin.getAllEvents, {
 		limit: 20,
@@ -34,6 +47,28 @@ function AdminEvents() {
 		search: search || undefined,
 		statusFilter,
 	});
+
+	// Accumulate events when new data arrives
+	useEffect(() => {
+		if (eventsData?.events) {
+			if (cursor === undefined) {
+				// First page or filter changed - replace all
+				setAccumulatedEvents(eventsData.events as EventWithCount[]);
+			} else {
+				// Subsequent pages - append new events
+				setAccumulatedEvents((prev) => {
+					const existingIds = new Set(prev.map((e) => e._id));
+					const newEvents = (eventsData.events as EventWithCount[]).filter(
+						(e) => !existingIds.has(e._id),
+					);
+					return [...prev, ...newEvents];
+				});
+			}
+		}
+	}, [eventsData?.events, cursor]);
+
+	// Memoize the display events to avoid unnecessary re-renders
+	const displayEvents = useMemo(() => accumulatedEvents, [accumulatedEvents]);
 
 	const handleViewEvent = (eventId: Id<"events">) => {
 		navigate({ to: "/admin/events/$eventId", params: { eventId } });
@@ -66,6 +101,7 @@ function AdminEvents() {
 							onChange={(e) => {
 								setSearch(e.target.value);
 								setCursor(undefined);
+								setAccumulatedEvents([]);
 							}}
 							className="pl-9"
 						/>
@@ -75,6 +111,7 @@ function AdminEvents() {
 						onValueChange={(value: "all" | "active" | "inactive") => {
 							setStatusFilter(value);
 							setCursor(undefined);
+							setAccumulatedEvents([]);
 						}}
 					>
 						<SelectTrigger className="w-full sm:w-[150px]">
@@ -91,17 +128,14 @@ function AdminEvents() {
 				{/* Results Count */}
 				{eventsData && (
 					<p className="text-sm text-muted-foreground">
-						Showing {eventsData.events.length} of {eventsData.totalCount} events
+						Showing {displayEvents.length} of {eventsData.totalCount} events
 					</p>
 				)}
 
 				{/* Events Table */}
 				{eventsData ? (
 					<>
-						<EventsTable
-							events={eventsData.events}
-							onViewEvent={handleViewEvent}
-						/>
+						<EventsTable events={displayEvents} onViewEvent={handleViewEvent} />
 
 						{eventsData.nextCursor && (
 							<div className="flex justify-center pt-4">
