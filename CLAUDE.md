@@ -329,6 +329,13 @@ Components are added to `src/components/ui/`.
 - Features: view all events/responses, toggle event status, delete events/responses
 - All admin actions are logged to `auditLogs` table
 
+#### Security Behavior
+- Admin queries return `null` (not throw) when unauthorized to avoid error modals during auth loading
+- Admin mutations throw errors for hard failures (correct behavior for write operations)
+- Unauthorized access attempts are logged server-side: `console.warn` with user email and subject ID
+- `UnauthorizedPage` component shows email only in development (`import.meta.env.DEV`)
+- Unauthorized users on admin sub-routes are redirected to `/admin` with `replace: true` (hides URL from history)
+
 ### Environment Variables (Convex Dashboard)
 ```bash
 CLERK_JWT_ISSUER_DOMAIN=https://your-instance.clerk.accounts.dev

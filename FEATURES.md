@@ -110,6 +110,14 @@ This document lists all features currently implemented in TimeSync.
 - **Super Admin Access** controlled via environment variable
 - Only users with emails in `SUPER_ADMIN_EMAILS` can access
 
+### Security Features
+
+- Unauthorized access attempts are logged server-side with user email and ID
+- Production builds show generic "Access Denied" page without sensitive info
+- Development builds show user email for debugging purposes
+- Unauthorized users accessing admin sub-routes are redirected to `/admin`
+- Browser history is sanitized (admin sub-routes don't appear in history)
+
 ### Dashboard (`/admin/dashboard`)
 
 - Statistics overview:
