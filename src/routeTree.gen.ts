@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MyEventsIndexRouteImport } from './routes/my-events/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as MyEventsEventIdRouteImport } from './routes/my-events/$eventId'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as AdminResponsesRouteImport } from './routes/admin/responses'
 import { Route as AdminLogsRouteImport } from './routes/admin/logs'
@@ -26,9 +28,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyEventsIndexRoute = MyEventsIndexRouteImport.update({
+  id: '/my-events/',
+  path: '/my-events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyEventsEventIdRoute = MyEventsEventIdRouteImport.update({
+  id: '/my-events/$eventId',
+  path: '/my-events/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsCreateRoute = EventsCreateRouteImport.update({
@@ -86,7 +98,9 @@ export interface FileRoutesByFullPath {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
+  '/my-events/$eventId': typeof MyEventsEventIdRoute
   '/admin': typeof AdminIndexRoute
+  '/my-events': typeof MyEventsIndexRoute
   '/admin/events/$eventId': typeof AdminEventsEventIdRoute
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
@@ -99,7 +113,9 @@ export interface FileRoutesByTo {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
+  '/my-events/$eventId': typeof MyEventsEventIdRoute
   '/admin': typeof AdminIndexRoute
+  '/my-events': typeof MyEventsIndexRoute
   '/admin/events/$eventId': typeof AdminEventsEventIdRoute
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
@@ -113,7 +129,9 @@ export interface FileRoutesById {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
+  '/my-events/$eventId': typeof MyEventsEventIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/my-events/': typeof MyEventsIndexRoute
   '/admin/events/$eventId': typeof AdminEventsEventIdRoute
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
@@ -128,7 +146,9 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/responses'
     | '/events/create'
+    | '/my-events/$eventId'
     | '/admin'
+    | '/my-events'
     | '/admin/events/$eventId'
     | '/events/$eventId'
     | '/events/$eventId/admin/$adminToken'
@@ -141,7 +161,9 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/responses'
     | '/events/create'
+    | '/my-events/$eventId'
     | '/admin'
+    | '/my-events'
     | '/admin/events/$eventId'
     | '/events/$eventId'
     | '/events/$eventId/admin/$adminToken'
@@ -154,7 +176,9 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/responses'
     | '/events/create'
+    | '/my-events/$eventId'
     | '/admin/'
+    | '/my-events/'
     | '/admin/events/$eventId'
     | '/events/$eventId/'
     | '/events/$eventId/admin/$adminToken'
@@ -168,7 +192,9 @@ export interface RootRouteChildren {
   AdminLogsRoute: typeof AdminLogsRoute
   AdminResponsesRoute: typeof AdminResponsesRoute
   EventsCreateRoute: typeof EventsCreateRoute
+  MyEventsEventIdRoute: typeof MyEventsEventIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  MyEventsIndexRoute: typeof MyEventsIndexRoute
   EventsEventIdIndexRoute: typeof EventsEventIdIndexRoute
   EventsEventIdAdminAdminTokenRoute: typeof EventsEventIdAdminAdminTokenRoute
   EventsEventIdEditEditTokenRoute: typeof EventsEventIdEditEditTokenRoute
@@ -183,11 +209,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-events/': {
+      id: '/my-events/'
+      path: '/my-events'
+      fullPath: '/my-events'
+      preLoaderRoute: typeof MyEventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-events/$eventId': {
+      id: '/my-events/$eventId'
+      path: '/my-events/$eventId'
+      fullPath: '/my-events/$eventId'
+      preLoaderRoute: typeof MyEventsEventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events/create': {
@@ -275,7 +315,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLogsRoute: AdminLogsRoute,
   AdminResponsesRoute: AdminResponsesRoute,
   EventsCreateRoute: EventsCreateRoute,
+  MyEventsEventIdRoute: MyEventsEventIdRoute,
   AdminIndexRoute: AdminIndexRoute,
+  MyEventsIndexRoute: MyEventsIndexRoute,
   EventsEventIdIndexRoute: EventsEventIdIndexRoute,
   EventsEventIdAdminAdminTokenRoute: EventsEventIdAdminAdminTokenRoute,
   EventsEventIdEditEditTokenRoute: EventsEventIdEditEditTokenRoute,

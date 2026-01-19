@@ -20,8 +20,8 @@ export default defineSchema({
 
 	// Events table (scheduling events)
 	events: defineTable({
-		// Creator info (nullable for guest users)
-		creatorId: v.optional(v.id("users")),
+		// Creator info - Clerk subject ID (nullable for guest users)
+		creatorId: v.optional(v.string()),
 
 		// Guest access token (unique secret URL for non-authenticated creators)
 		adminToken: v.string(),
