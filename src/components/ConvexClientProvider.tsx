@@ -4,15 +4,13 @@ import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import type { ReactNode } from "react";
+import { env } from "@/lib/env";
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL;
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-const convex = new ConvexReactClient(convexUrl);
+const convex = new ConvexReactClient(env.VITE_CONVEX_URL);
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
 	return (
-		<ClerkProvider publishableKey={clerkPubKey}>
+		<ClerkProvider publishableKey={env.VITE_CLERK_PUBLISHABLE_KEY}>
 			<ConvexProviderWithClerk client={convex} useAuth={useAuth}>
 				{children}
 			</ConvexProviderWithClerk>
