@@ -1,3 +1,4 @@
+import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/events/create")({
 });
 
 function CreateEvent() {
+	const { user } = useUser();
 	const createEventMutation = useMutation(api.events.create);
 	const router = useRouter();
 	const [createdEvent, setCreatedEvent] = useState<{
@@ -73,6 +75,7 @@ function CreateEvent() {
 					slotDuration: Number.parseInt(value.slotDuration),
 					adminToken,
 					maxRespondents: TIER_LIMITS.free.maxParticipants,
+					creatorId: user?.id, // Clerk subject ID or undefined for guests
 				});
 				setCreatedEvent({
 					eventId: result.eventId,
@@ -210,14 +213,16 @@ function CreateEvent() {
 									)}
 									{selectedDates.length > 0 && (
 										<div className="mt-2 flex flex-wrap gap-2">
-											{selectedDates.map((date) => (
-												<div
-													key={date.toISOString()}
-													className="bg-cyan-600/20 text-cyan-600 dark:text-cyan-400 px-2 py-1 rounded text-sm"
-												>
-													{format(date, "MMM d, yyyy")}
-												</div>
-											))}
+											{[...selectedDates]
+												.sort((a, b) => a.getTime() - b.getTime())
+												.map((date) => (
+													<div
+														key={date.toISOString()}
+														className="bg-cyan-600/20 text-cyan-600 dark:text-cyan-400 px-2 py-1 rounded text-sm"
+													>
+														{format(date, "MMM d, yyyy")}
+													</div>
+												))}
 										</div>
 									)}
 									{field.state.meta.errors.length > 0 && (

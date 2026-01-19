@@ -64,6 +64,7 @@ export const create = mutation({
 		slotDuration: v.number(),
 		adminToken: v.string(),
 		maxRespondents: v.number(),
+		creatorId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const now = Date.now();
@@ -78,7 +79,7 @@ export const create = mutation({
 			adminToken: args.adminToken,
 			isPremium: false,
 			maxRespondents: args.maxRespondents,
-			creatorId: undefined, // Guest mode
+			creatorId: args.creatorId, // Clerk subject ID or undefined for guests
 			isActive: true,
 			createdAt: now,
 			updatedAt: now,

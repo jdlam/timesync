@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as events from "../events.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as myEvents from "../myEvents.js";
 import type * as responses from "../responses.js";
 
 import type {
@@ -23,6 +24,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   events: typeof events;
   "lib/auth": typeof lib_auth;
+  myEvents: typeof myEvents;
   responses: typeof responses;
 }>;
 

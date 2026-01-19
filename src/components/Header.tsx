@@ -6,7 +6,15 @@ import {
 } from "@clerk/clerk-react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Calendar, Home, LogIn, Menu, Shield, X } from "lucide-react";
+import {
+	Calendar,
+	CalendarDays,
+	Home,
+	LogIn,
+	Menu,
+	Shield,
+	X,
+} from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { ThemeToggle } from "./ThemeToggle";
@@ -41,6 +49,15 @@ export default function Header() {
 							>
 								Home
 							</Link>
+							<SignedIn>
+								<Link
+									to="/my-events"
+									className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+								>
+									<CalendarDays size={16} />
+									My Events
+								</Link>
+							</SignedIn>
 							{isSuperAdmin && (
 								<Link
 									to="/admin"
@@ -133,6 +150,21 @@ export default function Header() {
 						<Calendar size={20} />
 						<span className="font-medium">Create Event</span>
 					</Link>
+
+					<SignedIn>
+						<Link
+							to="/my-events"
+							onClick={() => setIsOpen(false)}
+							className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
+							activeProps={{
+								className:
+									"flex items-center gap-3 p-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors mb-2 text-primary-foreground",
+							}}
+						>
+							<CalendarDays size={20} />
+							<span className="font-medium">My Events</span>
+						</Link>
+					</SignedIn>
 
 					{isSuperAdmin && (
 						<Link
