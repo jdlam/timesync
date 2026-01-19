@@ -28,7 +28,8 @@ export const checkAccess = query({
 export const getStats = query({
 	args: {},
 	handler: async (ctx) => {
-		await requireSuperAdmin(ctx);
+		const identity = await checkSuperAdmin(ctx);
+		if (!identity) return null;
 
 		const events = await ctx.db.query("events").collect();
 		const responses = await ctx.db.query("responses").collect();
@@ -62,7 +63,8 @@ export const getAllEvents = query({
 		statusFilter: v.optional(v.union(v.literal("all"), v.literal("active"), v.literal("inactive"))),
 	},
 	handler: async (ctx, args) => {
-		await requireSuperAdmin(ctx);
+		const identity = await checkSuperAdmin(ctx);
+		if (!identity) return null;
 
 		const limit = args.limit ?? 20;
 
@@ -128,7 +130,8 @@ export const getAllEvents = query({
 export const getEventById = query({
 	args: { eventId: v.id("events") },
 	handler: async (ctx, args) => {
-		await requireSuperAdmin(ctx);
+		const identity = await checkSuperAdmin(ctx);
+		if (!identity) return null;
 
 		const event = await ctx.db.get(args.eventId);
 		if (!event) {
@@ -155,7 +158,8 @@ export const getAllResponses = query({
 		search: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		await requireSuperAdmin(ctx);
+		const identity = await checkSuperAdmin(ctx);
+		if (!identity) return null;
 
 		const limit = args.limit ?? 20;
 
@@ -213,7 +217,8 @@ export const getAuditLogs = query({
 		cursor: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		await requireSuperAdmin(ctx);
+		const identity = await checkSuperAdmin(ctx);
+		if (!identity) return null;
 
 		const limit = args.limit ?? 50;
 
