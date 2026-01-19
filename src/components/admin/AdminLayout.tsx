@@ -1,5 +1,5 @@
 import { useUser } from "@clerk/clerk-react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import {
 	Activity,
@@ -9,8 +9,7 @@ import {
 	MessageSquare,
 	Shield,
 } from "lucide-react";
-import type { ReactNode } from "react";
-import { UnauthorizedPage } from "@/components/admin/UnauthorizedPage";
+import { type ReactNode, useEffect } from "react";
 import { api } from "../../../convex/_generated/api";
 
 interface AdminLayoutProps {
@@ -21,6 +20,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 	const { isLoaded, isSignedIn } = useUser();
 	const accessCheck = useQuery(api.admin.checkAccess);
 	const location = useLocation();
+	const navigate = useNavigate();
+
+	// Redirect unauthorized users to /admin (which shows the error page)
+	// Using replace: true prevents admin sub-routes from appearing in browser history
+	const isUnauthorized =
+		isLoaded &&
+		accessCheck !== undefined &&
+		(!isSignedIn || !accessCheck.isSuperAdmin);
+
+	useEffect(() => {
+		if (isUnauthorized && location.pathname !== "/admin") {
+			navigate({ to: "/admin", replace: true });
+		}
+	}, [isUnauthorized, location.pathname, navigate]);
 
 	const tabs = [
 		{
@@ -45,16 +58,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 		},
 	];
 
-	if (!isLoaded || accessCheck === undefined) {
+	// Show loading while auth is loading or during redirect
+	if (!isLoaded || accessCheck === undefined || isUnauthorized) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
 			</div>
 		);
-	}
-
-	if (!isSignedIn || !accessCheck.isSuperAdmin) {
-		return <UnauthorizedPage email={accessCheck.email} />;
 	}
 
 	return (
