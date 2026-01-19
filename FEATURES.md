@@ -96,6 +96,65 @@ This document lists all features currently implemented in TimeSync.
 
 ---
 
+## Authentication (Clerk)
+
+- **Sign In / Sign Out** buttons in header
+- OAuth providers (Google, etc.)
+- Integrated with Convex via JWT verification
+- User button with account menu when signed in
+
+---
+
+## Super Admin Dashboard
+
+- **Super Admin Access** controlled via environment variable
+- Only users with emails in `SUPER_ADMIN_EMAILS` can access
+
+### Dashboard (`/admin/dashboard`)
+
+- Statistics overview:
+  - Total events
+  - Active/inactive events
+  - Total responses
+  - Events this week
+  - Responses this week
+- Recent events preview
+- Quick action links
+
+### Events Management (`/admin/events`)
+
+- Searchable event list
+- Filter by status (all/active/inactive)
+- Pagination with "Load More"
+- Actions per event:
+  - View details
+  - Toggle active/inactive status
+  - Delete event (with confirmation)
+
+### Event Details (`/admin/events/:eventId`)
+
+- Full event configuration view
+- List of all responses
+- Delete individual responses
+- Toggle event status
+- Link to public event page
+
+### Responses Management (`/admin/responses`)
+
+- View all responses across all events
+- Search by respondent name
+- Delete responses with confirmation
+- Shows associated event info
+
+### Audit Logs (`/admin/logs`)
+
+- Track all admin actions
+- Logged actions: delete event, delete response, toggle status
+- Shows who, what, when, and target details
+- Paginated chronological list
+
+---
+
 ## Theme System
 
 - **Light / Dark / System** theme options
@@ -198,6 +257,7 @@ This document lists all features currently implemented in TimeSync.
 
 - **Frontend**: React, TanStack Router, TanStack Form, Tailwind CSS
 - **Backend**: Convex (real-time database and functions)
+- **Authentication**: Clerk (OAuth, JWT verification)
 - **UI Components**: shadcn/ui (Radix UI primitives)
 - **Styling**: Tailwind CSS with dark mode support
 - **Testing**: Vitest
