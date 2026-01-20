@@ -35,11 +35,16 @@ export function EditEventDialog({
 }: EditEventDialogProps) {
 	const updateEventMutation = useMutation(api.events.update);
 
-	// Get response count for warning
-	const responseCountData = useQuery(api.events.getResponseCount, {
-		eventId: event._id as Id<"events">,
-		adminToken,
-	});
+	// Get response count for warning (only when dialog is open)
+	const responseCountData = useQuery(
+		api.events.getResponseCount,
+		open
+			? {
+					eventId: event._id as Id<"events">,
+					adminToken,
+				}
+			: "skip",
+	);
 	const responseCount = responseCountData?.count ?? 0;
 
 	// Initialize selected dates from event
