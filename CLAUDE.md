@@ -127,9 +127,13 @@ jlam/bug-multiselect-fix
 ## Code Style Guidelines
 
 ### TypeScript
-- Strict mode enabled - avoid `any` types
+- Strict mode enabled (`noImplicitAny`, `strictNullChecks`, etc.)
+- **Never use `any` type** - use `unknown` if the type is truly unknown, then narrow with type guards
+- If you must use `any` (extremely rare), add a comment explaining why and consider using `// eslint-disable-next-line @typescript-eslint/no-explicit-any`
 - Use proper typing for Convex functions (use `v.` validators)
+- For Convex schemas, avoid `v.any()` - define explicit types when possible
 - Prefer interfaces over type aliases for objects
+- Use `as const` for literal types and type narrowing
 
 ### React
 - Use functional components with hooks

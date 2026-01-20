@@ -32,7 +32,8 @@
 				"noLabelWithoutControl": "off"
 			},
 			"suspicious": {
-				"noArrayIndexKey": "warn"
+				"noArrayIndexKey": "warn",
+				"noExplicitAny": "error"
 			},
 			"correctness": {
 				"noUndeclaredDependencies": "off",
