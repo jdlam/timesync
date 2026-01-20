@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Link as LinkIcon, Loader2, Users } from "lucide-react";
+import { Link as LinkIcon, Loader2, Pencil, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { EditEventDialog } from "@/components/EditEventDialog";
 import { EventHeader } from "@/components/EventHeader";
 import { HeatmapGrid } from "@/components/heatmap/HeatmapGrid";
 import { LinkCopy } from "@/components/LinkCopy";
@@ -18,6 +19,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
@@ -60,7 +62,11 @@ function AdminDashboard() {
 
 	return (
 		<TimezoneDisplayProvider eventTimezone={event.timeZone} eventId={event._id}>
-			<AdminDashboardContent event={event} responses={responses} />
+			<AdminDashboardContent
+				event={event}
+				responses={responses}
+				adminToken={adminToken}
+			/>
 		</TimezoneDisplayProvider>
 	);
 }
@@ -68,9 +74,11 @@ function AdminDashboard() {
 function AdminDashboardContent({
 	event,
 	responses,
+	adminToken,
 }: {
 	event: Doc<"events">;
 	responses: Doc<"responses">[];
+	adminToken: string;
 }) {
 	const deleteResponseMutation = useMutation(api.responses.remove);
 
@@ -80,6 +88,7 @@ function AdminDashboardContent({
 	const [selectedResponseId, setSelectedResponseId] = useState<string | null>(
 		null,
 	);
+	const [editDialogOpen, setEditDialogOpen] = useState(false);
 
 	// Find the highlighted response object
 	const highlightedResponse = selectedResponseId
@@ -125,11 +134,20 @@ function AdminDashboardContent({
 	return (
 		<div className="min-h-screen bg-background py-12 px-4">
 			<div className="max-w-7xl mx-auto">
-				{/* Admin Badge */}
-				<div className="mb-4 flex items-center gap-2">
+				{/* Admin Badge and Edit Button */}
+				<div className="mb-4 flex items-center gap-2 flex-wrap">
 					<div className="bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-full text-sm font-semibold">
 						Admin Dashboard
 					</div>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setEditDialogOpen(true)}
+						className="gap-1.5"
+					>
+						<Pencil className="h-3.5 w-3.5" />
+						Edit Event
+					</Button>
 				</div>
 
 				<EventHeader event={event} />
@@ -233,6 +251,14 @@ function AdminDashboardContent({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* Edit Event Dialog */}
+			<EditEventDialog
+				event={event}
+				adminToken={adminToken}
+				open={editDialogOpen}
+				onOpenChange={setEditDialogOpen}
+			/>
 		</div>
 	);
 }

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Loader2, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { EventsTable } from "@/components/admin/EventsTable";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
-export const Route = createFileRoute("/admin/events")({
+export const Route = createFileRoute("/admin/events/")({
 	component: AdminEvents,
 });
 
@@ -28,6 +28,7 @@ interface EventWithCount {
 	isActive: boolean;
 	createdAt: number;
 	responseCount: number;
+	creatorEmail?: string;
 }
 
 function AdminEvents() {
@@ -66,9 +67,6 @@ function AdminEvents() {
 			}
 		}
 	}, [eventsData?.events, cursor]);
-
-	// Memoize the display events to avoid unnecessary re-renders
-	const displayEvents = useMemo(() => accumulatedEvents, [accumulatedEvents]);
 
 	const handleViewEvent = (eventId: Id<"events">) => {
 		navigate({ to: "/admin/events/$eventId", params: { eventId } });
@@ -128,14 +126,17 @@ function AdminEvents() {
 				{/* Results Count */}
 				{eventsData && (
 					<p className="text-sm text-muted-foreground">
-						Showing {displayEvents.length} of {eventsData.totalCount} events
+						Showing {accumulatedEvents.length} of {eventsData.totalCount} events
 					</p>
 				)}
 
 				{/* Events Table */}
 				{eventsData ? (
 					<>
-						<EventsTable events={displayEvents} onViewEvent={handleViewEvent} />
+						<EventsTable
+							events={accumulatedEvents}
+							onViewEvent={handleViewEvent}
+						/>
 
 						{eventsData.nextCursor && (
 							<div className="flex justify-center pt-4">

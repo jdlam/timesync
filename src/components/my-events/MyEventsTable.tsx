@@ -9,7 +9,7 @@ import {
 	PowerOff,
 	Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
 	AlertDialog,
@@ -47,9 +47,15 @@ interface MyEventsTableProps {
 export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 	const [deleteEventId, setDeleteEventId] = useState<Id<"events"> | null>(null);
 	const [actionLoading, setActionLoading] = useState<Id<"events"> | null>(null);
+	const [openPopoverId, setOpenPopoverId] = useState<Id<"events"> | null>(null);
 
 	const toggleStatus = useMutation(api.myEvents.toggleMyEventStatus);
 	const deleteEvent = useMutation(api.myEvents.deleteMyEvent);
+
+	// Close popover when performing an action
+	const closePopover = useCallback(() => {
+		setOpenPopoverId(null);
+	}, []);
 
 	const handleToggleStatus = async (eventId: Id<"events">) => {
 		setActionLoading(eventId);
@@ -225,7 +231,12 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 									</span>
 								</td>
 								<td className="py-3 px-4 text-right">
-									<Popover>
+									<Popover
+										open={openPopoverId === event._id}
+										onOpenChange={(open) =>
+											setOpenPopoverId(open ? event._id : null)
+										}
+									>
 										<PopoverTrigger asChild>
 											<Button variant="ghost" size="sm">
 												<MoreVertical className="w-4 h-4" />
@@ -235,7 +246,10 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => onViewEvent(event._id)}
+												onClick={() => {
+													closePopover();
+													onViewEvent(event._id);
+												}}
 											>
 												<Eye className="w-4 h-4" />
 												View Details
@@ -243,7 +257,10 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => handleViewPublicPage(event._id)}
+												onClick={() => {
+													closePopover();
+													handleViewPublicPage(event._id);
+												}}
 											>
 												<ExternalLink className="w-4 h-4" />
 												View Public Page
@@ -251,7 +268,10 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => handleToggleStatus(event._id)}
+												onClick={() => {
+													closePopover();
+													handleToggleStatus(event._id);
+												}}
 												disabled={actionLoading === event._id}
 											>
 												{actionLoading === event._id ? (
@@ -271,7 +291,10 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 											<button
 												type="button"
 												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors text-destructive"
-												onClick={() => setDeleteEventId(event._id)}
+												onClick={() => {
+													closePopover();
+													setDeleteEventId(event._id);
+												}}
 											>
 												<Trash2 className="w-4 h-4" />
 												Delete

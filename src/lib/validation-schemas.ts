@@ -77,7 +77,52 @@ export const submitResponseSchema = z.object({
 });
 
 /**
+ * Validation schema for editing an existing event
+ * Note: Does not validate past dates (allows keeping existing past dates)
+ * Note: Slot duration and timezone are not editable
+ */
+export const editEventSchema = z
+	.object({
+		title: z
+			.string()
+			.min(1, "Title is required")
+			.max(255, "Title must be less than 255 characters"),
+
+		description: z
+			.string()
+			.max(1000, "Description must be less than 1000 characters")
+			.optional()
+			.nullable(),
+
+		dates: z
+			.array(z.string())
+			.min(1, "At least one date is required")
+			.max(
+				TIER_LIMITS.free.maxDates,
+				`Maximum ${TIER_LIMITS.free.maxDates} dates allowed for free tier`,
+			),
+
+		timeRangeStart: z
+			.string()
+			.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+
+		timeRangeEnd: z
+			.string()
+			.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+	})
+	.refine(
+		(data) => {
+			return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
+		},
+		{
+			message: "End time must be after start time",
+			path: ["timeRangeEnd"],
+		},
+	);
+
+/**
  * Type exports for TypeScript inference
  */
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type SubmitResponseInput = z.infer<typeof submitResponseSchema>;
+export type EditEventInput = z.infer<typeof editEventSchema>;

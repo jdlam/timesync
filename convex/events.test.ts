@@ -286,4 +286,318 @@ describe("events", () => {
 			).rejects.toThrow("Event not found or invalid admin token");
 		});
 	});
+
+	describe("getResponseCount", () => {
+		it("should return response count with valid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				const id = await ctx.db.insert("events", {
+					title: "Event With Responses",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 10,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+
+				// Add responses
+				await ctx.db.insert("responses", {
+					eventId: id,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "token-1",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+				await ctx.db.insert("responses", {
+					eventId: id,
+					respondentName: "Bob",
+					selectedSlots: ["2025-01-20T11:00:00Z"],
+					editToken: "token-2",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+
+				return id;
+			});
+
+			const result = await t.query(api.events.getResponseCount, {
+				eventId,
+				adminToken: "admin-token",
+			});
+
+			expect(result).not.toBeNull();
+			expect(result?.count).toBe(2);
+		});
+
+		it("should return zero count for event with no responses", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Empty Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.query(api.events.getResponseCount, {
+				eventId,
+				adminToken: "admin-token",
+			});
+
+			expect(result).not.toBeNull();
+			expect(result?.count).toBe(0);
+		});
+
+		it("should return null for invalid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "correct-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.query(api.events.getResponseCount, {
+				eventId,
+				adminToken: "wrong-token",
+			});
+
+			expect(result).toBeNull();
+		});
+	});
+
+	describe("update", () => {
+		it("should update event title with valid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Original Title",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const updatedEvent = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				title: "Updated Title",
+			});
+
+			expect(updatedEvent?.title).toBe("Updated Title");
+		});
+
+		it("should update multiple fields at once", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Original",
+					description: "Original description",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const updatedEvent = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				title: "New Title",
+				description: "New description",
+				dates: ["2025-01-21", "2025-01-22"],
+				timeRangeStart: "10:00",
+				timeRangeEnd: "18:00",
+			});
+
+			expect(updatedEvent?.title).toBe("New Title");
+			expect(updatedEvent?.description).toBe("New description");
+			expect(updatedEvent?.dates).toEqual(["2025-01-21", "2025-01-22"]);
+			expect(updatedEvent?.timeRangeStart).toBe("10:00");
+			expect(updatedEvent?.timeRangeEnd).toBe("18:00");
+		});
+
+		it("should clear description when set to null", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					description: "Has a description",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const updatedEvent = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				description: null,
+			});
+
+			expect(updatedEvent?.description).toBeUndefined();
+		});
+
+		it("should update updatedAt timestamp", async () => {
+			const t = convexTest(schema, modules);
+
+			const originalTime = Date.now();
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: originalTime,
+					updatedAt: originalTime,
+				});
+			});
+
+			const updatedEvent = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				title: "Updated",
+			});
+
+			expect(updatedEvent?.updatedAt).toBeGreaterThanOrEqual(originalTime);
+		});
+
+		it("should throw error for invalid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "correct-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "wrong-token",
+					title: "Should Fail",
+				}),
+			).rejects.toThrow("Event not found or invalid admin token");
+		});
+	});
+
+	describe("create with creatorEmail", () => {
+		it("should store creatorId and creatorEmail when provided", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Logged In User Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				creatorId: "user_12345",
+				creatorEmail: "user@example.com",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorId).toBe("user_12345");
+			expect(event?.creatorEmail).toBe("user@example.com");
+		});
+
+		it("should allow undefined creatorEmail for guest users", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Guest Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorId).toBeUndefined();
+			expect(event?.creatorEmail).toBeUndefined();
+		});
+	});
 });

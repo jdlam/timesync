@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Loader2, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ResponsesTable } from "@/components/admin/ResponsesTable";
 import { Button } from "@/components/ui/button";
@@ -56,12 +56,6 @@ function AdminResponses() {
 		}
 	}, [responsesData?.responses, cursor]);
 
-	// Memoize the display responses to avoid unnecessary re-renders
-	const displayResponses = useMemo(
-		() => accumulatedResponses,
-		[accumulatedResponses],
-	);
-
 	const handleLoadMore = () => {
 		if (responsesData?.nextCursor) {
 			setCursor(responsesData.nextCursor);
@@ -97,7 +91,7 @@ function AdminResponses() {
 				{/* Results Count */}
 				{responsesData && (
 					<p className="text-sm text-muted-foreground">
-						Showing {displayResponses.length} of {responsesData.totalCount}{" "}
+						Showing {accumulatedResponses.length} of {responsesData.totalCount}{" "}
 						responses
 					</p>
 				)}
@@ -105,7 +99,7 @@ function AdminResponses() {
 				{/* Responses Table */}
 				{responsesData ? (
 					<>
-						<ResponsesTable responses={displayResponses} />
+						<ResponsesTable responses={accumulatedResponses} />
 
 						{responsesData.nextCursor && (
 							<div className="flex justify-center pt-4">

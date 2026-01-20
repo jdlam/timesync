@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AuditLogList } from "@/components/admin/AuditLogList";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,6 @@ function AdminLogs() {
 		}
 	}, [logsData?.logs, cursor]);
 
-	// Memoize the display logs to avoid unnecessary re-renders
-	const displayLogs = useMemo(() => accumulatedLogs, [accumulatedLogs]);
-
 	const handleLoadMore = () => {
 		if (logsData?.nextCursor) {
 			setCursor(logsData.nextCursor);
@@ -74,14 +71,14 @@ function AdminLogs() {
 				{/* Results Count */}
 				{logsData && (
 					<p className="text-sm text-muted-foreground">
-						Showing {displayLogs.length} of {logsData.totalCount} logs
+						Showing {accumulatedLogs.length} of {logsData.totalCount} logs
 					</p>
 				)}
 
 				{/* Audit Logs */}
 				{logsData ? (
 					<>
-						<AuditLogList logs={displayLogs} />
+						<AuditLogList logs={accumulatedLogs} />
 
 						{logsData.nextCursor && (
 							<div className="flex justify-center pt-4">

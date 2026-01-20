@@ -184,9 +184,12 @@ Pre-commit hooks automatically run Biome checks on staged files.
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make your changes
-4. Run checks: `npm run check && npm run typecheck && npm run test`
-5. Commit your changes (pre-commit hooks will run automatically)
-6. Push to your fork and submit a pull request
+4. **Add tests for new features** - All new Convex functions, validation schemas, and utilities must have corresponding unit tests
+5. Run checks: `npm run check && npm run typecheck && npm run test`
+6. Commit your changes (pre-commit hooks will run automatically)
+7. Push to your fork and submit a pull request
+
+See [CLAUDE.md](./CLAUDE.md) for detailed development guidelines.
 
 ## License
 

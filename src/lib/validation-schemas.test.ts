@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	type CreateEventInput,
 	createEventSchema,
+	type EditEventInput,
+	editEventSchema,
 	type SubmitResponseInput,
 	submitResponseSchema,
 } from "./validation-schemas";
@@ -241,6 +243,130 @@ describe("validation-schemas", () => {
 			});
 
 			expect(result.success).toBe(true);
+		});
+	});
+
+	describe("editEventSchema", () => {
+		const validEdit: EditEventInput = {
+			title: "Updated Meeting",
+			description: "Updated description",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+		};
+
+		it("should accept valid edit data", () => {
+			const result = editEventSchema.safeParse(validEdit);
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should require title", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				title: "",
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toBe("Title is required");
+			}
+		});
+
+		it("should limit title to 255 characters", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				title: "a".repeat(256),
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should limit description to 1000 characters", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				description: "a".repeat(1001),
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should allow optional description", () => {
+			const { description: _description, ...editWithoutDesc } = validEdit;
+			const result = editEventSchema.safeParse(editWithoutDesc);
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should allow null description (to clear it)", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				description: null,
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should require at least one date", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				dates: [],
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toBe(
+					"At least one date is required",
+				);
+			}
+		});
+
+		it("should limit dates to 14 for free tier", () => {
+			const tooManyDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				dates: tooManyDates,
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should NOT reject past dates (allows keeping existing past dates)", () => {
+			// This is the key difference from createEventSchema
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				dates: ["2020-01-10"], // Past date should be allowed for edit
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should require valid time format", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				timeRangeStart: "9:00", // Missing leading zero
+			});
+
+			expect(result.success).toBe(false);
+		});
+
+		it("should require end time after start time", () => {
+			const result = editEventSchema.safeParse({
+				...validEdit,
+				timeRangeStart: "17:00",
+				timeRangeEnd: "09:00",
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toBe(
+					"End time must be after start time",
+				);
+			}
 		});
 	});
 });
