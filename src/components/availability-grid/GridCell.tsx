@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import type { HeatmapSlotData } from "@/lib/heatmap-utils";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ interface GridCellProps {
 	hasDayOffset?: boolean;
 }
 
-export function GridCell({
+export const GridCell = memo(function GridCell({
 	timestamp,
 	displayTime,
 	isSelected,
@@ -140,4 +140,4 @@ export function GridCell({
 			</span>
 		</button>
 	);
-}
+});

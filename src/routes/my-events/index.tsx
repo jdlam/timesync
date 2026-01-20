@@ -2,7 +2,7 @@ import { SignInButton, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { CalendarDays, Loader2, LogIn, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MyEventsLayout } from "@/components/my-events/MyEventsLayout";
 import { MyEventsTable } from "@/components/my-events/MyEventsTable";
 import { Button } from "@/components/ui/button";
@@ -73,9 +73,6 @@ function MyEventsIndex() {
 			}
 		}
 	}, [eventsData?.events, cursor]);
-
-	// Memoize the display events to avoid unnecessary re-renders
-	const displayEvents = useMemo(() => accumulatedEvents, [accumulatedEvents]);
 
 	const handleViewEvent = (eventId: Id<"events">) => {
 		navigate({ to: "/my-events/$eventId", params: { eventId } });
@@ -168,7 +165,7 @@ function MyEventsIndex() {
 				{/* Results Count */}
 				{eventsData && (
 					<p className="text-sm text-muted-foreground">
-						Showing {displayEvents.length} of {eventsData.totalCount} events
+						Showing {accumulatedEvents.length} of {eventsData.totalCount} events
 					</p>
 				)}
 
@@ -176,7 +173,7 @@ function MyEventsIndex() {
 				{eventsData ? (
 					<>
 						<MyEventsTable
-							events={displayEvents}
+							events={accumulatedEvents}
 							onViewEvent={handleViewEvent}
 						/>
 

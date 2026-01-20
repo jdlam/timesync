@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
 	Popover,
 	PopoverContent,
@@ -18,7 +18,7 @@ interface HeatmapCellProps {
 	highlightedName?: string;
 }
 
-export function HeatmapCell({
+export const HeatmapCell = memo(function HeatmapCell({
 	displayTime,
 	data,
 	bgColor,
@@ -133,4 +133,4 @@ export function HeatmapCell({
 			</PopoverContent>
 		</Popover>
 	);
-}
+});
