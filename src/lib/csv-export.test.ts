@@ -136,6 +136,21 @@ describe("csv-export", () => {
 			expect(csv).toContain('"John ""Johnny"" Doe"');
 		});
 
+		it("should escape names with line breaks", () => {
+			const responses = [
+				{ respondentName: "Line1\nLine2", selectedSlots: [] },
+				{ respondentName: "Line1\rLine2", selectedSlots: [] },
+				{ respondentName: "Line1\r\nLine2", selectedSlots: [] },
+			];
+
+			const csv = generateCsvContent(mockEvent, responses);
+
+			// Names with line breaks should be quoted
+			expect(csv).toContain('"Line1\nLine2"');
+			expect(csv).toContain('"Line1\rLine2"');
+			expect(csv).toContain('"Line1\r\nLine2"');
+		});
+
 		it("should handle empty responses array", () => {
 			const csv = generateCsvContent(mockEvent, []);
 

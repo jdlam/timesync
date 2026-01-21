@@ -24,11 +24,11 @@ interface CsvRow {
 
 /**
  * Escape a string for CSV format
- * Handles commas, quotes, and newlines
+ * Handles commas, quotes, and line breaks (LF, CR, CRLF)
  */
 function escapeCsvField(field: string): string {
-	// If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
-	if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+	// If field contains comma, quote, or any line break, wrap in quotes and escape internal quotes
+	if (field.includes(",") || field.includes('"') || /[\r\n]/.test(field)) {
 		return `"${field.replace(/"/g, '""')}"`;
 	}
 	return field;
