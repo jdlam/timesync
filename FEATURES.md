@@ -50,6 +50,19 @@ This document lists all features currently implemented in TimeSync.
   - Secure access via admin token (not guessable)
   - Admin badge indicator
 
+### Edit Event
+
+- **Edit Event Dialog** accessible via "Edit Event" button
+  - Edit event title and description
+  - Modify date selection with calendar picker
+  - Change time range (start and end times)
+  - Timezone displayed as read-only (cannot change after creation)
+  - Slot duration displayed as read-only (would invalidate responses)
+  - Warning banner when event has existing responses
+  - Changes saved immediately with real-time updates
+  - Form validation with clear error messages
+  - Success/error toast notifications
+
 ### Statistics Section
 
 - Total responses count

@@ -61,7 +61,7 @@
 - [x] Dashboard shows heatmap visualization
 - [x] User can see who responded
 - [x] User can click a response to see their individual selection highlighted
-- [ ] User can edit event details
+- [x] User can edit event details
 - [ ] User can archive/delete the event
 - [x] Link works on any device/browser (not cookie-based)
 
@@ -72,24 +72,26 @@
 
 ---
 
-### Story 1.3 - Edit Event Details (Admin) [P1] ❌
+### Story 1.3 - Edit Event Details (Admin) [P1] ✅
 **As an** event creator (guest or registered)
 **I want to** edit my event details after creation
 **So that** I can fix mistakes or update information
 
 **Acceptance Criteria:**
-- [ ] Admin can edit event title
-- [ ] Admin can edit description
-- [ ] Admin can modify date range (within tier limits)
-- [ ] Admin can modify time range
-- [ ] Admin cannot change slot duration (would invalidate existing responses)
-- [ ] Changes are saved immediately
-- [ ] Updated event reflects changes for all invitees
-- [ ] Warning shown if changes affect existing responses
+- [x] Admin can edit event title
+- [x] Admin can edit description
+- [x] Admin can modify date range (within tier limits)
+- [x] Admin can modify time range
+- [x] Admin cannot change slot duration (would invalidate existing responses)
+- [x] Changes are saved immediately
+- [x] Updated event reflects changes for all invitees
+- [x] Warning shown if changes affect existing responses
 
 **Technical Notes:**
 - Prevent changing `slotDuration` after responses exist
 - Update `_creationTime` handled by Convex automatically
+- Implemented via `EditEventDialog` component with `editEventSchema` validation
+- Backend mutation: `api.events.update` with admin token verification
 
 ---
 
@@ -662,6 +664,7 @@
 | Story | Description | Status |
 |-------|-------------|--------|
 | 1.1 | Guest event creation | ✅ |
+| 1.3 | Edit event details | ✅ |
 | 2.1 | Respondent submission | ✅ |
 | 2.2 | Edit response | ✅ |
 | 2.3 | Mobile-responsive grid | ✅ |
@@ -688,7 +691,6 @@
 ### Not Started:
 | Story | Description | Priority |
 |-------|-------------|----------|
-| 1.3 | Edit event details | P1 |
 | 3.3 | CSV export | P1 |
 | 4.1 | Email/password auth | P1 |
 | 4.2 | OAuth (Google) | P2 |
