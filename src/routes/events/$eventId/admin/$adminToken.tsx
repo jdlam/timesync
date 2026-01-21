@@ -160,8 +160,13 @@ function AdminDashboardContent({
 							variant="outline"
 							size="sm"
 							onClick={() => {
-								exportEventToCsv(event, responses);
-								toast.success("CSV exported successfully");
+								try {
+									exportEventToCsv(event, responses);
+									toast.success("CSV exported successfully");
+								} catch (error) {
+									console.error("Failed to export CSV:", error);
+									toast.error("Failed to export CSV. Please try again.");
+								}
 							}}
 							className="gap-1.5"
 						>
