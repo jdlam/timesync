@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	downloadCsv,
+	exportEventToCsv,
 	formatTimeSlotForCsv,
 	generateCsvContent,
 	generateCsvFilename,
@@ -222,6 +224,171 @@ describe("csv-export", () => {
 			const filename = generateCsvFilename("Q1-Planning-Meeting");
 
 			expect(filename).toBe("Q1-Planning-Meeting_2025-01-15.csv");
+		});
+	});
+
+	describe("downloadCsv", () => {
+		const mockCreateObjectURL = vi.fn(() => "blob:mock-url");
+		const mockRevokeObjectURL = vi.fn();
+		const mockClick = vi.fn();
+		let mockLink: { href: string; download: string; click: typeof mockClick };
+
+		beforeEach(() => {
+			mockLink = {
+				href: "",
+				download: "",
+				click: mockClick,
+			};
+
+			vi.spyOn(document, "createElement").mockReturnValue(
+				mockLink as unknown as HTMLAnchorElement,
+			);
+			vi.spyOn(document.body, "appendChild").mockImplementation(
+				() => mockLink as unknown as HTMLAnchorElement,
+			);
+			vi.spyOn(document.body, "removeChild").mockImplementation(
+				() => mockLink as unknown as HTMLAnchorElement,
+			);
+
+			// Stub global URL methods
+			vi.stubGlobal("URL", {
+				...URL,
+				createObjectURL: mockCreateObjectURL,
+				revokeObjectURL: mockRevokeObjectURL,
+			});
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+			mockCreateObjectURL.mockClear();
+			mockRevokeObjectURL.mockClear();
+			mockClick.mockClear();
+		});
+
+		it("should create a blob with correct content type", () => {
+			downloadCsv("test,content", "test.csv");
+
+			expect(mockCreateObjectURL).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: "text/csv;charset=utf-8;",
+				}),
+			);
+		});
+
+		it("should create an anchor element", () => {
+			const createElementSpy = vi.spyOn(document, "createElement");
+			downloadCsv("test,content", "test.csv");
+
+			expect(createElementSpy).toHaveBeenCalledWith("a");
+		});
+
+		it("should set href and download attributes", () => {
+			downloadCsv("test,content", "test.csv");
+
+			expect(mockLink.href).toBe("blob:mock-url");
+			expect(mockLink.download).toBe("test.csv");
+		});
+
+		it("should append link to body, click, and remove", () => {
+			const appendChildSpy = vi.spyOn(document.body, "appendChild");
+			const removeChildSpy = vi.spyOn(document.body, "removeChild");
+
+			downloadCsv("test,content", "test.csv");
+
+			expect(appendChildSpy).toHaveBeenCalled();
+			expect(mockClick).toHaveBeenCalled();
+			expect(removeChildSpy).toHaveBeenCalled();
+		});
+
+		it("should revoke object URL after download", () => {
+			downloadCsv("test,content", "test.csv");
+
+			expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+		});
+	});
+
+	describe("exportEventToCsv", () => {
+		let mockLink: {
+			href: string;
+			download: string;
+			click: ReturnType<typeof vi.fn>;
+		};
+		const mockCreateObjectURL = vi.fn(() => "blob:mock-url");
+		const mockRevokeObjectURL = vi.fn();
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+
+			mockLink = {
+				href: "",
+				download: "",
+				click: vi.fn(),
+			};
+
+			vi.spyOn(document, "createElement").mockReturnValue(
+				mockLink as unknown as HTMLAnchorElement,
+			);
+			vi.spyOn(document.body, "appendChild").mockImplementation((node) => node);
+			vi.spyOn(document.body, "removeChild").mockImplementation((node) => node);
+
+			vi.stubGlobal("URL", {
+				...URL,
+				createObjectURL: mockCreateObjectURL,
+				revokeObjectURL: mockRevokeObjectURL,
+			});
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+			mockCreateObjectURL.mockClear();
+			mockRevokeObjectURL.mockClear();
+		});
+
+		it("should generate CSV and trigger download", () => {
+			const event = {
+				title: "Team Meeting",
+				dates: ["2025-01-15"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "10:00",
+				slotDuration: 60,
+				timeZone: "America/New_York",
+			};
+			const responses = [{ respondentName: "Alice", selectedSlots: [] }];
+
+			exportEventToCsv(event, responses);
+
+			expect(mockLink.click).toHaveBeenCalled();
+			expect(mockLink.download).toBe("Team_Meeting_2025-01-15.csv");
+		});
+
+		it("should include response data in CSV content", () => {
+			const event = {
+				title: "Test",
+				dates: ["2025-01-15"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "10:00",
+				slotDuration: 60,
+				timeZone: "America/New_York",
+			};
+			const responses = [
+				{
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-15T14:00:00.000Z"],
+				},
+			];
+
+			exportEventToCsv(event, responses);
+
+			// Verify blob was created with correct type
+			expect(mockCreateObjectURL).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: "text/csv;charset=utf-8;",
+				}),
+			);
 		});
 	});
 });
