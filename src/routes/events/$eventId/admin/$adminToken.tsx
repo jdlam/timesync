@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Link as LinkIcon, Loader2, Pencil, Users } from "lucide-react";
+import {
+	Download,
+	Link as LinkIcon,
+	Loader2,
+	Pencil,
+	Users,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditEventDialog } from "@/components/EditEventDialog";
@@ -20,6 +26,7 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { exportEventToCsv } from "@/lib/csv-export";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
@@ -148,6 +155,20 @@ function AdminDashboardContent({
 						<Pencil className="h-3.5 w-3.5" />
 						Edit Event
 					</Button>
+					{event.isPremium && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								exportEventToCsv(event, responses);
+								toast.success("CSV exported successfully");
+							}}
+							className="gap-1.5"
+						>
+							<Download className="h-3.5 w-3.5" />
+							Export CSV
+						</Button>
+					)}
 				</div>
 
 				<EventHeader event={event} />
