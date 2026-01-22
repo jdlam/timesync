@@ -269,8 +269,8 @@ export function HeatmapGrid({
 								</tr>
 							</thead>
 							<tbody>
-								{uniqueTimeLabels.map((labelInfo) => (
-									<tr key={labelInfo.time}>
+								{uniqueTimeLabels.map((labelInfo, timeIndex) => (
+									<tr key={timeIndex}>
 										<td className="sticky left-0 z-10 bg-card border border-border p-3">
 											<span
 												className={cn(
@@ -289,10 +289,7 @@ export function HeatmapGrid({
 											</span>
 										</td>
 										{Array.from(slotsByDate.entries()).map(([date, slots]) => {
-											const slotIndex = uniqueTimeLabels.findIndex(
-												(l) => l.time === labelInfo.time,
-											);
-											const slot = slots[slotIndex];
+											const slot = slots[timeIndex];
 											if (!slot)
 												return (
 													<td key={date} className="border border-border" />
