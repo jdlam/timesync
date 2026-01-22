@@ -36,7 +36,7 @@ function escapeCsvField(field: string): string {
 
 /**
  * Format an ISO timestamp for CSV display
- * Format: "YYYY-MM-DD HH:MM AM/PM"
+ * Format: "yyyy-MM-dd h:mm a"
  */
 export function formatTimeSlotForCsv(
 	isoTimestamp: string,
@@ -67,11 +67,17 @@ export function generateCsvContent(
 	// Build rows for CSV
 	const rows: CsvRow[] = [];
 
+	// Pre-compute Sets for O(1) lookup instead of O(k) array includes
+	const responsesWithSlotSets = responses.map((response) => ({
+		response,
+		selectedSlotsSet: new Set(response.selectedSlots),
+	}));
+
 	for (const slot of allSlots) {
 		const formattedSlot = formatTimeSlotForCsv(slot, event.timeZone);
 
-		for (const response of responses) {
-			const isAvailable = response.selectedSlots.includes(slot);
+		for (const { response, selectedSlotsSet } of responsesWithSlotSets) {
+			const isAvailable = selectedSlotsSet.has(slot);
 			rows.push({
 				timeSlot: formattedSlot,
 				respondentName: response.respondentName,
