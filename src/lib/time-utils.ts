@@ -122,7 +122,7 @@ export function groupSlotsByDate(
 			grouped.set(dateKey, []);
 		}
 
-		grouped.get(dateKey)!.push(slot);
+		grouped.get(dateKey)?.push(slot);
 	}
 
 	return grouped;

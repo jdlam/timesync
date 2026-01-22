@@ -145,9 +145,9 @@ function LandingPage() {
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{features.map((feature, index) => (
+					{features.map((feature) => (
 						<div
-							key={index}
+							key={feature.title}
 							className="bg-card backdrop-blur-sm border border-border rounded-xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10"
 						>
 							<div className="mb-4">{feature.icon}</div>
@@ -175,8 +175,8 @@ function LandingPage() {
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-						{steps.map((step, index) => (
-							<div key={index} className="text-center">
+						{steps.map((step) => (
+							<div key={step.number} className="text-center">
 								<div className="w-16 h-16 rounded-full bg-cyan-600 text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4">
 									{step.number}
 								</div>
