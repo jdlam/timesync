@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { Link as LinkIcon, Loader2, Pencil, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditEventDialog } from "@/components/EditEventDialog";
 import { EventHeader } from "@/components/EventHeader";
@@ -20,6 +20,7 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
@@ -89,6 +90,17 @@ function AdminDashboardContent({
 		null,
 	);
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+	// Track admin dashboard view once on mount
+	const hasTrackedView = useRef(false);
+	useEffect(() => {
+		if (!hasTrackedView.current) {
+			hasTrackedView.current = true;
+			trackEvent(AnalyticsEvents.ADMIN_DASHBOARD_VIEWED, {
+				responseCount: responses.length,
+			});
+		}
+	}, [responses.length]);
 
 	// Find the highlighted response object
 	const highlightedResponse = selectedResponseId
@@ -200,8 +212,13 @@ function AdminDashboardContent({
 						<LinkCopy
 							url={publicUrl}
 							label="Public Link (Share with participants)"
+							linkType="public"
 						/>
-						<LinkCopy url={adminUrl} label="Admin Link (Keep this private!)" />
+						<LinkCopy
+							url={adminUrl}
+							label="Admin Link (Keep this private!)"
+							linkType="admin"
+						/>
 					</div>
 				</div>
 

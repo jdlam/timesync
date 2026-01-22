@@ -26,6 +26,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { useAppForm } from "@/hooks/form";
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics";
 import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone } from "@/lib/time-utils";
@@ -81,6 +82,12 @@ function CreateEvent() {
 				setCreatedEvent({
 					eventId: result.eventId,
 					adminToken: result.adminToken,
+				});
+				trackEvent(AnalyticsEvents.EVENT_CREATED, {
+					dateCount: value.dates.length,
+					slotDuration: Number.parseInt(value.slotDuration, 10),
+					hasDescription: !!value.description,
+					isAuthenticated: !!user,
 				});
 				toast.success("Event created successfully!");
 			} catch (error) {
@@ -339,8 +346,13 @@ function CreateEvent() {
 						<LinkCopy
 							url={publicUrl}
 							label="Public Link (Share with participants)"
+							linkType="public"
 						/>
-						<LinkCopy url={adminUrl} label="Admin Link (Keep this private!)" />
+						<LinkCopy
+							url={adminUrl}
+							label="Admin Link (Keep this private!)"
+							linkType="admin"
+						/>
 
 						<div className="bg-cyan-900/20 border border-cyan-700 rounded-lg p-4 mt-6">
 							<p className="text-sm text-cyan-400">

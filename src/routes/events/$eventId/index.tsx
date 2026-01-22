@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { generateEditToken } from "@/lib/token-utils";
 import { api } from "../../../../convex/_generated/api";
@@ -112,6 +113,10 @@ function EventResponseContent({
 			setSubmittedResponse({
 				responseId: result.responseId,
 				editToken: result.editToken,
+			});
+			trackEvent(AnalyticsEvents.RESPONSE_SUBMITTED, {
+				slotsSelected: selectedSlots.length,
+				hasComment: !!comment.trim(),
 			});
 			toast.success("Availability submitted successfully!");
 		} catch (err) {
@@ -217,6 +222,7 @@ function EventResponseContent({
 						<LinkCopy
 							url={editUrl}
 							label="Edit Link (Save this to update your response)"
+							linkType="edit"
 						/>
 
 						<div className="bg-cyan-900/20 border border-cyan-700 rounded-lg p-4">

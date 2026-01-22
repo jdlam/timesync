@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -8,15 +9,20 @@ interface LinkCopyProps {
 	url: string;
 	label: string;
 	className?: string;
+	/** Type of link for analytics tracking */
+	linkType?: "public" | "admin" | "edit";
 }
 
-export function LinkCopy({ url, label, className }: LinkCopyProps) {
+export function LinkCopy({ url, label, className, linkType }: LinkCopyProps) {
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = async () => {
 		try {
 			await navigator.clipboard.writeText(url);
 			setCopied(true);
+			if (linkType) {
+				trackEvent(AnalyticsEvents.LINK_COPIED, { linkType });
+			}
 			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
 			console.error("Failed to copy:", err);

@@ -19,6 +19,31 @@ const themeScript = `
 })();
 `;
 
+// Umami Analytics configuration
+const umamiScriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL;
+const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
+
+// Build scripts array conditionally
+const headScripts: Array<{
+	children?: string;
+	src?: string;
+	defer?: boolean;
+	"data-website-id"?: string;
+}> = [
+	{
+		children: themeScript,
+	},
+];
+
+// Add Umami script if configured
+if (umamiScriptUrl && umamiWebsiteId) {
+	headScripts.push({
+		src: umamiScriptUrl,
+		defer: true,
+		"data-website-id": umamiWebsiteId,
+	});
+}
+
 export const Route = createRootRoute({
 	head: () => ({
 		meta: [
@@ -39,11 +64,7 @@ export const Route = createRootRoute({
 				href: appCss,
 			},
 		],
-		scripts: [
-			{
-				children: themeScript,
-			},
-		],
+		scripts: headScripts,
 	}),
 
 	shellComponent: RootDocument,
