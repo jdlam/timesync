@@ -32,19 +32,15 @@ export function getErrorMessage(error: unknown): string {
 }
 
 function ErrorMessages({ errors }: { errors: Array<unknown> }) {
+	// Deduplicate error messages to ensure unique keys
+	const uniqueMessages = [...new Set(errors.map(getErrorMessage))];
 	return (
 		<>
-			{errors.map((error, index) => {
-				const message = getErrorMessage(error);
-				return (
-					<div
-						key={`${message}-${index}`}
-						className="text-red-500 mt-1 font-bold"
-					>
-						{message}
-					</div>
-				);
-			})}
+			{uniqueMessages.map((message) => (
+				<div key={message} className="text-red-500 mt-1 font-bold">
+					{message}
+				</div>
+			))}
 		</>
 	);
 }

@@ -66,7 +66,7 @@ describe("validation-schemas", () => {
 		});
 
 		it("should allow optional description", () => {
-			const { description, ...eventWithoutDesc } = validEvent;
+			const { description: _description, ...eventWithoutDesc } = validEvent;
 			const result = createEventSchema.safeParse(eventWithoutDesc);
 
 			expect(result.success).toBe(true);
@@ -212,7 +212,10 @@ describe("validation-schemas", () => {
 		});
 
 		it("should allow optional comment", () => {
-			const { respondentComment, ...responseWithoutComment } = validResponse;
+			const {
+				respondentComment: _respondentComment,
+				...responseWithoutComment
+			} = validResponse;
 			const result = submitResponseSchema.safeParse(responseWithoutComment);
 
 			expect(result.success).toBe(true);
