@@ -8,6 +8,7 @@
 interface EnvConfig {
 	VITE_CONVEX_URL: string;
 	VITE_CLERK_PUBLISHABLE_KEY: string;
+	VITE_STRIPE_PUBLISHABLE_KEY: string | undefined;
 }
 
 function validateEnv(): EnvConfig {
@@ -34,6 +35,7 @@ function validateEnv(): EnvConfig {
 	return {
 		VITE_CONVEX_URL: import.meta.env.VITE_CONVEX_URL,
 		VITE_CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+		VITE_STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
 	};
 }
 

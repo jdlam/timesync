@@ -121,6 +121,29 @@ export const create = mutation({
 		creatorEmail: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Check if creator has premium subscription
+		let isPremium = false;
+		let actualMaxRespondents = args.maxRespondents;
+
+		if (args.creatorId) {
+			const user = await ctx.db
+				.query("users")
+				.withIndex("by_clerk_id", (q) => q.eq("clerkId", args.creatorId as string))
+				.unique();
+
+			if (user) {
+				const isSubscriptionActive =
+					user.subscriptionTier === "premium" &&
+					(!user.subscriptionExpiresAt ||
+						user.subscriptionExpiresAt > Date.now());
+
+				if (isSubscriptionActive) {
+					isPremium = true;
+					actualMaxRespondents = -1; // Unlimited for premium
+				}
+			}
+		}
+
 		const now = Date.now();
 		const eventId = await ctx.db.insert("events", {
 			title: args.title,
@@ -131,8 +154,8 @@ export const create = mutation({
 			timeRangeEnd: args.timeRangeEnd,
 			slotDuration: args.slotDuration,
 			adminToken: args.adminToken,
-			isPremium: false,
-			maxRespondents: args.maxRespondents,
+			isPremium,
+			maxRespondents: actualMaxRespondents,
 			creatorId: args.creatorId, // Clerk subject ID or undefined for guests
 			creatorEmail: args.creatorEmail, // Creator's email or undefined for guests
 			isActive: true,

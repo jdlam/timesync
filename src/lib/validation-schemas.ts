@@ -1,61 +1,70 @@
 import { z } from "zod";
-import { TIER_LIMITS } from "./tier-config";
+import { TIER_LIMITS, type TierType } from "./tier-config";
 import { isDateInPast, validateTimeRange } from "./time-utils";
 
 /**
- * Validation schema for event creation
+ * Factory function to create event schema based on tier
  */
-export const createEventSchema = z
-	.object({
-		title: z
-			.string()
-			.min(1, "Title is required")
-			.max(255, "Title must be less than 255 characters"),
+export function createEventSchemaForTier(tier: TierType = "free") {
+	const limits = TIER_LIMITS[tier];
 
-		description: z
-			.string()
-			.max(1000, "Description must be less than 1000 characters")
-			.optional(),
+	return z
+		.object({
+			title: z
+				.string()
+				.min(1, "Title is required")
+				.max(255, "Title must be less than 255 characters"),
 
-		timeZone: z.string().min(1, "Timezone is required"),
+			description: z
+				.string()
+				.max(1000, "Description must be less than 1000 characters")
+				.optional(),
 
-		dates: z
-			.array(z.string())
-			.min(1, "At least one date is required")
-			.max(
-				TIER_LIMITS.free.maxDates,
-				`Maximum ${TIER_LIMITS.free.maxDates} dates allowed for free tier`,
-			)
-			.refine(
-				(dates) => {
-					// Check if any dates are in the past
-					return !dates.some((date) => isDateInPast(date));
-				},
-				{ message: "Cannot select dates in the past" },
-			),
+			timeZone: z.string().min(1, "Timezone is required"),
 
-		timeRangeStart: z
-			.string()
-			.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+			dates: z
+				.array(z.string())
+				.min(1, "At least one date is required")
+				.max(
+					limits.maxDates,
+					`Maximum ${limits.maxDates} dates allowed for ${tier} tier`,
+				)
+				.refine(
+					(dates) => {
+						// Check if any dates are in the past
+						return !dates.some((date) => isDateInPast(date));
+					},
+					{ message: "Cannot select dates in the past" },
+				),
 
-		timeRangeEnd: z
-			.string()
-			.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+			timeRangeStart: z
+				.string()
+				.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
 
-		slotDuration: z.enum(["15", "30", "60"], {
-			message: "Slot duration must be 15, 30, or 60 minutes",
-		}),
-	})
-	.refine(
-		(data) => {
-			// Validate that end time is after start time
-			return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
-		},
-		{
-			message: "End time must be after start time",
-			path: ["timeRangeEnd"],
-		},
-	);
+			timeRangeEnd: z
+				.string()
+				.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+
+			slotDuration: z.enum(["15", "30", "60"], {
+				message: "Slot duration must be 15, 30, or 60 minutes",
+			}),
+		})
+		.refine(
+			(data) => {
+				// Validate that end time is after start time
+				return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
+			},
+			{
+				message: "End time must be after start time",
+				path: ["timeRangeEnd"],
+			},
+		);
+}
+
+/**
+ * Validation schema for event creation (default: free tier)
+ */
+export const createEventSchema = createEventSchemaForTier("free");
 
 /**
  * Validation schema for response submission
@@ -77,48 +86,57 @@ export const submitResponseSchema = z.object({
 });
 
 /**
- * Validation schema for editing an existing event
+ * Factory function to create edit event schema based on tier
  * Note: Does not validate past dates (allows keeping existing past dates)
  * Note: Slot duration and timezone are not editable
  */
-export const editEventSchema = z
-	.object({
-		title: z
-			.string()
-			.min(1, "Title is required")
-			.max(255, "Title must be less than 255 characters"),
+export function editEventSchemaForTier(tier: TierType = "free") {
+	const limits = TIER_LIMITS[tier];
 
-		description: z
-			.string()
-			.max(1000, "Description must be less than 1000 characters")
-			.optional()
-			.nullable(),
+	return z
+		.object({
+			title: z
+				.string()
+				.min(1, "Title is required")
+				.max(255, "Title must be less than 255 characters"),
 
-		dates: z
-			.array(z.string())
-			.min(1, "At least one date is required")
-			.max(
-				TIER_LIMITS.free.maxDates,
-				`Maximum ${TIER_LIMITS.free.maxDates} dates allowed for free tier`,
-			),
+			description: z
+				.string()
+				.max(1000, "Description must be less than 1000 characters")
+				.optional()
+				.nullable(),
 
-		timeRangeStart: z
-			.string()
-			.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+			dates: z
+				.array(z.string())
+				.min(1, "At least one date is required")
+				.max(
+					limits.maxDates,
+					`Maximum ${limits.maxDates} dates allowed for ${tier} tier`,
+				),
 
-		timeRangeEnd: z
-			.string()
-			.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
-	})
-	.refine(
-		(data) => {
-			return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
-		},
-		{
-			message: "End time must be after start time",
-			path: ["timeRangeEnd"],
-		},
-	);
+			timeRangeStart: z
+				.string()
+				.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+
+			timeRangeEnd: z
+				.string()
+				.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+		})
+		.refine(
+			(data) => {
+				return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
+			},
+			{
+				message: "End time must be after start time",
+				path: ["timeRangeEnd"],
+			},
+		);
+}
+
+/**
+ * Validation schema for editing an existing event (default: free tier)
+ */
+export const editEventSchema = editEventSchemaForTier("free");
 
 /**
  * Type exports for TypeScript inference
