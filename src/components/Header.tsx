@@ -9,14 +9,17 @@ import { useQuery } from "convex/react";
 import {
 	Calendar,
 	CalendarDays,
+	Crown,
 	Home,
 	LogIn,
 	Menu,
 	Shield,
+	Sparkles,
 	X,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
+import { useSubscription } from "../hooks/useSubscription";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
@@ -24,6 +27,7 @@ export default function Header() {
 	const [isOpen, setIsOpen] = useState(false);
 	const accessCheck = useQuery(api.admin.checkAccess);
 	const isSuperAdmin = accessCheck?.isSuperAdmin ?? false;
+	const { isPremium } = useSubscription();
 
 	return (
 		<>
@@ -48,6 +52,13 @@ export default function Header() {
 								className="text-muted-foreground hover:text-foreground transition-colors"
 							>
 								Home
+							</Link>
+							<Link
+								to="/pricing"
+								className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+							>
+								<Sparkles size={16} />
+								Pricing
 							</Link>
 							<SignedIn>
 								<Link
@@ -77,6 +88,23 @@ export default function Header() {
 								</SignInButton>
 							</SignedOut>
 							<SignedIn>
+								{isPremium ? (
+									<span className="flex items-center gap-1 text-sm text-cyan-400 font-medium">
+										<Crown size={14} />
+										Premium
+									</span>
+								) : (
+									<Link to="/pricing">
+										<Button
+											variant="outline"
+											size="sm"
+											className="border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-white"
+										>
+											<Crown size={14} className="mr-1" />
+											Upgrade
+										</Button>
+									</Link>
+								)}
 								<UserButton afterSignOutUrl="/" />
 							</SignedIn>
 							<Link to="/events/create">
@@ -139,6 +167,19 @@ export default function Header() {
 					</Link>
 
 					<Link
+						to="/pricing"
+						onClick={() => setIsOpen(false)}
+						className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
+						activeProps={{
+							className:
+								"flex items-center gap-3 p-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors mb-2 text-primary-foreground",
+						}}
+					>
+						<Sparkles size={20} />
+						<span className="font-medium">Pricing</span>
+					</Link>
+
+					<Link
 						to="/events/create"
 						onClick={() => setIsOpen(false)}
 						className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
@@ -164,6 +205,22 @@ export default function Header() {
 							<CalendarDays size={20} />
 							<span className="font-medium">My Events</span>
 						</Link>
+
+						{isPremium ? (
+							<div className="flex items-center gap-3 p-3 rounded-lg bg-cyan-500/10 mb-2 text-cyan-400">
+								<Crown size={20} />
+								<span className="font-medium">Premium Member</span>
+							</div>
+						) : (
+							<Link
+								to="/pricing"
+								onClick={() => setIsOpen(false)}
+								className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-500 transition-colors mb-2 text-cyan-400"
+							>
+								<Crown size={20} />
+								<span className="font-medium">Upgrade to Premium</span>
+							</Link>
+						)}
 					</SignedIn>
 
 					{isSuperAdmin && (

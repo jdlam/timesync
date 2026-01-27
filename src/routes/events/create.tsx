@@ -1,9 +1,9 @@
 import { useUser } from "@clerk/clerk-react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { CalendarIcon, Crown } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
@@ -26,11 +26,12 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { useAppForm } from "@/hooks/form";
+import { useSubscription } from "@/hooks/useSubscription";
 import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone } from "@/lib/time-utils";
 import { generateAdminToken } from "@/lib/token-utils";
-import { createEventSchema } from "@/lib/validation-schemas";
+import { createEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../../convex/_generated/api";
 
 export const Route = createFileRoute("/events/create")({
@@ -41,6 +42,7 @@ function CreateEvent() {
 	const { user } = useUser();
 	const createEventMutation = useMutation(api.events.create);
 	const router = useRouter();
+	const { isPremium, tier } = useSubscription();
 	const [createdEvent, setCreatedEvent] = useState<{
 		eventId: string;
 		adminToken: string;
@@ -48,6 +50,9 @@ function CreateEvent() {
 
 	const [selectedDates, setSelectedDates] = useState<Date[]>([]);
 	const [showCalendar, setShowCalendar] = useState(false);
+
+	const tierLimits = isPremium ? TIER_LIMITS.premium : TIER_LIMITS.free;
+	const eventSchema = useMemo(() => createEventSchemaForTier(tier), [tier]);
 
 	const form = useAppForm({
 		defaultValues: {
@@ -60,7 +65,7 @@ function CreateEvent() {
 			slotDuration: "30" as "15" | "30" | "60",
 		},
 		validators: {
-			onSubmit: createEventSchema as never,
+			onSubmit: eventSchema as never,
 		},
 		onSubmit: async ({ value }) => {
 			try {
@@ -74,7 +79,7 @@ function CreateEvent() {
 					timeRangeEnd: value.timeRangeEnd,
 					slotDuration: Number.parseInt(value.slotDuration, 10),
 					adminToken,
-					maxRespondents: TIER_LIMITS.free.maxParticipants,
+					maxRespondents: tierLimits.maxParticipants,
 					creatorId: user?.id, // Clerk subject ID or undefined for guests
 					creatorEmail: user?.primaryEmailAddress?.emailAddress, // Creator's email or undefined for guests
 				});
@@ -125,6 +130,37 @@ function CreateEvent() {
 						Set up your availability poll - no signup required
 					</p>
 				</div>
+
+				{/* Tier Badge */}
+				{isPremium ? (
+					<div className="mb-6 p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-3">
+						<Crown className="w-5 h-5 text-cyan-400" />
+						<div>
+							<p className="text-cyan-400 font-medium">Premium Event</p>
+							<p className="text-sm text-muted-foreground">
+								Up to {tierLimits.maxDates} dates, unlimited participants
+							</p>
+						</div>
+					</div>
+				) : (
+					<div className="mb-6 p-4 bg-muted/50 border border-border rounded-xl">
+						<div className="flex items-center justify-between">
+							<div>
+								<p className="text-foreground font-medium">Free Tier</p>
+								<p className="text-sm text-muted-foreground">
+									Up to {tierLimits.maxDates} dates,{" "}
+									{tierLimits.maxParticipants} participants
+								</p>
+							</div>
+							<Link to="/pricing">
+								<Button variant="outline" size="sm" className="gap-1">
+									<Crown className="w-4 h-4" />
+									Upgrade
+								</Button>
+							</Link>
+						</div>
+					</div>
+				)}
 
 				<form
 					onSubmit={(e) => {
@@ -186,9 +222,14 @@ function CreateEvent() {
 					<form.AppField name="dates">
 						{(field) => (
 							<div className="space-y-2">
-								<Label className="text-xl font-bold text-foreground">
-									Select Dates
-								</Label>
+								<div className="flex items-center justify-between">
+									<Label className="text-xl font-bold text-foreground">
+										Select Dates
+									</Label>
+									<span className="text-sm text-muted-foreground">
+										{selectedDates.length}/{tierLimits.maxDates} dates
+									</span>
+								</div>
 								<div>
 									<Button
 										type="button"

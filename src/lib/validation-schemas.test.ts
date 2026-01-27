@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	type CreateEventInput,
 	createEventSchema,
+	createEventSchemaForTier,
 	type EditEventInput,
 	editEventSchema,
+	editEventSchemaForTier,
 	type SubmitResponseInput,
 	submitResponseSchema,
 } from "./validation-schemas";
@@ -366,6 +368,215 @@ describe("validation-schemas", () => {
 				expect(result.error.issues[0].message).toBe(
 					"End time must be after start time",
 				);
+			}
+		});
+	});
+
+	describe("createEventSchemaForTier (premium)", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const premiumSchema = createEventSchemaForTier("premium");
+
+		const validEvent: CreateEventInput = {
+			title: "Premium Meeting",
+			description: "Premium event",
+			timeZone: "America/New_York",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+			slotDuration: "30",
+		};
+
+		it("should allow up to 365 dates for premium tier", () => {
+			// Create 100 future dates (well within 365 limit)
+			const manyDates = Array.from({ length: 100 }, (_, i) => {
+				const date = new Date("2025-02-01");
+				date.setDate(date.getDate() + i);
+				return date.toISOString().split("T")[0];
+			});
+
+			const result = premiumSchema.safeParse({
+				...validEvent,
+				dates: manyDates,
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject more than 365 dates for premium tier", () => {
+			// Create 366 dates
+			const tooManyDates = Array.from({ length: 366 }, (_, i) => {
+				const date = new Date("2025-02-01");
+				date.setDate(date.getDate() + i);
+				return date.toISOString().split("T")[0];
+			});
+
+			const result = premiumSchema.safeParse({
+				...validEvent,
+				dates: tooManyDates,
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("365");
+				expect(result.error.issues[0].message).toContain("premium");
+			}
+		});
+
+		it("should allow 15 dates that would be rejected by free tier", () => {
+			const fifteenDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+
+			const premiumResult = premiumSchema.safeParse({
+				...validEvent,
+				dates: fifteenDates,
+			});
+
+			const freeResult = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				dates: fifteenDates,
+			});
+
+			expect(premiumResult.success).toBe(true);
+			expect(freeResult.success).toBe(false);
+		});
+	});
+
+	describe("editEventSchemaForTier (premium)", () => {
+		const premiumEditSchema = editEventSchemaForTier("premium");
+
+		const validEdit: EditEventInput = {
+			title: "Updated Premium Meeting",
+			description: "Updated description",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+		};
+
+		it("should allow up to 365 dates for premium tier", () => {
+			// Create 100 dates
+			const manyDates = Array.from({ length: 100 }, (_, i) => {
+				const date = new Date("2025-02-01");
+				date.setDate(date.getDate() + i);
+				return date.toISOString().split("T")[0];
+			});
+
+			const result = premiumEditSchema.safeParse({
+				...validEdit,
+				dates: manyDates,
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject more than 365 dates for premium tier", () => {
+			// Create 366 dates
+			const tooManyDates = Array.from({ length: 366 }, (_, i) => {
+				const date = new Date("2025-02-01");
+				date.setDate(date.getDate() + i);
+				return date.toISOString().split("T")[0];
+			});
+
+			const result = premiumEditSchema.safeParse({
+				...validEdit,
+				dates: tooManyDates,
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("365");
+				expect(result.error.issues[0].message).toContain("premium");
+			}
+		});
+
+		it("should allow 15 dates that would be rejected by free tier", () => {
+			const fifteenDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+
+			const premiumResult = premiumEditSchema.safeParse({
+				...validEdit,
+				dates: fifteenDates,
+			});
+
+			const freeResult = editEventSchemaForTier("free").safeParse({
+				...validEdit,
+				dates: fifteenDates,
+			});
+
+			expect(premiumResult.success).toBe(true);
+			expect(freeResult.success).toBe(false);
+		});
+
+		it("should allow past dates (for editing existing events)", () => {
+			const result = premiumEditSchema.safeParse({
+				...validEdit,
+				dates: ["2020-01-10"], // Past date
+			});
+
+			expect(result.success).toBe(true);
+		});
+	});
+
+	describe("tier-specific error messages", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("should show free tier limit in error message for createEventSchema", () => {
+			const tooManyDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+
+			const result = createEventSchemaForTier("free").safeParse({
+				title: "Test",
+				timeZone: "UTC",
+				dates: tooManyDates,
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: "30",
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("14");
+				expect(result.error.issues[0].message).toContain("free");
+			}
+		});
+
+		it("should show free tier limit in error message for editEventSchema", () => {
+			const tooManyDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+
+			const result = editEventSchemaForTier("free").safeParse({
+				title: "Test",
+				dates: tooManyDates,
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("14");
+				expect(result.error.issues[0].message).toContain("free");
 			}
 		});
 	});

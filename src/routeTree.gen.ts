@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MyEventsIndexRouteImport } from './routes/my-events/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -23,6 +24,11 @@ import { Route as AdminEventsEventIdRouteImport } from './routes/admin/events/$e
 import { Route as EventsEventIdEditEditTokenRouteImport } from './routes/events/$eventId/edit/$editToken'
 import { Route as EventsEventIdAdminAdminTokenRouteImport } from './routes/events/$eventId/admin/$adminToken'
 
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -93,21 +99,23 @@ const EventsEventIdAdminAdminTokenRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
   '/my-events/$eventId': typeof MyEventsEventIdRoute
-  '/admin': typeof AdminIndexRoute
-  '/my-events': typeof MyEventsIndexRoute
+  '/admin/': typeof AdminIndexRoute
+  '/my-events/': typeof MyEventsIndexRoute
   '/admin/events/$eventId': typeof AdminEventsEventIdRoute
-  '/admin/events': typeof AdminEventsIndexRoute
-  '/events/$eventId': typeof EventsEventIdIndexRoute
+  '/admin/events/': typeof AdminEventsIndexRoute
+  '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
   '/events/$eventId/edit/$editToken': typeof EventsEventIdEditEditTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
@@ -124,6 +132,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pricing': typeof PricingRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
@@ -141,21 +150,23 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/pricing'
     | '/admin/dashboard'
     | '/admin/logs'
     | '/admin/responses'
     | '/events/create'
     | '/my-events/$eventId'
-    | '/admin'
-    | '/my-events'
+    | '/admin/'
+    | '/my-events/'
     | '/admin/events/$eventId'
-    | '/admin/events'
-    | '/events/$eventId'
+    | '/admin/events/'
+    | '/events/$eventId/'
     | '/events/$eventId/admin/$adminToken'
     | '/events/$eventId/edit/$editToken'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/pricing'
     | '/admin/dashboard'
     | '/admin/logs'
     | '/admin/responses'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/pricing'
     | '/admin/dashboard'
     | '/admin/logs'
     | '/admin/responses'
@@ -187,6 +199,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PricingRoute: typeof PricingRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminLogsRoute: typeof AdminLogsRoute
   AdminResponsesRoute: typeof AdminResponsesRoute
@@ -203,6 +216,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -213,14 +233,14 @@ declare module '@tanstack/react-router' {
     '/my-events/': {
       id: '/my-events/'
       path: '/my-events'
-      fullPath: '/my-events'
+      fullPath: '/my-events/'
       preLoaderRoute: typeof MyEventsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
-      fullPath: '/admin'
+      fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -262,14 +282,14 @@ declare module '@tanstack/react-router' {
     '/events/$eventId/': {
       id: '/events/$eventId/'
       path: '/events/$eventId'
-      fullPath: '/events/$eventId'
+      fullPath: '/events/$eventId/'
       preLoaderRoute: typeof EventsEventIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/events/': {
       id: '/admin/events/'
       path: '/admin/events'
-      fullPath: '/admin/events'
+      fullPath: '/admin/events/'
       preLoaderRoute: typeof AdminEventsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -299,6 +319,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PricingRoute: PricingRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminLogsRoute: AdminLogsRoute,
   AdminResponsesRoute: AdminResponsesRoute,
@@ -315,12 +336,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

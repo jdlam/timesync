@@ -9,6 +9,12 @@ export default defineSchema({
 		emailVerified: v.boolean(),
 		image: v.optional(v.string()),
 
+		// Clerk integration
+		clerkId: v.string(), // Clerk subject ID
+
+		// Stripe integration
+		stripeCustomerId: v.optional(v.string()), // Stripe Customer ID
+
 		// Subscription management
 		subscriptionTier: v.string(), // 'free' or 'premium'
 		subscriptionId: v.optional(v.string()), // Stripe subscription ID
@@ -16,7 +22,10 @@ export default defineSchema({
 
 		createdAt: v.number(),
 		updatedAt: v.number(),
-	}).index("by_email", ["email"]),
+	})
+		.index("by_email", ["email"])
+		.index("by_clerk_id", ["clerkId"])
+		.index("by_stripe_customer", ["stripeCustomerId"]),
 
 	// Events table (scheduling events)
 	events: defineTable({

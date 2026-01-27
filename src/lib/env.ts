@@ -8,6 +8,7 @@
 interface EnvConfig {
 	VITE_CONVEX_URL: string;
 	VITE_CLERK_PUBLISHABLE_KEY: string;
+	VITE_STRIPE_PUBLISHABLE_KEY: string | undefined;
 }
 
 function validateEnv(): EnvConfig {
@@ -25,15 +26,18 @@ function validateEnv(): EnvConfig {
 	}
 
 	if (missing.length > 0) {
+		const vercelHint =
+			"On Vercel preview deployments: ensure each variable is enabled for the **Preview** environment (not only Development) in Project Settings → Environment Variables. Development applies only to local `vercel dev`.";
 		throw new Error(
 			`Missing required environment variables:\n${missing.map((v) => `  - ${v}`).join("\n")}\n\n` +
-				"Please check your .env.local file or environment configuration.",
+				`Local: check .env.local or environment configuration.\n\n${vercelHint}`,
 		);
 	}
 
 	return {
 		VITE_CONVEX_URL: import.meta.env.VITE_CONVEX_URL,
 		VITE_CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+		VITE_STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
 	};
 }
 
