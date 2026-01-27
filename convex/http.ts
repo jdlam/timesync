@@ -37,7 +37,8 @@ http.route({
 		let event: Stripe.Event;
 
 		try {
-			event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+			// Use async version for Convex runtime (web-standard crypto APIs)
+			event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error(`[Stripe Webhook] Signature verification failed: ${message}`);
