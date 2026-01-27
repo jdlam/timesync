@@ -292,6 +292,97 @@ describe("users", () => {
 			expect(result.error).toBe("User not found");
 		});
 	});
+
+	describe("ensureUserExists (internal)", () => {
+		it("should create a new user when user does not exist", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(internal.users.ensureUserExists, {
+				clerkId: "new_clerk_user",
+				email: "newuser@example.com",
+				name: "New User",
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.created).toBe(true);
+			expect(result.userId).toBeDefined();
+
+			// Verify the user was created correctly
+			const user = await t.run(async (ctx) => {
+				return await ctx.db.get(result.userId);
+			});
+
+			expect(user).not.toBeNull();
+			expect(user?.clerkId).toBe("new_clerk_user");
+			expect(user?.email).toBe("newuser@example.com");
+			expect(user?.name).toBe("New User");
+			expect(user?.subscriptionTier).toBe("free");
+			expect(user?.emailVerified).toBe(false);
+		});
+
+		it("should return existing user when user already exists", async () => {
+			const t = convexTest(schema, modules);
+
+			// Create existing user
+			const existingUserId = await t.run(async (ctx) => {
+				return await ctx.db.insert("users", {
+					clerkId: "existing_clerk_user",
+					email: "existing@example.com",
+					name: "Existing User",
+					emailVerified: true,
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(internal.users.ensureUserExists, {
+				clerkId: "existing_clerk_user",
+				email: "existing@example.com",
+				name: "Existing User",
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.created).toBe(false);
+			expect(result.userId).toBe(existingUserId);
+		});
+
+		it("should not update existing user data", async () => {
+			const t = convexTest(schema, modules);
+
+			// Create existing user with specific data
+			const existingUserId = await t.run(async (ctx) => {
+				return await ctx.db.insert("users", {
+					clerkId: "unchanged_clerk_user",
+					email: "original@example.com",
+					name: "Original Name",
+					emailVerified: true,
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			// Call ensureUserExists with different data
+			const result = await t.mutation(internal.users.ensureUserExists, {
+				clerkId: "unchanged_clerk_user",
+				email: "different@example.com",
+				name: "Different Name",
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.created).toBe(false);
+
+			// Verify user data was NOT updated
+			const user = await t.run(async (ctx) => {
+				return await ctx.db.get(existingUserId);
+			});
+
+			expect(user?.email).toBe("original@example.com");
+			expect(user?.name).toBe("Original Name");
+			expect(user?.subscriptionTier).toBe("premium");
+		});
+	});
 });
 
 describe("events with subscription tier", () => {
@@ -373,6 +464,45 @@ describe("events with subscription tier", () => {
 			return await ctx.db.get(result.eventId);
 		});
 
+		expect(event?.isPremium).toBe(false);
+		expect(event?.maxRespondents).toBe(5);
+	});
+
+	it("should create free event for premium user with expired subscription", async () => {
+		const t = convexTest(schema, modules);
+
+		// Create user with expired premium subscription
+		await t.run(async (ctx) => {
+			return await ctx.db.insert("users", {
+				clerkId: "expired_premium_creator",
+				email: "expired@example.com",
+				name: "Expired Premium User",
+				emailVerified: true,
+				subscriptionTier: "premium",
+				subscriptionId: "sub_expired",
+				subscriptionExpiresAt: Date.now() - 24 * 60 * 60 * 1000, // Expired yesterday
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+			});
+		});
+
+		const result = await t.mutation(api.events.create, {
+			title: "Expired Premium Event",
+			timeZone: "UTC",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+			slotDuration: 30,
+			adminToken: "token",
+			maxRespondents: 5,
+			creatorId: "expired_premium_creator",
+		});
+
+		const event = await t.run(async (ctx) => {
+			return await ctx.db.get(result.eventId);
+		});
+
+		// Should be treated as free tier since subscription is expired
 		expect(event?.isPremium).toBe(false);
 		expect(event?.maxRespondents).toBe(5);
 	});
