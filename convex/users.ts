@@ -163,6 +163,43 @@ export const updateSubscription = internalMutation({
 });
 
 /**
+ * Internal mutation to ensure a user record exists
+ * Creates the user if they don't exist, otherwise does nothing
+ */
+export const ensureUserExists = internalMutation({
+	args: {
+		clerkId: v.string(),
+		email: v.string(),
+		name: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const existingUser = await ctx.db
+			.query("users")
+			.withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+			.unique();
+
+		if (existingUser) {
+			return { success: true, userId: existingUser._id, created: false };
+		}
+
+		// Create new user
+		const now = Date.now();
+		const userId = await ctx.db.insert("users", {
+			clerkId: args.clerkId,
+			email: args.email,
+			name: args.name,
+			emailVerified: false,
+			subscriptionTier: "free",
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		console.log(`[Users] Created new user record for clerkId: ${args.clerkId}`);
+		return { success: true, userId, created: true };
+	},
+});
+
+/**
  * Internal mutation to set Stripe customer ID on user
  */
 export const setStripeCustomerId = internalMutation({

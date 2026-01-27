@@ -32,6 +32,13 @@ export const createCheckoutSession = action({
 			apiVersion: "2025-12-15.clover",
 		});
 
+		// Ensure user record exists before proceeding
+		await ctx.runMutation(internal.users.ensureUserExists, {
+			clerkId: identity.subject,
+			email: identity.email ?? "",
+			name: identity.name ?? identity.email ?? "Unknown",
+		});
+
 		// Get the user's existing Stripe customer ID if they have one
 		const user = await ctx.runQuery(
 			// @ts-expect-error - internal API type issue
