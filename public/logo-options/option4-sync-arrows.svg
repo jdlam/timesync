@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="grad4a" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad4b" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Top arc with arrow -->
+  <path d="M 48 20 A 20 20 0 0 0 16 20" fill="none" stroke="url(#grad4a)" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="12,18 20,12 20,24" fill="#22d3ee"/>
+  <!-- Bottom arc with arrow -->
+  <path d="M 16 44 A 20 20 0 0 0 48 44" fill="none" stroke="url(#grad4b)" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="52,46 44,40 44,52" fill="#60a5fa"/>
+  <!-- Center clock -->
+  <circle cx="32" cy="32" r="10" fill="white"/>
+  <circle cx="32" cy="32" r="8" fill="#0e7490"/>
+  <line x1="32" y1="32" x2="32" y2="26" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <line x1="32" y1="32" x2="37" y2="32" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="1.5" fill="white"/>
+</svg>

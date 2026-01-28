@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="grad6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect x="4" y="4" width="56" height="56" rx="8" fill="#0f172a"/>
+  <!-- 4x4 Heatmap grid cells -->
+  <!-- Row 1 -->
+  <rect x="8" y="8" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.3"/>
+  <rect x="21" y="8" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.6"/>
+  <rect x="34" y="8" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.9"/>
+  <rect x="47" y="8" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.3"/>
+  <!-- Row 2 -->
+  <rect x="8" y="21" width="11" height="11" rx="2" fill="#3b82f6" opacity="0.5"/>
+  <rect x="21" y="21" width="11" height="11" rx="2" fill="#22d3ee" opacity="1"/>
+  <rect x="34" y="21" width="11" height="11" rx="2" fill="#22d3ee" opacity="1"/>
+  <rect x="47" y="21" width="11" height="11" rx="2" fill="#60a5fa" opacity="0.7"/>
+  <!-- Row 3 -->
+  <rect x="8" y="34" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.4"/>
+  <rect x="21" y="34" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.9"/>
+  <rect x="34" y="34" width="11" height="11" rx="2" fill="#60a5fa" opacity="0.8"/>
+  <rect x="47" y="34" width="11" height="11" rx="2" fill="#3b82f6" opacity="0.4"/>
+  <!-- Row 4 -->
+  <rect x="8" y="47" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.2"/>
+  <rect x="21" y="47" width="11" height="11" rx="2" fill="#60a5fa" opacity="0.5"/>
+  <rect x="34" y="47" width="11" height="11" rx="2" fill="#22d3ee" opacity="0.6"/>
+  <rect x="47" y="47" width="11" height="11" rx="2" fill="#60a5fa" opacity="0.3"/>
+</svg>
