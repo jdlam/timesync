@@ -105,11 +105,11 @@ export interface FileRoutesByFullPath {
   '/admin/responses': typeof AdminResponsesRoute
   '/events/create': typeof EventsCreateRoute
   '/my-events/$eventId': typeof MyEventsEventIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/my-events/': typeof MyEventsIndexRoute
+  '/admin': typeof AdminIndexRoute
+  '/my-events': typeof MyEventsIndexRoute
   '/admin/events/$eventId': typeof AdminEventsEventIdRoute
-  '/admin/events/': typeof AdminEventsIndexRoute
-  '/events/$eventId/': typeof EventsEventIdIndexRoute
+  '/admin/events': typeof AdminEventsIndexRoute
+  '/events/$eventId': typeof EventsEventIdIndexRoute
   '/events/$eventId/admin/$adminToken': typeof EventsEventIdAdminAdminTokenRoute
   '/events/$eventId/edit/$editToken': typeof EventsEventIdEditEditTokenRoute
 }
@@ -156,11 +156,11 @@ export interface FileRouteTypes {
     | '/admin/responses'
     | '/events/create'
     | '/my-events/$eventId'
-    | '/admin/'
-    | '/my-events/'
+    | '/admin'
+    | '/my-events'
     | '/admin/events/$eventId'
-    | '/admin/events/'
-    | '/events/$eventId/'
+    | '/admin/events'
+    | '/events/$eventId'
     | '/events/$eventId/admin/$adminToken'
     | '/events/$eventId/edit/$editToken'
   fileRoutesByTo: FileRoutesByTo
@@ -233,14 +233,14 @@ declare module '@tanstack/react-router' {
     '/my-events/': {
       id: '/my-events/'
       path: '/my-events'
-      fullPath: '/my-events/'
+      fullPath: '/my-events'
       preLoaderRoute: typeof MyEventsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
-      fullPath: '/admin/'
+      fullPath: '/admin'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -282,14 +282,14 @@ declare module '@tanstack/react-router' {
     '/events/$eventId/': {
       id: '/events/$eventId/'
       path: '/events/$eventId'
-      fullPath: '/events/$eventId/'
+      fullPath: '/events/$eventId'
       preLoaderRoute: typeof EventsEventIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/events/': {
       id: '/admin/events/'
       path: '/admin/events'
-      fullPath: '/admin/events/'
+      fullPath: '/admin/events'
       preLoaderRoute: typeof AdminEventsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -336,3 +336,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

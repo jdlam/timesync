@@ -55,6 +55,7 @@ export default function Header() {
 							</Link>
 							<Link
 								to="/pricing"
+								search={{ success: false, canceled: false }}
 								className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
 							>
 								<Sparkles size={16} />
@@ -94,7 +95,10 @@ export default function Header() {
 										Premium
 									</span>
 								) : (
-									<Link to="/pricing">
+									<Link
+										to="/pricing"
+										search={{ success: false, canceled: false }}
+									>
 										<Button
 											variant="outline"
 											size="sm"
@@ -168,6 +172,7 @@ export default function Header() {
 
 					<Link
 						to="/pricing"
+						search={{ success: false, canceled: false }}
 						onClick={() => setIsOpen(false)}
 						className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors mb-2 text-muted-foreground"
 						activeProps={{
@@ -214,6 +219,7 @@ export default function Header() {
 						) : (
 							<Link
 								to="/pricing"
+								search={{ success: false, canceled: false }}
 								onClick={() => setIsOpen(false)}
 								className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-500 transition-colors mb-2 text-cyan-400"
 							>

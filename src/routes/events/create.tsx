@@ -152,7 +152,7 @@ function CreateEvent() {
 									{tierLimits.maxParticipants} participants
 								</p>
 							</div>
-							<Link to="/pricing">
+							<Link to="/pricing" search={{ success: false, canceled: false }}>
 								<Button variant="outline" size="sm" className="gap-1">
 									<Crown className="w-4 h-4" />
 									Upgrade
