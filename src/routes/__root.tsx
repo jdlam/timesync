@@ -39,11 +39,39 @@ export const Route = createRootRoute({
 			{
 				title: "TimeSync - Find the Perfect Time",
 			},
+			{
+				name: "description",
+				content:
+					"TimeSync helps groups coordinate availability and find the perfect meeting time with interactive heatmap visualization.",
+			},
+			{
+				name: "theme-color",
+				content: "#14b8a6",
+			},
 		],
 		links: [
 			{
 				rel: "stylesheet",
 				href: appCss,
+			},
+			{
+				rel: "icon",
+				type: "image/x-icon",
+				href: "/favicon.ico",
+			},
+			{
+				rel: "icon",
+				type: "image/svg+xml",
+				href: "/logo.svg",
+			},
+			{
+				rel: "apple-touch-icon",
+				sizes: "192x192",
+				href: "/logo192.png",
+			},
+			{
+				rel: "manifest",
+				href: "/manifest.json",
 			},
 		],
 		scripts: [
