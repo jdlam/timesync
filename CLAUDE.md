@@ -394,3 +394,18 @@ See `USER_STORIES.md` for full status. Major missing features:
 | `FEATURES.md` | Implemented features list |
 | `USER_STORIES.md` | Requirements and implementation status |
 | `CLAUDE.md` | This file - AI assistant guidelines |
+| `.ai/ARCHITECTURE.md` | Codebase architecture diagrams and code flows |
+| `.ai/README.md` | AI documentation directory index |
+
+## Shared AI Agent Documentation
+
+The `.ai/` directory contains documentation shared across all AI coding assistants (Claude, Cursor, Windsurf).
+
+- **`.ai/ARCHITECTURE.md`** - Comprehensive mermaid diagrams showing:
+  - High-level system architecture
+  - All routes and their connections to Convex functions
+  - Database schema relationships
+  - Authentication/authorization flows
+  - Sequence diagrams for key features (event creation, response submission, heatmap visualization)
+
+When working on features that span multiple parts of the codebase, reference `.ai/ARCHITECTURE.md` for context on how components connect.

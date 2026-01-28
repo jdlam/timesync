@@ -1,0 +1,162 @@
+flowchart TB
+    subgraph "Routes & Pages"
+        Landing["/ Landing Page"]
+        CreateEvent["/events/create"]
+        PublicEvent["/events/$eventId"]
+        EditResponse["/events/$eventId/edit/$editToken"]
+        AdminEvent["/events/$eventId/admin/$adminToken"]
+        MyEvents["/my-events"]
+        MyEventDetail["/my-events/$eventId"]
+        Pricing["/pricing"]
+
+        subgraph "Super Admin Routes"
+            AdminIndex["/admin"]
+            AdminDash["/admin/dashboard"]
+            AdminEvents["/admin/events"]
+            AdminEventDetail["/admin/events/$eventId"]
+            AdminResponses["/admin/responses"]
+            AdminLogs["/admin/logs"]
+        end
+    end
+
+    subgraph "Authentication Layer"
+        Clerk["Clerk Auth"]
+        SuperAdminCheck["SUPER_ADMIN_EMAILS Check"]
+        TokenAuth["Token-Based Auth\n(adminToken / editToken)"]
+    end
+
+    subgraph "Convex Queries"
+        Q_getById["events.getById"]
+        Q_getByIdWithCount["events.getByIdWithResponseCount"]
+        Q_getByAdminToken["events.getByAdminToken"]
+        Q_getResponsesByEvent["responses.getByEventId"]
+        Q_getByEditToken["responses.getByEditToken"]
+        Q_getMyEvents["myEvents.getMyEvents"]
+        Q_getMyEventById["myEvents.getMyEventById"]
+        Q_checkAccess["admin.checkAccess"]
+        Q_getStats["admin.getStats"]
+        Q_getAllEvents["admin.getAllEvents"]
+        Q_getAllResponses["admin.getAllResponses"]
+        Q_getAuditLogs["admin.getAuditLogs"]
+        Q_getUserSubscription["users.getCurrentUserSubscription"]
+    end
+
+    subgraph "Convex Mutations"
+        M_createEvent["events.create"]
+        M_updateEvent["events.update"]
+        M_submitResponse["responses.submit"]
+        M_updateResponse["responses.update"]
+        M_removeResponse["responses.remove"]
+        M_toggleMyEvent["myEvents.toggleMyEventStatus"]
+        M_deleteMyEvent["myEvents.deleteMyEvent"]
+        M_toggleEventStatus["admin.toggleEventStatus"]
+        M_deleteEvent["admin.deleteEvent"]
+        M_deleteResponse["admin.deleteResponse"]
+        M_getOrCreateUser["users.getOrCreateUser"]
+    end
+
+    subgraph "Database Tables"
+        DB_users[("users\n- clerkId\n- email\n- subscriptionTier\n- stripeCustomerId")]
+        DB_events[("events\n- adminToken\n- title, dates\n- timeRange, slotDuration\n- maxRespondents\n- creatorId, isActive")]
+        DB_responses[("responses\n- eventId\n- respondentName\n- selectedSlots\n- editToken")]
+        DB_audit[("auditLogs\n- userId, action\n- targetType, targetId")]
+    end
+
+    subgraph "Key Components"
+        AvailGrid["AvailabilityGrid\n(slot selection)"]
+        HeatmapGrid["HeatmapGrid\n(visualization)"]
+        ResponsesList["ResponsesList"]
+        EventForm["EventForm"]
+    end
+
+    subgraph "Utilities"
+        TimeUtils["time-utils\n- generateTimeSlots\n- formatTimeSlot"]
+        HeatmapUtils["heatmap-utils\n- calculateHeatmap\n- getHeatmapColor\n- getBestTimeSlots"]
+        TokenUtils["token-utils\n- generateAdminToken\n- generateEditToken"]
+    end
+
+    %% Landing Page Flow
+    Landing -->|"Navigate"| CreateEvent
+    Landing -->|"Navigate"| Pricing
+
+    %% Event Creation Flow
+    CreateEvent --> EventForm
+    EventForm -->|"Optional"| Clerk
+    Clerk -->|"Sync user"| M_getOrCreateUser
+    M_getOrCreateUser --> DB_users
+    EventForm --> TokenUtils
+    EventForm -->|"Submit"| M_createEvent
+    M_createEvent -->|"Check tier"| Q_getUserSubscription
+    Q_getUserSubscription --> DB_users
+    M_createEvent --> DB_events
+
+    %% Public Event Flow
+    PublicEvent --> Q_getByIdWithCount
+    Q_getByIdWithCount --> DB_events
+    PublicEvent --> AvailGrid
+    AvailGrid --> TimeUtils
+    PublicEvent -->|"Submit"| M_submitResponse
+    M_submitResponse -->|"Check limit"| DB_events
+    M_submitResponse --> DB_responses
+
+    %% Edit Response Flow
+    EditResponse --> Q_getByEditToken
+    Q_getByEditToken --> DB_responses
+    EditResponse --> AvailGrid
+    EditResponse -->|"Update"| M_updateResponse
+    M_updateResponse --> DB_responses
+
+    %% Event Admin Flow
+    AdminEvent --> TokenAuth
+    TokenAuth --> Q_getByAdminToken
+    Q_getByAdminToken --> DB_events
+    AdminEvent --> Q_getResponsesByEvent
+    Q_getResponsesByEvent --> DB_responses
+    AdminEvent --> HeatmapGrid
+    HeatmapGrid --> HeatmapUtils
+    HeatmapGrid --> TimeUtils
+    AdminEvent --> ResponsesList
+    AdminEvent -->|"Delete"| M_removeResponse
+    M_removeResponse --> DB_responses
+    AdminEvent -->|"Update"| M_updateEvent
+    M_updateEvent --> DB_events
+
+    %% My Events Flow (Authenticated)
+    MyEvents --> Clerk
+    Clerk --> Q_getMyEvents
+    Q_getMyEvents --> DB_events
+    MyEventDetail --> Q_getMyEventById
+    Q_getMyEventById --> DB_events
+    MyEventDetail -->|"Toggle"| M_toggleMyEvent
+    M_toggleMyEvent --> DB_events
+    MyEventDetail -->|"Delete"| M_deleteMyEvent
+    M_deleteMyEvent --> DB_events
+    M_deleteMyEvent --> DB_responses
+
+    %% Super Admin Flow
+    AdminIndex --> Clerk
+    Clerk --> SuperAdminCheck
+    SuperAdminCheck --> Q_checkAccess
+    Q_checkAccess --> DB_users
+    AdminDash --> Q_getStats
+    Q_getStats --> DB_events
+    Q_getStats --> DB_responses
+    AdminEvents --> Q_getAllEvents
+    Q_getAllEvents --> DB_events
+    AdminEventDetail --> Q_getByIdWithCount
+    AdminResponses --> Q_getAllResponses
+    Q_getAllResponses --> DB_responses
+    AdminLogs --> Q_getAuditLogs
+    Q_getAuditLogs --> DB_audit
+
+    %% Admin Mutations
+    AdminEvents -->|"Toggle"| M_toggleEventStatus
+    M_toggleEventStatus --> DB_events
+    M_toggleEventStatus --> DB_audit
+    AdminEvents -->|"Delete"| M_deleteEvent
+    M_deleteEvent --> DB_events
+    M_deleteEvent --> DB_responses
+    M_deleteEvent --> DB_audit
+    AdminResponses -->|"Delete"| M_deleteResponse
+    M_deleteResponse --> DB_responses
+    M_deleteResponse --> DB_audit

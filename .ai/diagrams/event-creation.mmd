@@ -1,0 +1,20 @@
+sequenceDiagram
+    actor User
+    participant Form as EventForm
+    participant Clerk
+    participant Convex
+    participant DB as Database
+
+    User->>Form: Fill event details
+    opt User signed in
+        Form->>Clerk: Get auth state
+        Clerk->>Convex: getOrCreateUser
+        Convex->>DB: Upsert user record
+    end
+    Form->>Form: generateAdminToken()
+    User->>Form: Submit
+    Form->>Convex: events.create
+    Convex->>DB: Check subscription tier
+    Convex->>DB: INSERT event
+    Convex-->>Form: eventId + adminToken
+    Form->>User: Show success + URLs
