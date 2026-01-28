@@ -363,6 +363,7 @@ Components are added to `src/components/ui/`.
 - Routes under `/admin/*` require super admin access
 - Features: view all events/responses, toggle event status, delete events/responses
 - All admin actions are logged to `auditLogs` table
+- **Super admins automatically have premium access** - they never see upgrade prompts
 
 #### Security Behavior
 - Admin queries return `null` (not throw) when unauthorized to avoid error modals during auth loading

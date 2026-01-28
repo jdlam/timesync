@@ -14,6 +14,8 @@ export interface SubscriptionState {
 	tier: SubscriptionTier;
 	/** Whether user has premium access */
 	isPremium: boolean;
+	/** Whether user is a super admin (always has premium access) */
+	isSuperAdmin: boolean;
 	/** Stripe subscription ID if subscribed */
 	subscriptionId: string | null;
 	/** Subscription expiration timestamp */
@@ -84,6 +86,7 @@ export function useSubscription(): SubscriptionState & SubscriptionActions {
 		isAuthenticated: isSignedIn ?? false,
 		tier: subscriptionData?.tier ?? "free",
 		isPremium: subscriptionData?.isPremium ?? false,
+		isSuperAdmin: subscriptionData?.isSuperAdmin ?? false,
 		subscriptionId: subscriptionData?.subscriptionId ?? null,
 		expiresAt: subscriptionData?.expiresAt ?? null,
 		upgrade,

@@ -125,6 +125,7 @@ This document lists all features currently implemented in TimeSync.
 
 - **Super Admin Access** controlled via environment variable
 - Only users with emails in `SUPER_ADMIN_EMAILS` can access
+- **Super admins automatically have premium access** (no upgrade prompts shown)
 
 ### Security Features
 
