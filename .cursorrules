@@ -33,3 +33,4 @@ npx shadcn@latest add <component-name>
 - No account required for core functionality
 - Never use `any` type - use `unknown` with type guards
 - All new features must include unit tests
+- **Update `.ai/diagrams/*.mmd` when changing code flows** (routes, Convex functions, auth logic)

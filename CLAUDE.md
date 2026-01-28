@@ -401,11 +401,25 @@ See `USER_STORIES.md` for full status. Major missing features:
 
 The `.ai/` directory contains documentation shared across all AI coding assistants (Claude, Cursor, Windsurf).
 
-- **`.ai/ARCHITECTURE.md`** - Comprehensive mermaid diagrams showing:
-  - High-level system architecture
-  - All routes and their connections to Convex functions
-  - Database schema relationships
-  - Authentication/authorization flows
-  - Sequence diagrams for key features (event creation, response submission, heatmap visualization)
+- **`.ai/ARCHITECTURE.md`** - Overview and links to mermaid diagrams
+- **`.ai/diagrams/*.mmd`** - Mermaid diagram files:
+  - `architecture.mmd` - High-level system flowchart
+  - `event-creation.mmd` - Event creation sequence
+  - `response-submission.mmd` - Response submission sequence
+  - `heatmap-visualization.mmd` - Heatmap rendering sequence
+  - `auth-flow.mmd` - Authentication/authorization levels
 
 When working on features that span multiple parts of the codebase, reference `.ai/ARCHITECTURE.md` for context on how components connect.
+
+### Keeping Diagrams Updated
+
+**When you make changes that affect code flow, update the relevant `.mmd` diagram files.** This includes:
+
+- Adding new routes → update `architecture.mmd`
+- Adding new Convex queries/mutations → update `architecture.mmd`
+- Changing authentication/authorization logic → update `auth-flow.mmd`
+- Modifying event creation flow → update `event-creation.mmd`
+- Modifying response submission flow → update `response-submission.mmd`
+- Modifying heatmap rendering logic → update `heatmap-visualization.mmd`
+
+Diagrams should stay in sync with the codebase. If you add a new major feature flow, consider adding a new `.mmd` file for it.
