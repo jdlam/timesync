@@ -46,7 +46,7 @@ export default function Header() {
 						</Link>
 
 						{/* Desktop Navigation */}
-						<nav className="hidden md:flex items-center gap-4">
+						<nav className="hidden lg:flex items-center gap-4">
 							<Link
 								to="/"
 								className="text-muted-foreground hover:text-foreground transition-colors"
@@ -117,7 +117,7 @@ export default function Header() {
 						</nav>
 
 						{/* Mobile Navigation */}
-						<div className="md:hidden flex items-center gap-2">
+						<div className="lg:hidden flex items-center gap-2">
 							<ThemeToggle />
 							<SignedIn>
 								<UserButton afterSignOutUrl="/" />
@@ -136,7 +136,7 @@ export default function Header() {
 
 			{/* Mobile Sidebar */}
 			<aside
-				className={`fixed top-0 left-0 h-full w-80 bg-card text-card-foreground shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col md:hidden ${
+				className={`fixed top-0 left-0 h-full w-80 bg-card text-card-foreground shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col lg:hidden ${
 					isOpen ? "translate-x-0" : "-translate-x-full"
 				}`}
 			>
@@ -261,7 +261,7 @@ export default function Header() {
 			{/* Overlay */}
 			{isOpen && (
 				<div
-					className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+					className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
 					onClick={() => setIsOpen(false)}
 				/>
 			)}
