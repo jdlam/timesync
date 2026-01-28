@@ -201,14 +201,22 @@ describe("users", () => {
 		});
 
 		describe("super admin premium access", () => {
-			const originalEnv = process.env.SUPER_ADMIN_EMAILS;
+			let originalEnv: string | undefined;
 
 			beforeEach(() => {
-				process.env.SUPER_ADMIN_EMAILS = "superadmin@example.com,admin@example.com";
+				// Capture original value at test time, not module load time
+				originalEnv = process.env.SUPER_ADMIN_EMAILS;
+				process.env.SUPER_ADMIN_EMAILS =
+					"superadmin@example.com,admin@example.com";
 			});
 
 			afterEach(() => {
-				process.env.SUPER_ADMIN_EMAILS = originalEnv;
+				// Properly restore: delete if was undefined, otherwise restore value
+				if (originalEnv === undefined) {
+					delete process.env.SUPER_ADMIN_EMAILS;
+				} else {
+					process.env.SUPER_ADMIN_EMAILS = originalEnv;
+				}
 			});
 
 			it("should return premium tier for super admin without subscription", async () => {
@@ -274,6 +282,40 @@ describe("users", () => {
 				expect(result?.tier).toBe("free");
 				expect(result?.isPremium).toBe(false);
 				expect(result?.isSuperAdmin).toBe(false);
+			});
+		});
+
+		describe("super admin with unset env var", () => {
+			let originalEnv: string | undefined;
+
+			beforeEach(() => {
+				originalEnv = process.env.SUPER_ADMIN_EMAILS;
+				delete process.env.SUPER_ADMIN_EMAILS;
+			});
+
+			afterEach(() => {
+				if (originalEnv === undefined) {
+					delete process.env.SUPER_ADMIN_EMAILS;
+				} else {
+					process.env.SUPER_ADMIN_EMAILS = originalEnv;
+				}
+			});
+
+			it("should not grant super admin access when env var is unset", async () => {
+				const t = convexTest(schema, modules);
+
+				const identity = {
+					subject: "would_be_admin",
+					email: "superadmin@example.com",
+				};
+
+				const result = await t
+					.withIdentity(identity)
+					.query(api.users.getCurrentUserSubscription, {});
+
+				// Without SUPER_ADMIN_EMAILS set, no one should be a super admin
+				expect(result?.isSuperAdmin).toBe(false);
+				expect(result?.isPremium).toBe(false);
 			});
 		});
 	});
