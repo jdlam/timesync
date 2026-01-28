@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { getCurrentUser } from "./lib/auth";
+import { getCurrentUser, isSuperAdmin } from "./lib/auth";
 
 /**
  * Get or create a user record from Clerk identity
@@ -68,6 +68,7 @@ export const getOrCreateUser = mutation({
 /**
  * Get current user's subscription status
  * Returns null if not authenticated
+ * Super admins are always treated as premium users
  */
 export const getCurrentUserSubscription = query({
 	args: {},
@@ -75,6 +76,17 @@ export const getCurrentUserSubscription = query({
 		const identity = await getCurrentUser(ctx);
 		if (!identity) {
 			return null;
+		}
+
+		// Super admins always have premium access
+		if (isSuperAdmin(identity.email)) {
+			return {
+				tier: "premium" as const,
+				isPremium: true,
+				subscriptionId: null,
+				expiresAt: null,
+				isSuperAdmin: true,
+			};
 		}
 
 		const user = await ctx.db
@@ -89,6 +101,7 @@ export const getCurrentUserSubscription = query({
 				isPremium: false,
 				subscriptionId: null,
 				expiresAt: null,
+				isSuperAdmin: false,
 			};
 		}
 
@@ -101,6 +114,7 @@ export const getCurrentUserSubscription = query({
 			isPremium: isPremium && !isExpired,
 			subscriptionId: user.subscriptionId ?? null,
 			expiresAt: user.subscriptionExpiresAt ?? null,
+			isSuperAdmin: false,
 		};
 	},
 });
