@@ -1,0 +1,24 @@
+sequenceDiagram
+    actor Admin
+    participant Page as AdminDashboard
+    participant Heatmap as HeatmapGrid
+    participant Utils as HeatmapUtils
+    participant Convex
+    participant DB as Database
+
+    Admin->>Page: Visit admin URL
+    Page->>Convex: events.getByAdminToken
+    Convex->>DB: SELECT event
+    Page->>Convex: responses.getByEventId
+    Convex->>DB: SELECT all responses
+    Convex-->>Page: responses[]
+    Page->>Heatmap: Render with responses
+    Heatmap->>Utils: calculateHeatmap(responses)
+    Utils->>Utils: Count availability per slot
+    Utils->>Utils: Calculate percentages
+    Utils-->>Heatmap: heatmapData
+    Heatmap->>Utils: getHeatmapColor(percentage)
+    Utils-->>Heatmap: color values
+    Heatmap->>Utils: getBestTimeSlots()
+    Utils-->>Heatmap: top 3 slots
+    Heatmap->>Admin: Display colored grid

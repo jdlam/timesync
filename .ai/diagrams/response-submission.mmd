@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor Guest
+    participant Page as PublicEvent
+    participant Grid as AvailabilityGrid
+    participant Convex
+    participant DB as Database
+
+    Guest->>Page: Visit /events/{id}
+    Page->>Convex: events.getByIdWithResponseCount
+    Convex->>DB: SELECT event + count
+    Convex-->>Page: event data
+    Page->>Grid: Render with event config
+    Grid->>Grid: generateTimeSlots()
+    Guest->>Grid: Select availability slots
+    Guest->>Page: Enter name, submit
+    Page->>Page: generateEditToken()
+    Page->>Convex: responses.submit
+    Convex->>DB: Check maxRespondents
+    alt Limit reached
+        Convex-->>Page: Error: limit reached
+    else Space available
+        Convex->>DB: INSERT response
+        Convex-->>Page: responseId + editToken
+        Page->>Guest: Success + edit link
+    end
