@@ -3,5 +3,16 @@
   "framework": null,
   "installCommand": "npm ci",
   "buildCommand": "npx convex deploy --yes --cmd \"npm run build\"",
-  "outputDirectory": ".output"
+  "outputDirectory": ".output",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noai, noimageai"
+        }
+      ]
+    }
+  ]
 }
