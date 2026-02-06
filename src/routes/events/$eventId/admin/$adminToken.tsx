@@ -1,10 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
 	Download,
 	Link as LinkIcon,
 	Loader2,
 	Pencil,
+	Power,
+	PowerOff,
+	Trash2,
 	Users,
 } from "lucide-react";
 import { useState } from "react";
@@ -87,7 +90,10 @@ function AdminDashboardContent({
 	responses: Doc<"responses">[];
 	adminToken: string;
 }) {
+	const navigate = useNavigate();
 	const deleteResponseMutation = useMutation(api.responses.remove);
+	const toggleStatusMutation = useMutation(api.events.toggleStatusByAdminToken);
+	const deleteEventMutation = useMutation(api.events.deleteByAdminToken);
 
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -96,6 +102,8 @@ function AdminDashboardContent({
 		null,
 	);
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
+	const [showDeleteEventDialog, setShowDeleteEventDialog] = useState(false);
+	const [isEventActionLoading, setIsEventActionLoading] = useState(false);
 
 	// Find the highlighted response object
 	const highlightedResponse = selectedResponseId
@@ -133,6 +141,40 @@ function AdminDashboardContent({
 		}
 	};
 
+	const handleToggleEventStatus = async () => {
+		setIsEventActionLoading(true);
+		try {
+			const result = await toggleStatusMutation({
+				eventId: event._id,
+				adminToken,
+			});
+			toast.success(
+				`Event ${result.newStatus ? "activated" : "deactivated"} successfully`,
+			);
+		} catch (_error) {
+			toast.error("Failed to toggle event status");
+		} finally {
+			setIsEventActionLoading(false);
+		}
+	};
+
+	const handleDeleteEvent = async () => {
+		setIsEventActionLoading(true);
+		try {
+			await deleteEventMutation({
+				eventId: event._id,
+				adminToken,
+			});
+			toast.success("Event deleted successfully");
+			navigate({ to: "/" });
+		} catch (_error) {
+			toast.error("Failed to delete event");
+		} finally {
+			setIsEventActionLoading(false);
+			setShowDeleteEventDialog(false);
+		}
+	};
+
 	// Generate URLs
 	const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 	const publicUrl = `${baseUrl}/events/${event._id}`;
@@ -154,6 +196,32 @@ function AdminDashboardContent({
 					>
 						<Pencil className="h-3.5 w-3.5" />
 						Edit Event
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleToggleEventStatus}
+						disabled={isEventActionLoading}
+						className="gap-1.5"
+					>
+						{isEventActionLoading ? (
+							<Loader2 className="h-3.5 w-3.5 animate-spin" />
+						) : event.isActive ? (
+							<PowerOff className="h-3.5 w-3.5" />
+						) : (
+							<Power className="h-3.5 w-3.5" />
+						)}
+						{event.isActive ? "Deactivate" : "Activate"}
+					</Button>
+					<Button
+						variant="destructive"
+						size="sm"
+						onClick={() => setShowDeleteEventDialog(true)}
+						disabled={isEventActionLoading}
+						className="gap-1.5"
+					>
+						<Trash2 className="h-3.5 w-3.5" />
+						Delete
 					</Button>
 					{event.isPremium && (
 						<Button
@@ -273,6 +341,35 @@ function AdminDashboardContent({
 							className="bg-destructive text-white hover:bg-destructive/90"
 						>
 							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			{/* Delete Event Confirmation Dialog */}
+			<AlertDialog
+				open={showDeleteEventDialog}
+				onOpenChange={setShowDeleteEventDialog}
+			>
+				<AlertDialogContent className="bg-card border-border text-card-foreground">
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete Event</AlertDialogTitle>
+						<AlertDialogDescription className="text-muted-foreground">
+							Are you sure you want to delete "{event.title}"? This will also
+							delete all {responses.length} associated responses. This action
+							cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleDeleteEvent}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							{isEventActionLoading ? (
+								<Loader2 className="w-4 h-4 animate-spin mr-2" />
+							) : null}
+							Delete Event
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

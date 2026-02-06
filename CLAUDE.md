@@ -381,10 +381,12 @@ SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
 ## What's Not Implemented Yet
 
 See `USER_STORIES.md` for full status. Major missing features:
-- Premium features / Stripe (Epic 5)
-- Event deletion for event creators (Stories 7.1, 7.2)
+- Full archive UI with filtered tabs (Story 7.1 - toggle implemented, archive tab not)
+- Password protection UI (Story 5.4 - schema ready, no UI)
+- Custom branding UI (schema ready, no UI)
 - Email notifications (Story 6.2)
-- User accounts linked to events (Epic 4 partially done - auth exists but not linked to event creation)
+- Ad-free experience (Story 5.6)
+- E2E tests and CI pipeline (Story T.4)
 
 ## Documentation Files
 
@@ -396,6 +398,26 @@ See `USER_STORIES.md` for full status. Major missing features:
 | `CLAUDE.md` | This file - AI assistant guidelines |
 | `.ai/ARCHITECTURE.md` | Codebase architecture diagrams and code flows |
 | `.ai/README.md` | AI documentation directory index |
+
+## Keeping Documentation Updated
+
+**After implementing any feature, you MUST update the relevant documentation files before considering the work complete.** This is mandatory, not optional.
+
+| File | When to Update |
+|------|---------------|
+| `USER_STORIES.md` | Mark stories as ✅, check off acceptance criteria, update technical notes |
+| `FEATURES.md` | Add new feature descriptions, update existing entries |
+| `CLAUDE.md` | Update "What's Not Implemented Yet" section, add new patterns or conventions |
+| `.ai/ARCHITECTURE.md` | Update diagrams when code flows change (see below) |
+
+**Workflow:**
+1. Implement the feature
+2. Write/update tests
+3. Update `USER_STORIES.md` status (❌ → ⚠️ or ✅)
+4. Update `FEATURES.md` with feature description
+5. Update any other affected docs
+
+Keeping these files in sync prevents documentation drift and ensures all AI agents and developers have accurate context.
 
 ## Shared AI Agent Documentation
 
