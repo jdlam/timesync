@@ -46,7 +46,7 @@ function AdminDashboard() {
 					<div className="bg-card border border-border rounded-lg p-6">
 						<div className="flex items-center justify-between mb-4">
 							<h2 className="text-lg font-semibold flex items-center gap-2">
-								<CalendarDays className="w-5 h-5 text-cyan-400" />
+								<CalendarDays className="w-5 h-5 text-teal-400" />
 								Recent Events
 							</h2>
 							<Link to="/admin/events">

@@ -14,7 +14,7 @@ export function NotFound({
 	return (
 		<div className="min-h-screen bg-background flex items-center justify-center px-4">
 			<div className="max-w-md w-full text-center">
-				<AlertCircle className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
+				<AlertCircle className="w-16 h-16 text-teal-400 mx-auto mb-4" />
 				<h1 className="text-4xl font-bold text-foreground mb-2">{title}</h1>
 				<p className="text-lg text-muted-foreground mb-8">{message}</p>
 				<Link to="/">

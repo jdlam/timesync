@@ -35,7 +35,7 @@ function AdminIndex() {
 			<div className="min-h-screen flex items-center justify-center px-4">
 				<div className="text-center max-w-md">
 					<div className="mb-6">
-						<Shield className="w-16 h-16 mx-auto text-cyan-400" />
+						<Shield className="w-16 h-16 mx-auto text-teal-400" />
 					</div>
 					<h1 className="text-3xl font-bold mb-4">Admin Access Required</h1>
 					<p className="text-muted-foreground mb-8">

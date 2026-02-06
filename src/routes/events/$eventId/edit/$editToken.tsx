@@ -122,7 +122,7 @@ function EditResponseForm({
 		<div className="min-h-screen bg-background py-12 px-4">
 			<div className="max-w-6xl mx-auto">
 				<div className="mb-4 flex items-center gap-2">
-					<div className="bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-full text-sm font-semibold">
+					<div className="bg-teal-600/20 text-teal-400 px-3 py-1 rounded-full text-sm font-semibold">
 						Editing Response
 					</div>
 				</div>

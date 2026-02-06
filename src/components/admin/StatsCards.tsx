@@ -52,7 +52,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
 			value: stats.eventsThisWeek,
 			icon: TrendingUp,
 			description: "Created in last 7 days",
-			color: "text-cyan-500",
+			color: "text-teal-500",
 		},
 		{
 			title: "Responses This Week",

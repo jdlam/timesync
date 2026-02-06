@@ -95,7 +95,7 @@ export const GridCell = memo(function GridCell({
 				className={cn(
 					"relative h-12 border border-border rounded flex items-center justify-center",
 					"text-sm font-medium transition-all cursor-pointer",
-					"hover:ring-2 hover:ring-cyan-500",
+					"hover:ring-2 hover:ring-teal-500",
 				)}
 				style={{ backgroundColor: heatmapColor }}
 				title={`${heatmapData.count} available (${Math.round(heatmapData.percentage)}%)`}
@@ -119,10 +119,10 @@ export const GridCell = memo(function GridCell({
 			onTouchEnd={handleTouchEnd}
 			className={cn(
 				"h-12 w-full border rounded transition-all",
-				"focus:outline-none focus:ring-2 focus:ring-cyan-500",
-				"hover:border-cyan-500",
+				"focus:outline-none focus:ring-2 focus:ring-teal-500",
+				"hover:border-teal-500",
 				isSelected
-					? "bg-cyan-600 border-cyan-500 text-white hover:bg-cyan-700"
+					? "bg-teal-600 border-teal-500 text-white hover:bg-teal-700"
 					: "bg-muted border-border text-muted-foreground hover:bg-accent",
 				"active:scale-95",
 				hasDayOffset && !isSelected && "border-amber-500/50",

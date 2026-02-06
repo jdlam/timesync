@@ -20,6 +20,7 @@ import {
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { useSubscription } from "../hooks/useSubscription";
+import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui/button";
 
@@ -39,8 +40,8 @@ export default function Header() {
 							to="/"
 							className="flex items-center gap-2 text-white font-bold text-xl"
 						>
-							<Calendar className="w-8 h-8 text-cyan-400" />
-							<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+							<Logo size={32} />
+							<span className="bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent">
 								TimeSync
 							</span>
 						</Link>
@@ -90,7 +91,7 @@ export default function Header() {
 							</SignedOut>
 							<SignedIn>
 								{isPremium ? (
-									<span className="flex items-center gap-1 text-sm text-cyan-400 font-medium">
+									<span className="flex items-center gap-1 text-sm text-teal-400 font-medium">
 										<Crown size={14} />
 										Premium
 									</span>
@@ -102,7 +103,7 @@ export default function Header() {
 										<Button
 											variant="outline"
 											size="sm"
-											className="border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-white"
+											className="border-teal-500 text-teal-500 hover:bg-teal-500 hover:text-white"
 										>
 											<Crown size={14} className="mr-1" />
 											Upgrade
@@ -142,8 +143,8 @@ export default function Header() {
 			>
 				<div className="flex items-center justify-between p-4 border-b border-border">
 					<div className="flex items-center gap-2">
-						<Calendar className="w-6 h-6 text-cyan-400" />
-						<h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+						<Logo size={24} />
+						<h2 className="text-xl font-bold bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent">
 							TimeSync
 						</h2>
 					</div>
@@ -212,7 +213,7 @@ export default function Header() {
 						</Link>
 
 						{isPremium ? (
-							<div className="flex items-center gap-3 p-3 rounded-lg bg-cyan-500/10 mb-2 text-cyan-400">
+							<div className="flex items-center gap-3 p-3 rounded-lg bg-teal-500/10 mb-2 text-teal-400">
 								<Crown size={20} />
 								<span className="font-medium">Premium Member</span>
 							</div>
@@ -221,7 +222,7 @@ export default function Header() {
 								to="/pricing"
 								search={{ success: false, canceled: false }}
 								onClick={() => setIsOpen(false)}
-								className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-500 transition-colors mb-2 text-cyan-400"
+								className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border border-teal-500/30 hover:border-teal-500 transition-colors mb-2 text-teal-400"
 							>
 								<Crown size={20} />
 								<span className="font-medium">Upgrade to Premium</span>

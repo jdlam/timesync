@@ -79,7 +79,7 @@ export function getHeatmapColor(
 	customColors?: { primary?: string },
 ): string {
 	// If custom primary color is provided, use it for high availability
-	// Otherwise, use default cyan/green gradient
+	// Otherwise, use default green gradient
 
 	if (percentage === 0) {
 		// No availability - theme-aware gray
@@ -110,11 +110,11 @@ export function getHeatmapColor(
 		return "oklch(0.70 0.18 140)"; // Light green
 	}
 
-	// High availability - dark green/cyan (matches app theme)
+	// High availability - teal/green (matches app theme)
 	if (customColors?.primary) {
 		return customColors.primary;
 	}
-	return "oklch(0.65 0.20 180)"; // Cyan/green
+	return "oklch(0.65 0.20 180)"; // Teal/green
 }
 
 /**

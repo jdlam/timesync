@@ -284,6 +284,21 @@ This document lists all features currently implemented in TimeSync.
 
 ---
 
+## Branding & Logo
+
+- **"Shaken Hourglass" Logo** — Tilted hourglass with motion lines, teal-to-emerald gradient
+  - Reusable `<Logo>` SVG component (`src/components/Logo.tsx`)
+  - Props: `size` (default 32), `showMotionLines` (auto-hidden below 32px), `className`
+  - Unique gradient IDs via `React.useId()` (safe for multiple instances)
+  - SVG source files in `src/assets/` (full and simplified variants)
+- **Brand gradient**: `from-teal-500 to-emerald-500` (header, hero, admin/my-events layouts)
+- **Meta tags**: description, Open Graph, Twitter Card
+- **Favicon & PWA icons**: Generated from SVG source (16, 32, 180, 192, 512px)
+- **Manifest files**: Proper TimeSync branding in `manifest.json` and `site.webmanifest`
+- **Brand kit reference**: `.ai/brand-kit.html` (open in browser for visual reference)
+
+---
+
 ## Landing Page
 
 - Hero section with call-to-action

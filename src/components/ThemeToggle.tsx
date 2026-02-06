@@ -38,7 +38,7 @@ export function ThemeToggle() {
 						onClick={() => setTheme("light")}
 						className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
 							theme === "light"
-								? "bg-cyan-600 text-white"
+								? "bg-teal-600 text-white"
 								: "hover:bg-accent text-foreground"
 						}`}
 					>
@@ -49,7 +49,7 @@ export function ThemeToggle() {
 						onClick={() => setTheme("dark")}
 						className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
 							theme === "dark"
-								? "bg-cyan-600 text-white"
+								? "bg-teal-600 text-white"
 								: "hover:bg-accent text-foreground"
 						}`}
 					>
@@ -60,7 +60,7 @@ export function ThemeToggle() {
 						onClick={() => setTheme("system")}
 						className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
 							theme === "system"
-								? "bg-cyan-600 text-white"
+								? "bg-teal-600 text-white"
 								: "hover:bg-accent text-foreground"
 						}`}
 					>
