@@ -352,7 +352,7 @@ export function AvailabilityGrid({
 				<div className="mt-4 p-4 bg-card border border-border rounded-lg">
 					<p className="text-muted-foreground">
 						Selected:{" "}
-						<span className="text-cyan-400 font-semibold">
+						<span className="text-teal-400 font-semibold">
 							{selectedSlots.size}
 						</span>{" "}
 						time slot{selectedSlots.size !== 1 ? "s" : ""}

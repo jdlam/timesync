@@ -48,8 +48,8 @@ export function ResponsesList({
 							key={response._id}
 							className={`bg-card p-4 transition-colors cursor-pointer ${
 								isSelected
-									? "border-cyan-500 border-2 ring-1 ring-cyan-500/50"
-									: "border-border hover:border-cyan-500"
+									? "border-teal-500 border-2 ring-1 ring-teal-500/50"
+									: "border-border hover:border-teal-500"
 							}`}
 							onClick={() => onSelectResponse?.(response._id)}
 						>
@@ -60,7 +60,7 @@ export function ResponsesList({
 											{response.respondentName}
 										</h3>
 										{isSelected && (
-											<span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full">
+											<span className="text-xs bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full">
 												Viewing
 											</span>
 										)}
@@ -73,7 +73,7 @@ export function ResponsesList({
 									)}
 
 									<div className="mt-3 flex flex-wrap gap-4 text-sm">
-										<div className="text-cyan-400">
+										<div className="text-teal-400">
 											<span className="font-semibold">
 												{response.selectedSlots.length}
 											</span>{" "}

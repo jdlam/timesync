@@ -114,7 +114,7 @@ describe("heatmap-utils", () => {
 			expect(color).toContain("oklch(0.70");
 		});
 
-		it("should return cyan/green for high availability (81-100%)", () => {
+		it("should return teal/green for high availability (81-100%)", () => {
 			const color = getHeatmapColor(100);
 
 			expect(color).toContain("oklch(0.65 0.20 180)");

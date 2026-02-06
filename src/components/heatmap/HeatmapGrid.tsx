@@ -129,9 +129,9 @@ export function HeatmapGrid({
 		<div className="space-y-6">
 			{/* Best Times Section */}
 			{responses.length > 0 && bestSlots.length > 0 && (
-				<div className="bg-gradient-to-r from-cyan-900/20 to-green-900/20 border border-cyan-700 rounded-lg p-6">
+				<div className="bg-gradient-to-r from-teal-900/20 to-emerald-900/20 border border-teal-700 rounded-lg p-6">
 					<div className="flex items-center gap-2 mb-4">
-						<TrendingUp className="w-5 h-5 text-cyan-400" />
+						<TrendingUp className="w-5 h-5 text-teal-400" />
 						<h3 className="text-xl font-bold text-foreground">
 							Best Available Times
 						</h3>
@@ -172,7 +172,7 @@ export function HeatmapGrid({
 										</span>
 									</div>
 									<div className="text-right">
-										<div className="text-cyan-400 font-bold">
+										<div className="text-teal-400 font-bold">
 											{data.count} / {responses.length}
 										</div>
 										<div className="text-muted-foreground text-xs">
@@ -195,7 +195,7 @@ export function HeatmapGrid({
 					{/* Desktop: Show highlighted response badge */}
 					{highlightedResponse && (
 						<div className="hidden md:flex items-center gap-2">
-							<div className="flex items-center gap-2 bg-cyan-500/20 text-cyan-400 px-3 py-1.5 rounded-full text-sm">
+							<div className="flex items-center gap-2 bg-teal-500/20 text-teal-400 px-3 py-1.5 rounded-full text-sm">
 								<User className="w-4 h-4" />
 								<span>Viewing: {highlightedResponse.respondentName}</span>
 							</div>

@@ -240,7 +240,7 @@ export function EditEventDialog({
 												.map((date) => (
 													<div
 														key={date.toISOString()}
-														className="bg-cyan-600/20 text-cyan-600 dark:text-cyan-400 px-2 py-1 rounded text-sm"
+														className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
 													>
 														{format(date, "MMM d, yyyy")}
 													</div>

@@ -39,12 +39,51 @@ export const Route = createRootRoute({
 			{
 				title: "TimeSync - Find the Perfect Time",
 			},
+			{
+				name: "description",
+				content:
+					"The fastest way to coordinate group schedules. No signups, no hassle — create an event, share a link, and find the best time with an interactive heatmap.",
+			},
+			{ property: "og:title", content: "TimeSync - Find the Perfect Time" },
+			{
+				property: "og:description",
+				content:
+					"The fastest way to coordinate group schedules. No signups, no hassle — just results.",
+			},
+			{ property: "og:type", content: "website" },
+			{ property: "og:image", content: "/logo512.png" },
+			{ name: "twitter:card", content: "summary" },
+			{
+				name: "twitter:title",
+				content: "TimeSync - Find the Perfect Time",
+			},
+			{
+				name: "twitter:description",
+				content:
+					"The fastest way to coordinate group schedules. No signups, no hassle — just results.",
+			},
+			{ name: "twitter:image", content: "/logo512.png" },
 		],
 		links: [
 			{
 				rel: "stylesheet",
 				href: appCss,
 			},
+			{ rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+			{
+				rel: "icon",
+				href: "/favicon-16x16.png",
+				sizes: "16x16",
+				type: "image/png",
+			},
+			{
+				rel: "icon",
+				href: "/favicon-32x32.png",
+				sizes: "32x32",
+				type: "image/png",
+			},
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+			{ rel: "manifest", href: "/site.webmanifest" },
 		],
 		scripts: [
 			{

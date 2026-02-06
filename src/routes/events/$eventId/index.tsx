@@ -219,8 +219,8 @@ function EventResponseContent({
 							label="Edit Link (Save this to update your response)"
 						/>
 
-						<div className="bg-cyan-900/20 border border-cyan-700 rounded-lg p-4">
-							<p className="text-sm text-cyan-400">
+						<div className="bg-teal-900/20 border border-teal-700 rounded-lg p-4">
+							<p className="text-sm text-teal-400">
 								<strong>Save this link!</strong> You can use it to edit your
 								availability later if your schedule changes.
 							</p>

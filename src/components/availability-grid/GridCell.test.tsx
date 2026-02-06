@@ -270,7 +270,7 @@ describe("GridCell", () => {
 			render(<GridCell {...defaultProps} isSelected={true} />);
 
 			const button = screen.getByRole("button");
-			expect(button.className).toContain("bg-cyan-600");
+			expect(button.className).toContain("bg-teal-600");
 		});
 
 		it("should apply unselected styles when isSelected is false", () => {

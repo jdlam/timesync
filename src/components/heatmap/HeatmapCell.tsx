@@ -36,8 +36,8 @@ export const HeatmapCell = memo(function HeatmapCell({
 			return bgColor;
 		}
 		if (isHighlighted) {
-			// Person selected this slot - use cyan
-			return "rgb(6, 182, 212)"; // cyan-500
+			// Person selected this slot - use teal
+			return "rgb(13, 148, 136)"; // teal-500
 		}
 		// Person did not select this slot - dim/gray
 		return "rgb(63, 63, 70)"; // zinc-700
@@ -50,7 +50,7 @@ export const HeatmapCell = memo(function HeatmapCell({
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className={`h-12 w-full rounded transition-all hover:ring-2 hover:ring-cyan-500 border cursor-pointer ${
+					className={`h-12 w-full rounded transition-all hover:ring-2 hover:ring-teal-500 border cursor-pointer ${
 						isFiltered && !isHighlighted
 							? "border-zinc-600 opacity-60"
 							: "border-border"
@@ -80,8 +80,8 @@ export const HeatmapCell = memo(function HeatmapCell({
 							<div className="flex items-center gap-2">
 								{isHighlighted ? (
 									<>
-										<Check className="w-5 h-5 text-cyan-400" />
-										<p className="font-semibold text-lg text-cyan-400">
+										<Check className="w-5 h-5 text-teal-400" />
+										<p className="font-semibold text-lg text-teal-400">
 											{highlightedName} is available
 										</p>
 									</>
@@ -114,7 +114,7 @@ export const HeatmapCell = memo(function HeatmapCell({
 									</p>
 									<ul className="space-y-1">
 										{data.respondents.map((name) => (
-											<li key={name} className="text-sm text-cyan-400">
+											<li key={name} className="text-sm text-teal-400">
 												• {name}
 											</li>
 										))}

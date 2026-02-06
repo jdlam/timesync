@@ -133,10 +133,10 @@ function CreateEvent() {
 
 				{/* Tier Badge */}
 				{isPremium ? (
-					<div className="mb-6 p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-3">
-						<Crown className="w-5 h-5 text-cyan-400" />
+					<div className="mb-6 p-4 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border border-teal-500/30 rounded-xl flex items-center gap-3">
+						<Crown className="w-5 h-5 text-teal-400" />
 						<div>
-							<p className="text-cyan-400 font-medium">Premium Event</p>
+							<p className="text-teal-400 font-medium">Premium Event</p>
 							<p className="text-sm text-muted-foreground">
 								Up to {tierLimits.maxDates} dates, unlimited participants
 							</p>
@@ -260,7 +260,7 @@ function CreateEvent() {
 												.map((date) => (
 													<div
 														key={date.toISOString()}
-														className="bg-cyan-600/20 text-cyan-600 dark:text-cyan-400 px-2 py-1 rounded text-sm"
+														className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
 													>
 														{format(date, "MMM d, yyyy")}
 													</div>
@@ -383,8 +383,8 @@ function CreateEvent() {
 						/>
 						<LinkCopy url={adminUrl} label="Admin Link (Keep this private!)" />
 
-						<div className="bg-cyan-900/20 border border-cyan-700 rounded-lg p-4 mt-6">
-							<p className="text-sm text-cyan-400">
+						<div className="bg-teal-900/20 border border-teal-700 rounded-lg p-4 mt-6">
+							<p className="text-sm text-teal-400">
 								<strong>Important:</strong> Save your admin link! You'll need it
 								to view results and manage responses.
 							</p>

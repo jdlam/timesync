@@ -163,9 +163,9 @@ function PricingPage() {
 					</div>
 
 					{/* Premium Tier */}
-					<div className="bg-card border-2 border-cyan-500 rounded-2xl p-8 shadow-lg shadow-cyan-500/10 relative">
+					<div className="bg-card border-2 border-teal-500 rounded-2xl p-8 shadow-lg shadow-teal-500/10 relative">
 						<div className="absolute -top-4 left-1/2 -translate-x-1/2">
-							<span className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
+							<span className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-4 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
 								<Crown className="w-4 h-4" /> Most Popular
 							</span>
 						</div>
@@ -181,29 +181,29 @@ function PricingPage() {
 						</div>
 						<ul className="space-y-4 mb-8">
 							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
 								<span className="text-foreground">
 									Up to {TIER_LIMITS.premium.maxDates} dates per event
 								</span>
 							</li>
 							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
 								<span className="text-foreground">Unlimited participants</span>
 							</li>
 							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
 								<span className="text-foreground">CSV export</span>
 							</li>
 							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
 								<span className="text-foreground">Password protection</span>
 							</li>
 							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
 								<span className="text-foreground">Custom branding</span>
 							</li>
 							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
 								<span className="text-foreground">Priority support</span>
 							</li>
 						</ul>
@@ -221,14 +221,14 @@ function PricingPage() {
 							</Button>
 						) : isSignedIn ? (
 							<Button
-								className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+								className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
 								onClick={handleUpgrade}
 							>
 								Upgrade to Premium
 							</Button>
 						) : (
 							<SignInButton mode="modal">
-								<Button className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600">
+								<Button className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600">
 									Sign in to Upgrade
 								</Button>
 							</SignInButton>
@@ -279,7 +279,7 @@ function PricingPage() {
 										<td className="p-4 text-center">
 											{typeof feature.premium === "boolean" ? (
 												feature.premium ? (
-													<Check className="w-5 h-5 text-cyan-500 mx-auto" />
+													<Check className="w-5 h-5 text-teal-500 mx-auto" />
 												) : (
 													<X className="w-5 h-5 text-muted-foreground mx-auto" />
 												)

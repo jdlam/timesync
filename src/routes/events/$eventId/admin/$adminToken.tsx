@@ -185,7 +185,7 @@ function AdminDashboardContent({
 			<div className="max-w-7xl mx-auto">
 				{/* Admin Badge and Edit Button */}
 				<div className="mb-4 flex items-center gap-2 flex-wrap">
-					<div className="bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-full text-sm font-semibold">
+					<div className="bg-teal-600/20 text-teal-400 px-3 py-1 rounded-full text-sm font-semibold">
 						Admin Dashboard
 					</div>
 					<Button
@@ -250,7 +250,7 @@ function AdminDashboardContent({
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 					<div className="bg-card border border-border rounded-lg p-6">
 						<div className="flex items-center gap-3">
-							<Users className="w-8 h-8 text-cyan-400" />
+							<Users className="w-8 h-8 text-teal-400" />
 							<div>
 								<p className="text-muted-foreground text-sm">Total Responses</p>
 								<p className="text-3xl font-bold text-foreground">
