@@ -553,6 +553,250 @@ describe("events", () => {
 		});
 	});
 
+	describe("toggleStatusByAdminToken", () => {
+		it("should toggle active event to inactive", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Active Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(api.events.toggleStatusByAdminToken, {
+				eventId,
+				adminToken: "admin-token",
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.newStatus).toBe(false);
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+			expect(event?.isActive).toBe(false);
+		});
+
+		it("should toggle inactive event to active", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Inactive Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: false,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(api.events.toggleStatusByAdminToken, {
+				eventId,
+				adminToken: "admin-token",
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.newStatus).toBe(true);
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+			expect(event?.isActive).toBe(true);
+		});
+
+		it("should throw error for invalid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "correct-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.toggleStatusByAdminToken, {
+					eventId,
+					adminToken: "wrong-token",
+				}),
+			).rejects.toThrow("Event not found or invalid admin token");
+		});
+	});
+
+	describe("deleteByAdminToken", () => {
+		it("should delete event with valid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Event To Delete",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(api.events.deleteByAdminToken, {
+				eventId,
+				adminToken: "admin-token",
+			});
+
+			expect(result.success).toBe(true);
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+			expect(event).toBeNull();
+		});
+
+		it("should cascade delete all responses", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				const id = await ctx.db.insert("events", {
+					title: "Event With Responses",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 10,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+
+				await ctx.db.insert("responses", {
+					eventId: id,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "token-1",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+				await ctx.db.insert("responses", {
+					eventId: id,
+					respondentName: "Bob",
+					selectedSlots: ["2025-01-20T11:00:00Z"],
+					editToken: "token-2",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+
+				return id;
+			});
+
+			await t.mutation(api.events.deleteByAdminToken, {
+				eventId,
+				adminToken: "admin-token",
+			});
+
+			const responses = await t.run(async (ctx) => {
+				return await ctx.db
+					.query("responses")
+					.withIndex("by_event", (q) => q.eq("eventId", eventId))
+					.collect();
+			});
+			expect(responses).toHaveLength(0);
+		});
+
+		it("should throw error for invalid admin token", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "correct-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.deleteByAdminToken, {
+					eventId,
+					adminToken: "wrong-token",
+				}),
+			).rejects.toThrow("Event not found or invalid admin token");
+		});
+
+		it("should throw error for non-existent event", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				const id = await ctx.db.insert("events", {
+					title: "Temp",
+					timeZone: "UTC",
+					dates: [],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+				await ctx.db.delete(id);
+				return id;
+			});
+
+			await expect(
+				t.mutation(api.events.deleteByAdminToken, {
+					eventId,
+					adminToken: "token",
+				}),
+			).rejects.toThrow("Event not found or invalid admin token");
+		});
+	});
+
 	describe("create with creatorEmail", () => {
 		it("should store creatorId and creatorEmail when provided", async () => {
 			const t = convexTest(schema, modules);

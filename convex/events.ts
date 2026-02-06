@@ -105,6 +105,58 @@ export const update = mutation({
 	},
 });
 
+// Mutation: Toggle event active status (admin token auth)
+export const toggleStatusByAdminToken = mutation({
+	args: {
+		eventId: v.id("events"),
+		adminToken: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const event = await ctx.db.get(args.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			throw new Error("Event not found or invalid admin token");
+		}
+
+		const newStatus = !event.isActive;
+
+		await ctx.db.patch(args.eventId, {
+			isActive: newStatus,
+			updatedAt: Date.now(),
+		});
+
+		return { success: true, newStatus };
+	},
+});
+
+// Mutation: Delete event and all responses (admin token auth)
+export const deleteByAdminToken = mutation({
+	args: {
+		eventId: v.id("events"),
+		adminToken: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const event = await ctx.db.get(args.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			throw new Error("Event not found or invalid admin token");
+		}
+
+		// Delete all responses for this event
+		const responses = await ctx.db
+			.query("responses")
+			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+			.collect();
+
+		for (const response of responses) {
+			await ctx.db.delete(response._id);
+		}
+
+		// Delete the event
+		await ctx.db.delete(args.eventId);
+
+		return { success: true };
+	},
+});
+
 // Mutation: Create a new event
 export const create = mutation({
 	args: {

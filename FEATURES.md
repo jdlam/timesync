@@ -63,6 +63,16 @@ This document lists all features currently implemented in TimeSync.
   - Form validation with clear error messages
   - Success/error toast notifications
 
+### Event Management (Admin Token)
+
+- **Toggle Event Status**: Deactivate/activate event via admin token
+  - Deactivated events show "no longer accepting responses" to respondents
+  - Re-activate to resume accepting responses
+- **Delete Event**: Permanently delete event and all responses
+  - Confirmation dialog shows event title and response count
+  - Cascade deletes all associated responses
+  - Redirects to homepage after deletion
+
 ### Statistics Section
 
 - Total responses count
@@ -115,9 +125,12 @@ This document lists all features currently implemented in TimeSync.
 ## Authentication (Clerk)
 
 - **Sign In / Sign Out** buttons in header
+- Email/password authentication
 - OAuth providers (Google, etc.)
+- Email verification on signup
 - Integrated with Convex via JWT verification
 - User button with account menu when signed in
+- User record created automatically on first sign-in (`getOrCreateUser` mutation)
 
 ---
 
@@ -210,6 +223,45 @@ This document lists all features currently implemented in TimeSync.
 
 ---
 
+## Pricing & Subscription (Stripe)
+
+- **Pricing Page** at `/pricing`
+  - Free vs Premium comparison table
+  - Feature breakdown with check/cross icons
+  - FAQ section
+  - Dynamic limits from `TIER_LIMITS` configuration
+  - Responsive design
+
+- **Stripe Checkout Integration**
+  - "Upgrade to Premium" button for signed-in users
+  - "Sign in to Upgrade" prompt for guests
+  - Redirect to Stripe Checkout for payment
+  - Success/canceled URL handling with toast notifications
+  - Webhook handler for subscription lifecycle events:
+    - `checkout.session.completed` - activates premium
+    - `customer.subscription.updated` - syncs status changes
+    - `customer.subscription.deleted` - reverts to free
+    - `invoice.payment_failed` - logged for monitoring
+
+- **Subscription Management**
+  - Stripe Customer Portal for managing subscription
+  - `useSubscription` hook for client-side subscription state
+  - Real-time tier enforcement in event creation
+  - Super admins automatically have premium access
+
+---
+
+## CSV Export (Premium)
+
+- **Export Results to CSV** from admin dashboard
+  - Export button in admin dashboard (premium users only)
+  - CSV format: Time Slot, Respondent Name, Available (Yes/No)
+  - Filename includes event title and export date
+  - Proper CSV escaping for commas, quotes, and line breaks
+  - Client-side generation via `src/lib/csv-export.ts`
+
+---
+
 ## Theme System
 
 - **Light / Dark / System** theme options
@@ -270,6 +322,8 @@ This document lists all features currently implemented in TimeSync.
 - Fetch event by ID (with active status check)
 - Fetch event by admin token (secure admin access)
 - Get event with response count
+- Toggle event status via admin token
+- Delete event (with cascade delete of responses) via admin token
 
 ### Responses
 
@@ -279,23 +333,33 @@ This document lists all features currently implemented in TimeSync.
 - Fetch all responses for an event
 - Count responses per event
 
+### Users & Subscriptions
+
+- Get or create user record on sign-in
+- Query current user subscription status
+- Stripe checkout session creation
+- Stripe customer portal session creation
+- Webhook handler for subscription lifecycle events
+- Super admin detection via environment variable
+
 ---
 
 ## Tier Configuration
 
 ### Free Tier
 
-- Up to 20 participants per event
+- Up to 5 participants per event
 - Up to 14 dates
 - Standard slot durations (15, 30, 60 min)
 
-### Premium Tier (Planned)
+### Premium Tier
 
 - Unlimited participants
 - Up to 365 dates
-- Custom slot durations
-- Password protection
-- Custom branding
+- CSV export
+- Password protection (schema ready, UI planned)
+- Custom branding (schema ready, UI planned)
+- Tier enforcement active in event creation form via `useSubscription` hook
 
 ---
 
@@ -304,7 +368,10 @@ This document lists all features currently implemented in TimeSync.
 - **Time utilities**: Generate slots, parse/format times, timezone handling
 - **Heatmap utilities**: Calculate availability percentages, color gradients
 - **Token utilities**: Generate secure tokens for admin/edit links
-- **Validation schemas**: Zod schemas for form validation
+- **Validation schemas**: Zod schemas for form validation (tier-aware)
+- **CSV export**: Generate and download CSV files with proper escaping
+- **Tier configuration**: Free/premium limits and feature flags
+- **Analytics**: Umami analytics integration
 
 ---
 
