@@ -1,0 +1,46 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0b"/>
+      <stop offset="100%" stop-color="#111113"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle gradient glow behind logo -->
+  <circle cx="600" cy="260" r="200" fill="#0d9488" opacity="0.06"/>
+
+  <!-- Logo (centered, 140x140) -->
+  <g transform="translate(530, 130)">
+    <rect x="10" y="10" width="120" height="120" rx="28" fill="url(#teal)"/>
+    <g transform="rotate(-18, 70, 70)">
+      <path d="M46,44 C46,34 94,34 94,44 C94,56 80,62 70,70 C80,78 94,84 94,96 C94,106 46,106 46,96 C46,84 60,78 70,70 C60,62 46,56 46,44 Z" fill="white"/>
+    </g>
+    <path d="M104,34 Q110,40 104,46" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+    <path d="M112,38 Q118,44 112,50" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <path d="M36,94 Q30,100 36,106" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+    <path d="M28,90 Q22,96 28,102" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.35"/>
+  </g>
+
+  <!-- App name -->
+  <text x="600" y="340" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="64" font-weight="700" fill="url(#textGrad)">TimeSync</text>
+
+  <!-- Tagline -->
+  <text x="600" y="400" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="28" fill="#a1a1aa">Find the Perfect Time</text>
+
+  <!-- Description -->
+  <text x="600" y="450" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="#71717a">No signups, no hassle — just share a link and coordinate schedules</text>
+
+  <!-- Bottom accent line -->
+  <rect x="500" y="520" width="200" height="3" rx="1.5" fill="url(#teal)" opacity="0.6"/>
+</svg>

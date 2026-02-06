@@ -51,8 +51,8 @@ export const Route = createRootRoute({
 					"The fastest way to coordinate group schedules. No signups, no hassle — just results.",
 			},
 			{ property: "og:type", content: "website" },
-			{ property: "og:image", content: "/logo512.png" },
-			{ name: "twitter:card", content: "summary" },
+			{ property: "og:image", content: "/og-image.png" },
+			{ name: "twitter:card", content: "summary_large_image" },
 			{
 				name: "twitter:title",
 				content: "TimeSync - Find the Perfect Time",
@@ -62,7 +62,7 @@ export const Route = createRootRoute({
 				content:
 					"The fastest way to coordinate group schedules. No signups, no hassle — just results.",
 			},
-			{ name: "twitter:image", content: "/logo512.png" },
+			{ name: "twitter:image", content: "/og-image.png" },
 		],
 		links: [
 			{

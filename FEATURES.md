@@ -102,11 +102,11 @@ This document lists all features currently implemented in TimeSync.
 
 - Click a response card to highlight that person's selected slots
 - Heatmap shows:
-  - Cyan checkmark for slots they selected
+  - Teal checkmark for slots they selected
   - Dimmed/gray for slots they did not select
 - "Viewing: [Name]" banner with "Show All" button
 - Click same response or "Show All" to return to aggregate view
-- Selected response card shows cyan border and "Viewing" badge
+- Selected response card shows teal border and "Viewing" badge
 
 ### Responses List
 
