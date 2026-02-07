@@ -251,6 +251,23 @@ This document lists all features currently implemented in TimeSync.
 
 ---
 
+## Password Protection (Premium)
+
+- **Event Password Protection** for premium users
+  - Optional password field during event creation
+  - Password hashed server-side with SHA-256 + random salt (stored as `salt:hash`)
+  - Respondents see a password gate before accessing the event
+  - Wrong password shows clear error message
+  - Password verified on both query and response submission (server-side)
+  - Admin can change or remove password via edit dialog
+  - Admin page (adminToken) and edit response page (editToken) bypass password
+  - Free tier users see an upgrade prompt instead of password input
+  - "Password Protected" badge shown in event header
+  - `PasswordGate` component provides centered, mobile-friendly password entry UI
+  - `convex/lib/password.ts` provides hashing/verification utilities
+
+---
+
 ## CSV Export (Premium)
 
 - **Export Results to CSV** from admin dashboard

@@ -2,7 +2,7 @@ import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
-import { CalendarIcon, Crown } from "lucide-react";
+import { CalendarIcon, Crown, Eye, EyeOff, Lock } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LinkCopy } from "@/components/LinkCopy";
@@ -54,6 +54,8 @@ function CreateEvent() {
 	const tierLimits = isPremium ? TIER_LIMITS.premium : TIER_LIMITS.free;
 	const eventSchema = useMemo(() => createEventSchemaForTier(tier), [tier]);
 
+	const [showPassword, setShowPassword] = useState(false);
+
 	const form = useAppForm({
 		defaultValues: {
 			title: "",
@@ -63,6 +65,7 @@ function CreateEvent() {
 			timeRangeStart: "09:00",
 			timeRangeEnd: "17:00",
 			slotDuration: "30" as "15" | "30" | "60",
+			password: "" as string | undefined,
 		},
 		validators: {
 			onSubmit: eventSchema as never,
@@ -82,6 +85,7 @@ function CreateEvent() {
 					maxRespondents: tierLimits.maxParticipants,
 					creatorId: user?.id, // Clerk subject ID or undefined for guests
 					creatorEmail: user?.primaryEmailAddress?.emailAddress, // Creator's email or undefined for guests
+					password: value.password || undefined,
 				});
 				setCreatedEvent({
 					eventId: result.eventId,
@@ -350,6 +354,76 @@ function CreateEvent() {
 							</div>
 						)}
 					</form.AppField>
+
+					{/* Password Protection */}
+					{isPremium ? (
+						<form.AppField name="password">
+							{(field) => (
+								<div className="space-y-2">
+									<Label className="text-xl font-bold text-foreground flex items-center gap-2">
+										<Lock className="h-4 w-4" />
+										Password Protection
+										<span className="text-xs font-normal bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-2 py-0.5 rounded-full">
+											Premium
+										</span>
+									</Label>
+									<div className="relative">
+										<Input
+											type={showPassword ? "text" : "password"}
+											value={field.state.value ?? ""}
+											onChange={(e) =>
+												field.handleChange(e.target.value || undefined)
+											}
+											placeholder="Leave empty for no password"
+											className="bg-background border-border text-foreground pr-10"
+										/>
+										<button
+											type="button"
+											onClick={() => setShowPassword(!showPassword)}
+											className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+											tabIndex={-1}
+										>
+											{showPassword ? (
+												<EyeOff className="w-4 h-4" />
+											) : (
+												<Eye className="w-4 h-4" />
+											)}
+										</button>
+									</div>
+									<p className="text-xs text-muted-foreground">
+										Respondents will need this password to view and submit
+										availability.
+									</p>
+									{field.state.meta.errors.length > 0 && (
+										<p className="text-red-500 text-sm mt-1">
+											{getErrorMessage(field.state.meta.errors[0])}
+										</p>
+									)}
+								</div>
+							)}
+						</form.AppField>
+					) : (
+						<div className="space-y-2">
+							<Label className="text-xl font-bold text-muted-foreground flex items-center gap-2">
+								<Lock className="h-4 w-4" />
+								Password Protection
+							</Label>
+							<div className="bg-muted/50 border border-border rounded-md px-3 py-3 flex items-center justify-between">
+								<p className="text-sm text-muted-foreground">
+									Require a password for respondents to access your event.
+								</p>
+								<Link
+									to="/pricing"
+									search={{ success: false, canceled: false }}
+								>
+									<Button variant="outline" size="sm" className="gap-1 ml-3">
+										<Crown className="w-4 h-4" />
+										Upgrade
+									</Button>
+								</Link>
+							</div>
+						</div>
+					)}
 
 					{/* Submit Button */}
 					<div className="flex justify-end pt-4">

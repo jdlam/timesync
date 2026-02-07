@@ -1,4 +1,4 @@
-import { Calendar, Clock, Globe, MapPin, Users } from "lucide-react";
+import { Calendar, Clock, Globe, Lock, MapPin, Users } from "lucide-react";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { TimezoneBanner } from "./TimezoneBanner";
@@ -6,9 +6,14 @@ import { TimezoneBanner } from "./TimezoneBanner";
 interface EventHeaderProps {
 	event: Doc<"events">;
 	responseCount?: number;
+	isPasswordProtected?: boolean;
 }
 
-export function EventHeader({ event, responseCount }: EventHeaderProps) {
+export function EventHeader({
+	event,
+	responseCount,
+	isPasswordProtected,
+}: EventHeaderProps) {
 	const timezoneContext = useTimezoneDisplaySafe();
 	const spotsRemaining =
 		responseCount !== undefined
@@ -70,6 +75,13 @@ export function EventHeader({ event, responseCount }: EventHeaderProps) {
 									? `${spotsRemaining} spot${spotsRemaining === 1 ? "" : "s"} remaining`
 									: "No spots remaining"}
 							</span>
+						</div>
+					)}
+
+					{isPasswordProtected && (
+						<div className="flex items-center gap-2 text-teal-400">
+							<Lock className="w-4 h-4" />
+							<span>Password Protected</span>
 						</div>
 					)}
 				</div>

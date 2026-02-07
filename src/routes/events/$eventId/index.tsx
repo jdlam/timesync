@@ -7,6 +7,7 @@ import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGri
 import { EventHeader } from "@/components/EventHeader";
 import { LinkCopy } from "@/components/LinkCopy";
 import { NotFound } from "@/components/NotFound";
+import { PasswordGate } from "@/components/PasswordGate";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -29,10 +30,12 @@ export const Route = createFileRoute("/events/$eventId/")({
 
 function EventResponse() {
 	const { eventId } = Route.useParams();
+	const [password, setPassword] = useState<string | undefined>(undefined);
 
 	// All hooks must be called unconditionally at the top
 	const eventData = useQuery(api.events.getByIdWithResponseCount, {
 		eventId: eventId as Id<"events">,
+		password,
 	});
 
 	// Loading state
@@ -41,6 +44,18 @@ function EventResponse() {
 			<div className="min-h-screen bg-background flex items-center justify-center">
 				<Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
 			</div>
+		);
+	}
+
+	// Password gate
+	if (eventData?.passwordRequired) {
+		return (
+			<PasswordGate
+				eventTitle={eventData.eventTitle}
+				wrongPassword={eventData.wrongPassword}
+				onSubmit={(pw) => setPassword(pw)}
+				isLoading={false}
+			/>
 		);
 	}
 
@@ -58,7 +73,12 @@ function EventResponse() {
 
 	return (
 		<TimezoneDisplayProvider eventTimezone={event.timeZone} eventId={event._id}>
-			<EventResponseContent event={event} responseCount={responseCount} />
+			<EventResponseContent
+				event={event}
+				responseCount={responseCount}
+				eventPassword={password}
+				isPasswordProtected={eventData.isPasswordProtected}
+			/>
 		</TimezoneDisplayProvider>
 	);
 }
@@ -66,9 +86,13 @@ function EventResponse() {
 function EventResponseContent({
 	event,
 	responseCount,
+	eventPassword,
+	isPasswordProtected,
 }: {
-	event: Doc<"events">;
+	event: Doc<"events"> & { isPasswordProtected?: boolean };
 	responseCount: number;
+	eventPassword?: string;
+	isPasswordProtected?: boolean;
 }) {
 	const submitResponseMutation = useMutation(api.responses.submit);
 
@@ -107,6 +131,7 @@ function EventResponseContent({
 				respondentComment: comment.trim() || undefined,
 				selectedSlots,
 				editToken,
+				password: eventPassword,
 			});
 
 			setSubmittedResponse({
@@ -134,7 +159,11 @@ function EventResponseContent({
 	return (
 		<div className="min-h-screen bg-background py-12 px-4">
 			<div className="max-w-6xl mx-auto">
-				<EventHeader event={event} responseCount={responseCount} />
+				<EventHeader
+					event={event}
+					responseCount={responseCount}
+					isPasswordProtected={isPasswordProtected}
+				/>
 
 				<div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6">
 					<h2 className="text-2xl font-bold text-foreground mb-4">

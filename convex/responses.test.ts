@@ -11,6 +11,8 @@ async function createTestEvent(
 	overrides: Partial<{
 		maxRespondents: number;
 		isActive: boolean;
+		isPremium: boolean;
+		password: string;
 	}> = {},
 ): Promise<Id<"events">> {
 	return await t.run(async (ctx) => {
@@ -23,7 +25,8 @@ async function createTestEvent(
 			slotDuration: 30,
 			adminToken: "admin-token",
 			maxRespondents: overrides.maxRespondents ?? 5,
-			isPremium: false,
+			isPremium: overrides.isPremium ?? false,
+			password: overrides.password,
 			isActive: overrides.isActive ?? true,
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
@@ -385,6 +388,88 @@ describe("responses", () => {
 				return await ctx.db.get(responseId);
 			});
 			expect(deleted).toBeNull();
+		});
+	});
+
+	describe("submit with password", () => {
+		it("should allow submission when event has no password", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const result = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Alice",
+				selectedSlots: ["2025-01-20T10:00:00Z"],
+				editToken: "token-1",
+			});
+
+			expect(result.responseId).toBeDefined();
+		});
+
+		it("should require password when event has one", async () => {
+			const t = convexTest(schema, modules);
+
+			// Use hashPassword to create a real hash
+			const { hashPassword } = await import("./lib/password");
+			const hashedPw = await hashPassword("event-pass");
+
+			const eventId = await createTestEvent(t, {
+				isPremium: true,
+				password: hashedPw,
+			});
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "token-1",
+				}),
+			).rejects.toThrow("Password is required for this event");
+		});
+
+		it("should reject incorrect password", async () => {
+			const t = convexTest(schema, modules);
+
+			const { hashPassword } = await import("./lib/password");
+			const hashedPw = await hashPassword("correct-pass");
+
+			const eventId = await createTestEvent(t, {
+				isPremium: true,
+				password: hashedPw,
+			});
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "token-1",
+					password: "wrong-pass",
+				}),
+			).rejects.toThrow("Incorrect event password");
+		});
+
+		it("should accept correct password", async () => {
+			const t = convexTest(schema, modules);
+
+			const { hashPassword } = await import("./lib/password");
+			const hashedPw = await hashPassword("correct-pass");
+
+			const eventId = await createTestEvent(t, {
+				isPremium: true,
+				password: hashedPw,
+			});
+
+			const result = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Alice",
+				selectedSlots: ["2025-01-20T10:00:00Z"],
+				editToken: "token-1",
+				password: "correct-pass",
+			});
+
+			expect(result.responseId).toBeDefined();
 		});
 	});
 });

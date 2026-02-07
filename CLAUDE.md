@@ -384,7 +384,6 @@ SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
 
 See `USER_STORIES.md` for full status. Major missing features:
 - Full archive UI with filtered tabs (Story 7.1 - toggle implemented, archive tab not)
-- Password protection UI (Story 5.4 - schema ready, no UI)
 - Custom slot duration UI for premium (Story 5.3 - schema ready, no UI)
 - Custom branding UI (schema ready, no UI)
 - Email notifications (Story 6.2)

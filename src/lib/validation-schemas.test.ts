@@ -528,6 +528,130 @@ describe("validation-schemas", () => {
 		});
 	});
 
+	describe("createEventSchemaForTier password (premium)", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const premiumSchema = createEventSchemaForTier("premium");
+
+		const validEvent = {
+			title: "Test",
+			timeZone: "UTC",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+			slotDuration: "30" as const,
+		};
+
+		it("should accept optional password for premium tier", () => {
+			const result = premiumSchema.safeParse({
+				...validEvent,
+				password: "mypassword",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept missing password for premium tier", () => {
+			const result = premiumSchema.safeParse(validEvent);
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject password shorter than 4 chars for premium tier", () => {
+			const result = premiumSchema.safeParse({
+				...validEvent,
+				password: "abc",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("4 characters");
+			}
+		});
+
+		it("should reject password longer than 128 chars for premium tier", () => {
+			const result = premiumSchema.safeParse({
+				...validEvent,
+				password: "a".repeat(129),
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("128 characters");
+			}
+		});
+	});
+
+	describe("createEventSchemaForTier password (free)", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const freeSchema = createEventSchemaForTier("free");
+
+		const validEvent = {
+			title: "Test",
+			timeZone: "UTC",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+			slotDuration: "30" as const,
+		};
+
+		it("should reject password for free tier", () => {
+			const result = freeSchema.safeParse({
+				...validEvent,
+				password: "mypassword",
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it("should accept missing password for free tier", () => {
+			const result = freeSchema.safeParse(validEvent);
+			expect(result.success).toBe(true);
+		});
+	});
+
+	describe("editEventSchemaForTier password", () => {
+		const premiumEditSchema = editEventSchemaForTier("premium");
+
+		const validEdit = {
+			title: "Test",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+		};
+
+		it("should accept password for premium edit", () => {
+			const result = premiumEditSchema.safeParse({
+				...validEdit,
+				password: "newpassword",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept null password (to remove)", () => {
+			const result = premiumEditSchema.safeParse({
+				...validEdit,
+				password: null,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept missing password (no change)", () => {
+			const result = premiumEditSchema.safeParse(validEdit);
+			expect(result.success).toBe(true);
+		});
+	});
+
 	describe("tier-specific error messages", () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
