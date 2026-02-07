@@ -134,6 +134,34 @@ describe("responses", () => {
 			).rejects.toThrow("Maximum number of respondents reached");
 		});
 
+		it("should allow unlimited responses when maxRespondents is -1", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t, {
+				maxRespondents: -1,
+				isPremium: true,
+			});
+
+			// Add several responses
+			for (let i = 0; i < 10; i++) {
+				await t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: `User ${i}`,
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: `token-unlimited-${i}`,
+				});
+			}
+
+			// Should still allow more
+			const result = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "User 11",
+				selectedSlots: ["2025-01-20T10:00:00Z"],
+				editToken: "token-unlimited-11",
+			});
+
+			expect(result.responseId).toBeDefined();
+		});
+
 		it("should allow response when under max respondents limit", async () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t, { maxRespondents: 3 });

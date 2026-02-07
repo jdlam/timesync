@@ -141,8 +141,12 @@ function EventResponseContent({
 			toast.success("Availability submitted successfully!");
 		} catch (err) {
 			console.error("Failed to submit response:", err);
-			const errorMessage =
+			const rawMessage =
 				err instanceof Error ? err.message : "Failed to submit response";
+			const errorMessage =
+				rawMessage === "Maximum number of respondents reached"
+					? "This event has reached its maximum number of respondents. Please contact the event creator to increase the limit."
+					: rawMessage;
 			setError(errorMessage);
 			toast.error(errorMessage);
 		} finally {

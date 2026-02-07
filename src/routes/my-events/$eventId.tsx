@@ -214,7 +214,18 @@ function MyEventDetail() {
 							</p>
 						</div>
 
-						<div className="pt-4">
+						<div className="pt-4 flex flex-col gap-2">
+							<Link
+								to="/events/$eventId/admin/$adminToken"
+								params={{
+									eventId: event._id,
+									adminToken: event.adminToken,
+								}}
+								className="inline-flex items-center text-sm text-primary hover:underline"
+							>
+								View Results & Heatmap
+								<ExternalLink className="w-3 h-3 ml-1" />
+							</Link>
 							<a
 								href={`/events/${event._id}`}
 								target="_blank"

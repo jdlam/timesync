@@ -905,6 +905,69 @@ describe("events", () => {
 
 			expect(event?.password).toBeUndefined();
 		});
+
+		it("should not store password when premium user leaves it empty", async () => {
+			const t = convexTest(schema, modules);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_user_empty_pw",
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(api.events.create, {
+				title: "Premium No Password",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				creatorId: "premium_user_empty_pw",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.password).toBeUndefined();
+		});
+
+		it("should not gate access when non-premium event was created with password arg", async () => {
+			const t = convexTest(schema, modules);
+
+			// Free user tries to set a password — backend ignores it
+			const result = await t.mutation(api.events.create, {
+				title: "Free Event With Password Attempt",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				password: "should-be-ignored",
+			});
+
+			// Query should return full event without requiring password
+			const queryResult = await t.query(
+				api.events.getByIdWithResponseCount,
+				{ eventId: result.eventId },
+			);
+
+			expect(queryResult.event).not.toBeNull();
+			expect(queryResult.passwordRequired).toBe(false);
+			expect(queryResult.event?.title).toBe(
+				"Free Event With Password Attempt",
+			);
+		});
 	});
 
 	describe("getByIdWithResponseCount with password", () => {
