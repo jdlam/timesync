@@ -53,9 +53,13 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 				tier === "premium"
 					? z
 							.string()
-							.min(4, "Password must be at least 4 characters")
-							.max(128, "Password must be less than 128 characters")
 							.optional()
+							.refine((val) => !val || val.length >= 4, {
+								message: "Password must be at least 4 characters",
+							})
+							.refine((val) => !val || val.length <= 128, {
+								message: "Password must be less than 128 characters",
+							})
 					: z
 							.string()
 							.optional()
@@ -140,10 +144,14 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 				tier === "premium"
 					? z
 							.string()
-							.min(4, "Password must be at least 4 characters")
-							.max(128, "Password must be less than 128 characters")
 							.optional()
 							.nullable()
+							.refine((val) => !val || val.length >= 4, {
+								message: "Password must be at least 4 characters",
+							})
+							.refine((val) => !val || val.length <= 128, {
+								message: "Password must be less than 128 characters",
+							})
 					: z.string().optional().nullable(),
 		})
 		.refine(

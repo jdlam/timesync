@@ -562,6 +562,14 @@ describe("validation-schemas", () => {
 			expect(result.success).toBe(true);
 		});
 
+		it("should accept empty string password for premium tier (no password)", () => {
+			const result = premiumSchema.safeParse({
+				...validEvent,
+				password: "",
+			});
+			expect(result.success).toBe(true);
+		});
+
 		it("should reject password shorter than 4 chars for premium tier", () => {
 			const result = premiumSchema.safeParse({
 				...validEvent,
@@ -616,6 +624,14 @@ describe("validation-schemas", () => {
 
 		it("should accept missing password for free tier", () => {
 			const result = freeSchema.safeParse(validEvent);
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept empty string password for free tier", () => {
+			const result = freeSchema.safeParse({
+				...validEvent,
+				password: "",
+			});
 			expect(result.success).toBe(true);
 		});
 	});
