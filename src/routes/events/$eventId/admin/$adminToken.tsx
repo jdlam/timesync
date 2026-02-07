@@ -266,7 +266,9 @@ function AdminDashboardContent({
 							<div>
 								<p className="text-muted-foreground text-sm">Max Respondents</p>
 								<p className="text-3xl font-bold text-foreground">
-									{event.maxRespondents}
+									{event.maxRespondents === -1
+										? "Unlimited"
+										: event.maxRespondents}
 								</p>
 							</div>
 						</div>
@@ -278,7 +280,9 @@ function AdminDashboardContent({
 							<div>
 								<p className="text-muted-foreground text-sm">Capacity</p>
 								<p className="text-3xl font-bold text-foreground">
-									{Math.round((responses.length / event.maxRespondents) * 100)}%
+									{event.maxRespondents === -1
+										? `${responses.length} responses`
+										: `${Math.round((responses.length / event.maxRespondents) * 100)}%`}
 								</p>
 							</div>
 						</div>

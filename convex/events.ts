@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { hashPassword, verifyPassword } from "./lib/password";
 
 // Query: Get event by ID
 export const getById = query({
@@ -18,7 +19,7 @@ export const getById = query({
 
 // Query: Get event by ID with response count
 export const getByIdWithResponseCount = query({
-	args: { eventId: v.id("events") },
+	args: { eventId: v.id("events"), password: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		const event = await ctx.db.get(args.eventId);
 		if (!event) {
@@ -28,14 +29,47 @@ export const getByIdWithResponseCount = query({
 			throw new Error("This event is no longer accepting responses");
 		}
 
+		// Password gate: if event has a password, verify before returning full data
+		if (event.password) {
+			if (!args.password) {
+				return {
+					event: null,
+					responseCount: 0,
+					passwordRequired: true,
+					wrongPassword: false,
+					eventTitle: event.title,
+					isPasswordProtected: true,
+				};
+			}
+
+			const isValid = await verifyPassword(args.password, event.password);
+			if (!isValid) {
+				return {
+					event: null,
+					responseCount: 0,
+					passwordRequired: true,
+					wrongPassword: true,
+					eventTitle: event.title,
+					isPasswordProtected: true,
+				};
+			}
+		}
+
 		const responses = await ctx.db
 			.query("responses")
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
 			.collect();
 
+		// Strip password hash from returned event
+		const { password: _password, ...eventWithoutPassword } = event;
+
 		return {
-			event,
+			event: { ...eventWithoutPassword, isPasswordProtected: !!event.password },
 			responseCount: responses.length,
+			passwordRequired: false,
+			wrongPassword: false,
+			eventTitle: event.title,
+			isPasswordProtected: !!event.password,
 		};
 	},
 });
@@ -80,6 +114,7 @@ export const update = mutation({
 		dates: v.optional(v.array(v.string())),
 		timeRangeStart: v.optional(v.string()),
 		timeRangeEnd: v.optional(v.string()),
+		password: v.optional(v.union(v.string(), v.null())),
 	},
 	handler: async (ctx, args) => {
 		// Validate admin token
@@ -98,6 +133,13 @@ export const update = mutation({
 			updates.timeRangeStart = args.timeRangeStart;
 		if (args.timeRangeEnd !== undefined)
 			updates.timeRangeEnd = args.timeRangeEnd;
+
+		// Password: null = remove, string = set/change, undefined = no change
+		if (args.password === null) {
+			updates.password = undefined;
+		} else if (typeof args.password === "string" && event.isPremium) {
+			updates.password = await hashPassword(args.password);
+		}
 
 		// Apply update
 		await ctx.db.patch(args.eventId, updates);
@@ -171,6 +213,7 @@ export const create = mutation({
 		maxRespondents: v.number(),
 		creatorId: v.optional(v.string()),
 		creatorEmail: v.optional(v.string()),
+		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		// Check if creator has premium subscription
@@ -196,6 +239,12 @@ export const create = mutation({
 			}
 		}
 
+		// Hash password if provided and premium
+		const hashedPassword =
+			args.password && isPremium
+				? await hashPassword(args.password)
+				: undefined;
+
 		const now = Date.now();
 		const eventId = await ctx.db.insert("events", {
 			title: args.title,
@@ -207,6 +256,7 @@ export const create = mutation({
 			slotDuration: args.slotDuration,
 			adminToken: args.adminToken,
 			isPremium,
+			password: hashedPassword,
 			maxRespondents: actualMaxRespondents,
 			creatorId: args.creatorId, // Clerk subject ID or undefined for guests
 			creatorEmail: args.creatorEmail, // Creator's email or undefined for guests

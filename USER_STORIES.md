@@ -377,22 +377,26 @@
 
 ---
 
-### Story 5.4 - Password-Protected Events [P1] [Premium] ⚠️
+### Story 5.4 - Password-Protected Events [P1] [Premium] ✅
 **As a** premium user
 **I want to** password-protect my event
 **So that** only invited people can respond
 
 **Acceptance Criteria:**
-- [ ] Admin can set password during event creation
-- [ ] Password field shown only for premium users
-- [ ] Invitees must enter password before viewing event
-- [ ] Wrong password shows error message
-- [ ] Admin can change/remove password later
-- [x] Password stored securely (hashed) - schema field exists
+- [x] Admin can set password during event creation
+- [x] Password field shown only for premium users
+- [x] Invitees must enter password before viewing event
+- [x] Wrong password shows error message
+- [x] Admin can change/remove password later
+- [x] Password stored securely (hashed) - SHA-256 + random salt
 
 **Technical Notes:**
-- Hash password before storing
-- Database field `password` exists but no UI or validation logic
+- Password hashed with SHA-256 + 16-byte random salt, stored as `salt:hash` hex
+- `convex/lib/password.ts` provides `hashPassword()` and `verifyPassword()`
+- Password verified server-side on both query (`getByIdWithResponseCount`) and mutation (`responses.submit`)
+- Admin page (via adminToken) and edit response page (via editToken) bypass password
+- Free tier users see upgrade prompt instead of password field
+- `PasswordGate` component provides full-page password entry UI
 
 ---
 
@@ -692,6 +696,7 @@
 | 4.3 | My Events dashboard | ✅ |
 | 5.1 | Pricing page | ✅ |
 | 5.2 | Stripe integration | ✅ |
+| 5.4 | Password protection (premium) | ✅ |
 | 5.5 | Unlimited date range (premium) | ✅ |
 | 6.1 | Copy links | ✅ |
 | 6.5 | Dark mode | ✅ |
@@ -703,7 +708,6 @@
 | Story | Description | Status | Notes |
 |-------|-------------|--------|-------|
 | 5.3 | Custom slot duration | ⚠️ | Schema ready, no UI |
-| 5.4 | Password protection | ⚠️ | Schema ready, no UI |
 | 7.1 | Archive events | ⚠️ | Schema ready, no UI |
 | 8.1 | Event statistics | ⚠️ | Basic stats only |
 | T.3 | Error handling | ⚠️ | Basic only, no Sentry/error tracking |

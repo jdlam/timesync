@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { verifyPassword } from "./lib/password";
 
 // Query: Get all responses for an event
 export const getByEventId = query({
@@ -51,6 +52,7 @@ export const submit = mutation({
 		respondentComment: v.optional(v.string()),
 		selectedSlots: v.array(v.string()),
 		editToken: v.string(),
+		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		// Check max respondents limit
@@ -59,12 +61,26 @@ export const submit = mutation({
 			throw new Error("Event not found");
 		}
 
+		// Verify password if event is password-protected
+		if (event.password) {
+			if (!args.password) {
+				throw new Error("Password is required for this event");
+			}
+			const isValid = await verifyPassword(args.password, event.password);
+			if (!isValid) {
+				throw new Error("Incorrect event password");
+			}
+		}
+
 		const existingResponses = await ctx.db
 			.query("responses")
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
 			.collect();
 
-		if (existingResponses.length >= event.maxRespondents) {
+		if (
+			event.maxRespondents !== -1 &&
+			existingResponses.length >= event.maxRespondents
+		) {
 			throw new Error("Maximum number of respondents reached");
 		}
 

@@ -177,7 +177,7 @@ describe("events", () => {
 				eventId,
 			});
 
-			expect(result.event.title).toBe("Event With No Responses");
+			expect(result.event?.title).toBe("Event With No Responses");
 			expect(result.responseCount).toBe(0);
 		});
 
@@ -842,6 +842,351 @@ describe("events", () => {
 
 			expect(event?.creatorId).toBeUndefined();
 			expect(event?.creatorEmail).toBeUndefined();
+		});
+	});
+
+	describe("create with password", () => {
+		it("should store hashed password for premium event", async () => {
+			const t = convexTest(schema, modules);
+
+			// Create a premium user first
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_user_123",
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(api.events.create, {
+				title: "Premium Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				creatorId: "premium_user_123",
+				password: "secret123",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.password).toBeDefined();
+			expect(event?.password).not.toBe("secret123"); // Should be hashed
+			expect(event?.password).toContain(":"); // salt:hash format
+		});
+
+		it("should ignore password for non-premium event", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Free Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				password: "secret123",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.password).toBeUndefined();
+		});
+	});
+
+	describe("getByIdWithResponseCount with password", () => {
+		it("should return full event when no password is set", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "No Password Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.query(api.events.getByIdWithResponseCount, {
+				eventId,
+			});
+
+			expect(result.event).not.toBeNull();
+			expect(result.passwordRequired).toBe(false);
+		});
+
+		it("should require password when event has one", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Protected Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "token",
+					maxRespondents: 5,
+					isPremium: true,
+					password:
+						"abcdef0123456789abcdef0123456789:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.query(api.events.getByIdWithResponseCount, {
+				eventId,
+			});
+
+			expect(result.event).toBeNull();
+			expect(result.passwordRequired).toBe(true);
+			expect(result.wrongPassword).toBe(false);
+			expect(result.eventTitle).toBe("Protected Event");
+		});
+
+		it("should reject wrong password", async () => {
+			const t = convexTest(schema, modules);
+
+			// Create a premium user and event with password via mutation
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_user_pw",
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const createResult = await t.mutation(api.events.create, {
+				title: "Protected Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				creatorId: "premium_user_pw",
+				password: "correct-password",
+			});
+
+			const result = await t.query(api.events.getByIdWithResponseCount, {
+				eventId: createResult.eventId,
+				password: "wrong-password",
+			});
+
+			expect(result.event).toBeNull();
+			expect(result.passwordRequired).toBe(true);
+			expect(result.wrongPassword).toBe(true);
+		});
+
+		it("should return full event with correct password", async () => {
+			const t = convexTest(schema, modules);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_user_pw2",
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const createResult = await t.mutation(api.events.create, {
+				title: "Protected Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				creatorId: "premium_user_pw2",
+				password: "correct-password",
+			});
+
+			const result = await t.query(api.events.getByIdWithResponseCount, {
+				eventId: createResult.eventId,
+				password: "correct-password",
+			});
+
+			expect(result.event).not.toBeNull();
+			expect(result.passwordRequired).toBe(false);
+			expect(result.event?.title).toBe("Protected Event");
+		});
+
+		it("should strip password hash from returned event", async () => {
+			const t = convexTest(schema, modules);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_user_pw3",
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const createResult = await t.mutation(api.events.create, {
+				title: "Protected Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				adminToken: "token",
+				maxRespondents: 5,
+				creatorId: "premium_user_pw3",
+				password: "my-password",
+			});
+
+			const result = await t.query(api.events.getByIdWithResponseCount, {
+				eventId: createResult.eventId,
+				password: "my-password",
+			});
+
+			expect(result.event).not.toBeNull();
+			// Password hash should not be in the returned event
+			expect((result.event as Record<string, unknown>)?.password).toBeUndefined();
+			expect(result.event?.isPasswordProtected).toBe(true);
+		});
+	});
+
+	describe("update with password", () => {
+		it("should set password on premium event", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Premium Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: -1,
+					isPremium: true,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				password: "new-password",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+
+			expect(event?.password).toBeDefined();
+			expect(event?.password).toContain(":");
+		});
+
+		it("should remove password with null", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Premium Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: -1,
+					isPremium: true,
+					password: "some-hash:value",
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				password: null,
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+
+			expect(event?.password).toBeUndefined();
+		});
+
+		it("should not change password when undefined", async () => {
+			const t = convexTest(schema, modules);
+
+			const originalPassword = "original-hash:value";
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Premium Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: -1,
+					isPremium: true,
+					password: originalPassword,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				title: "Updated Title",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+
+			expect(event?.password).toBe(originalPassword);
 		});
 	});
 });

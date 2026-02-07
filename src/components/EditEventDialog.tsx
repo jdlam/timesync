@@ -1,11 +1,11 @@
 import { useMutation, useQuery } from "convex/react";
 import { format, parse } from "date-fns";
-import { AlertTriangle, CalendarIcon, Clock, Globe } from "lucide-react";
+import { AlertTriangle, CalendarIcon, Clock, Globe, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
 import { getErrorMessage } from "@/lib/form-utils";
-import { editEventSchema } from "@/lib/validation-schemas";
+import { editEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { Button } from "./ui/button";
@@ -53,6 +53,11 @@ export function EditEventDialog({
 	);
 	const [showCalendar, setShowCalendar] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [showPasswordInput, setShowPasswordInput] = useState(false);
+
+	const editSchema = editEventSchemaForTier(
+		event.isPremium ? "premium" : "free",
+	);
 
 	const form = useAppForm({
 		defaultValues: {
@@ -61,13 +66,23 @@ export function EditEventDialog({
 			dates: event.dates,
 			timeRangeStart: event.timeRangeStart,
 			timeRangeEnd: event.timeRangeEnd,
+			password: "" as string | undefined | null,
 		},
 		validators: {
-			onSubmit: editEventSchema as never,
+			onSubmit: editSchema as never,
 		},
 		onSubmit: async ({ value }) => {
 			setIsSubmitting(true);
 			try {
+				// Password logic: empty string = no change, non-empty = set/change, null = remove
+				let passwordValue: string | null | undefined;
+				if (value.password === null) {
+					passwordValue = null; // Remove password
+				} else if (value.password && value.password.length > 0) {
+					passwordValue = value.password; // Set/change password
+				}
+				// undefined = no change (default)
+
 				await updateEventMutation({
 					eventId: event._id as Id<"events">,
 					adminToken,
@@ -76,6 +91,7 @@ export function EditEventDialog({
 					dates: value.dates,
 					timeRangeStart: value.timeRangeStart,
 					timeRangeEnd: value.timeRangeEnd,
+					password: passwordValue,
 				});
 				toast.success("Event updated successfully!");
 				onOpenChange(false);
@@ -102,10 +118,12 @@ export function EditEventDialog({
 			form.setFieldValue("dates", event.dates);
 			form.setFieldValue("timeRangeStart", event.timeRangeStart);
 			form.setFieldValue("timeRangeEnd", event.timeRangeEnd);
+			form.setFieldValue("password", "");
 			setSelectedDates(
 				event.dates.map((d) => parse(d, "yyyy-MM-dd", new Date())),
 			);
 			setShowCalendar(false);
+			setShowPasswordInput(false);
 		}
 	}, [open, event]);
 
@@ -319,6 +337,137 @@ export function EditEventDialog({
 							responses.
 						</p>
 					</div>
+
+					{/* Password Protection (Premium only) */}
+					{event.isPremium && (
+						<div className="space-y-2">
+							<Label className="text-xl font-bold text-foreground flex items-center gap-2">
+								<Lock className="h-4 w-4" />
+								Password Protection
+							</Label>
+
+							{event.password ? (
+								<div className="space-y-3">
+									<div className="bg-teal-900/20 border border-teal-700 rounded-lg p-3 flex items-center gap-2">
+										<Lock className="w-4 h-4 text-teal-400 flex-shrink-0" />
+										<span className="text-sm text-teal-400">
+											This event is password protected
+										</span>
+									</div>
+
+									{showPasswordInput ? (
+										<form.AppField name="password">
+											{(field) => (
+												<div className="space-y-2">
+													<div className="relative">
+														<Input
+															type="password"
+															value={
+																typeof field.state.value === "string"
+																	? field.state.value
+																	: ""
+															}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
+															placeholder="Enter new password"
+															className="bg-background border-border text-foreground"
+														/>
+													</div>
+													<div className="flex gap-2">
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															onClick={() => {
+																field.handleChange("");
+																setShowPasswordInput(false);
+															}}
+														>
+															Cancel
+														</Button>
+													</div>
+												</div>
+											)}
+										</form.AppField>
+									) : (
+										<div className="flex gap-2">
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => setShowPasswordInput(true)}
+											>
+												Change Password
+											</Button>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												className="text-red-400 hover:text-red-300"
+												onClick={() => {
+													form.setFieldValue("password", null);
+												}}
+											>
+												Remove Password
+											</Button>
+										</div>
+									)}
+								</div>
+							) : (
+								<div className="space-y-3">
+									{showPasswordInput ? (
+										<form.AppField name="password">
+											{(field) => (
+												<div className="space-y-2">
+													<div className="relative">
+														<Input
+															type="password"
+															value={
+																typeof field.state.value === "string"
+																	? field.state.value
+																	: ""
+															}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
+															placeholder="Enter a password (min 4 characters)"
+															className="bg-background border-border text-foreground"
+														/>
+													</div>
+													<p className="text-xs text-muted-foreground">
+														Respondents will need this password to access the
+														event.
+													</p>
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														onClick={() => {
+															field.handleChange("");
+															setShowPasswordInput(false);
+														}}
+													>
+														Cancel
+													</Button>
+												</div>
+											)}
+										</form.AppField>
+									) : (
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => setShowPasswordInput(true)}
+										>
+											<Lock className="w-4 h-4 mr-1" />
+											Add Password
+										</Button>
+									)}
+								</div>
+							)}
+						</div>
+					)}
 
 					{/* Submit Button */}
 					<div className="flex justify-end gap-3 pt-4">

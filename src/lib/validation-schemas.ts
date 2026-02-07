@@ -48,6 +48,24 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 			slotDuration: z.enum(["15", "30", "60"], {
 				message: "Slot duration must be 15, 30, or 60 minutes",
 			}),
+
+			password:
+				tier === "premium"
+					? z
+							.string()
+							.optional()
+							.refine((val) => !val || val.length >= 4, {
+								message: "Password must be at least 4 characters",
+							})
+							.refine((val) => !val || val.length <= 128, {
+								message: "Password must be less than 128 characters",
+							})
+					: z
+							.string()
+							.optional()
+							.refine((val) => !val, {
+								message: "Password protection requires premium",
+							}),
 		})
 		.refine(
 			(data) => {
@@ -121,6 +139,20 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 			timeRangeEnd: z
 				.string()
 				.regex(/^\d{2}:\d{2}$/, "Time must be in HH:mm format"),
+
+			password:
+				tier === "premium"
+					? z
+							.string()
+							.optional()
+							.nullable()
+							.refine((val) => !val || val.length >= 4, {
+								message: "Password must be at least 4 characters",
+							})
+							.refine((val) => !val || val.length <= 128, {
+								message: "Password must be less than 128 characters",
+							})
+					: z.string().optional().nullable(),
 		})
 		.refine(
 			(data) => {
