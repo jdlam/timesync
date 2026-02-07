@@ -16,7 +16,7 @@ export function EventHeader({
 }: EventHeaderProps) {
 	const timezoneContext = useTimezoneDisplaySafe();
 	const spotsRemaining =
-		responseCount !== undefined
+		responseCount !== undefined && event.maxRespondents !== -1
 			? event.maxRespondents - responseCount
 			: undefined;
 
