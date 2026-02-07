@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_password from "../lib/password.js";
 import type * as myEvents from "../myEvents.js";
 import type * as responses from "../responses.js";
 import type * as stripe from "../stripe.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/password": typeof lib_password;
   myEvents: typeof myEvents;
   responses: typeof responses;
   stripe: typeof stripe;

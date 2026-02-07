@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
 import {
+	BarChart3,
 	ExternalLink,
 	Eye,
 	Loader2,
@@ -37,6 +38,7 @@ interface Event {
 	isActive: boolean;
 	createdAt: number;
 	responseCount: number;
+	adminToken: string;
 }
 
 interface MyEventsTableProps {
@@ -90,6 +92,10 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 		window.open(`/events/${eventId}`, "_blank");
 	};
 
+	const handleViewResults = (eventId: Id<"events">, adminToken: string) => {
+		window.open(`/events/${eventId}/admin/${adminToken}`, "_blank");
+	};
+
 	if (events.length === 0) {
 		return (
 			<div className="text-center py-12 text-muted-foreground">
@@ -141,6 +147,13 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 							>
 								<Eye className="w-4 h-4 mr-1" />
 								View
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => handleViewResults(event._id, event.adminToken)}
+							>
+								<BarChart3 className="w-4 h-4" />
 							</Button>
 							<Button
 								variant="outline"
@@ -253,6 +266,17 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 											>
 												<Eye className="w-4 h-4" />
 												View Details
+											</button>
+											<button
+												type="button"
+												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
+												onClick={() => {
+													closePopover();
+													handleViewResults(event._id, event.adminToken);
+												}}
+											>
+												<BarChart3 className="w-4 h-4" />
+												View Results
 											</button>
 											<button
 												type="button"

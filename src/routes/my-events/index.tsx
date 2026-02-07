@@ -29,6 +29,7 @@ interface EventWithCount {
 	isActive: boolean;
 	createdAt: number;
 	responseCount: number;
+	adminToken: string;
 }
 
 function MyEventsIndex() {
