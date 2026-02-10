@@ -10,8 +10,8 @@ import { internal } from "./_generated/api";
 export function validateRedirectUrl(url: string): void {
 	const allowedDomain = process.env.APP_URL;
 	if (!allowedDomain) {
-		// If APP_URL is not configured, allow any HTTPS URL as a fallback
-		// but still block javascript: and data: schemes
+		// If APP_URL is not configured, allow any HTTP(S) URL as a fallback,
+		// which blocks javascript:, data:, and other non-HTTP(S) schemes.
 		try {
 			const parsed = new URL(url);
 			if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
@@ -26,7 +26,11 @@ export function validateRedirectUrl(url: string): void {
 	try {
 		const parsed = new URL(url);
 		const allowed = new URL(allowedDomain);
-		if (parsed.hostname !== allowed.hostname) {
+		// Enforce HTTP(S) scheme and matching origin (protocol + hostname + port)
+		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+			throw new Error("Invalid redirect URL: must use HTTP(S)");
+		}
+		if (parsed.origin !== allowed.origin) {
 			throw new Error("Invalid redirect URL: domain mismatch");
 		}
 	} catch (e) {

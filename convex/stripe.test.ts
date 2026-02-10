@@ -6,6 +6,20 @@ import { validateRedirectUrl } from "./stripe";
 import { modules } from "./test.setup";
 
 describe("validateRedirectUrl", () => {
+	let originalAppUrl: string | undefined;
+
+	beforeEach(() => {
+		originalAppUrl = process.env.APP_URL;
+	});
+
+	afterEach(() => {
+		if (originalAppUrl === undefined) {
+			delete process.env.APP_URL;
+		} else {
+			process.env.APP_URL = originalAppUrl;
+		}
+	});
+
 	describe("without APP_URL configured", () => {
 		beforeEach(() => {
 			delete process.env.APP_URL;
@@ -47,10 +61,6 @@ describe("validateRedirectUrl", () => {
 			process.env.APP_URL = "https://timesync.app";
 		});
 
-		afterEach(() => {
-			delete process.env.APP_URL;
-		});
-
 		it("should allow URLs matching the configured domain", () => {
 			expect(() =>
 				validateRedirectUrl("https://timesync.app/pricing?success=true"),
@@ -73,6 +83,12 @@ describe("validateRedirectUrl", () => {
 			expect(() =>
 				validateRedirectUrl("https://evil.timesync.app/steal"),
 			).toThrow("Invalid redirect URL: domain mismatch");
+		});
+
+		it("should reject non-HTTP(S) schemes", () => {
+			expect(() =>
+				validateRedirectUrl("ftp://timesync.app/file"),
+			).toThrow("Invalid redirect URL: must use HTTP(S)");
 		});
 
 		it("should reject invalid URLs", () => {
