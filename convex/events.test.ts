@@ -17,12 +17,39 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "test-admin-token",
 				maxRespondents: 5,
 			});
 
 			expect(result.eventId).toBeDefined();
-			expect(result.adminToken).toBe("test-admin-token");
+			expect(result.adminToken).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			);
+		});
+
+		it("should generate unique admin tokens for different events", async () => {
+			const t = convexTest(schema, modules);
+
+			const result1 = await t.mutation(api.events.create, {
+				title: "Event 1",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			const result2 = await t.mutation(api.events.create, {
+				title: "Event 2",
+				timeZone: "UTC",
+				dates: ["2025-01-21"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			expect(result1.adminToken).not.toBe(result2.adminToken);
 		});
 
 		it("should create an event without optional description", async () => {
@@ -35,7 +62,6 @@ describe("events", () => {
 				timeRangeStart: "10:00",
 				timeRangeEnd: "12:00",
 				slotDuration: 15,
-				adminToken: "token-123",
 				maxRespondents: 10,
 			});
 
@@ -52,7 +78,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 			});
 
@@ -920,7 +945,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				creatorId: "user_12345",
 				creatorEmail: "user@example.com",
@@ -944,7 +968,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 			});
 
@@ -981,7 +1004,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				creatorId: "premium_user_123",
 				password: "secret123",
@@ -1006,7 +1028,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				password: "secret123",
 			});
@@ -1040,7 +1061,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				creatorId: "premium_user_empty_pw",
 			});
@@ -1063,7 +1083,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				password: "should-be-ignored",
 			});
@@ -1166,7 +1185,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				creatorId: "premium_user_pw",
 				password: "correct-password",
@@ -1204,7 +1222,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				creatorId: "premium_user_pw2",
 				password: "correct-password",
@@ -1242,7 +1259,6 @@ describe("events", () => {
 				timeRangeStart: "09:00",
 				timeRangeEnd: "17:00",
 				slotDuration: 30,
-				adminToken: "token",
 				maxRespondents: 5,
 				creatorId: "premium_user_pw3",
 				password: "my-password",

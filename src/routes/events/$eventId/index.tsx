@@ -20,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
-import { generateEditToken } from "@/lib/token-utils";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import type { PublicEvent } from "../../../../convex/shared_types";
@@ -125,13 +124,11 @@ function EventResponseContent({
 		setIsSubmitting(true);
 
 		try {
-			const editToken = generateEditToken();
 			const result = await submitResponseMutation({
 				eventId: event._id,
 				respondentName: name.trim(),
 				respondentComment: comment.trim() || undefined,
 				selectedSlots,
-				editToken,
 				password: eventPassword,
 			});
 

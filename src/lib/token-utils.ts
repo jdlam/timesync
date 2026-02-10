@@ -1,22 +1,4 @@
 /**
- * Generate a secure admin token for event admin access
- * Uses UUID v4 for cryptographically secure random tokens
- * @returns UUID string
- */
-export function generateAdminToken(): string {
-	return crypto.randomUUID();
-}
-
-/**
- * Generate a secure edit token for response editing
- * Uses UUID v4 for cryptographically secure random tokens
- * @returns UUID string
- */
-export function generateEditToken(): string {
-	return crypto.randomUUID();
-}
-
-/**
  * Validate UUID format
  * @param token - Token string to validate
  * @returns true if valid UUID format
