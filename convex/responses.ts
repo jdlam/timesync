@@ -5,8 +5,9 @@ import { verifyPassword } from "./lib/password";
 // Max possible slots: 365 days * 24 hours * (60 / 15 min slots) = 35,040
 const MAX_SELECTED_SLOTS = 365 * 24 * (60 / 15);
 
-// ISO 8601 datetime pattern: YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DDTHH:mm:ss.sssZ
-const ISO_DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+// ISO 8601 datetime pattern with range-checked month/day/hour/minute/second
+const ISO_DATETIME_REGEX =
+	/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,3})?Z$/;
 
 // Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
