@@ -1,10 +1,10 @@
 import { Calendar, Clock, Globe, Lock, MapPin, Users } from "lucide-react";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { PublicEvent } from "../../convex/shared_types";
 import { TimezoneBanner } from "./TimezoneBanner";
 
 interface EventHeaderProps {
-	event: Doc<"events">;
+	event: PublicEvent;
 	responseCount?: number;
 	isPasswordProtected?: boolean;
 }

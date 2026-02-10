@@ -2,9 +2,12 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { hashPassword, verifyPassword } from "./lib/password";
 
-// Query: Get event by ID
+// Query: Get event by ID (public — strips sensitive fields, respects password gate)
 export const getById = query({
-	args: { eventId: v.id("events") },
+	args: {
+		eventId: v.id("events"),
+		editToken: v.optional(v.string()),
+	},
 	handler: async (ctx, args) => {
 		const event = await ctx.db.get(args.eventId);
 		if (!event) {
@@ -13,7 +16,29 @@ export const getById = query({
 		if (!event.isActive) {
 			throw new Error("This event is no longer accepting responses");
 		}
-		return event;
+
+		// Password gate: if event is password-protected, require a valid editToken to bypass
+		if (event.password) {
+			if (!args.editToken) {
+				throw new Error("This event is password-protected");
+			}
+			const responses = await ctx.db
+				.query("responses")
+				.withIndex("by_edit_token", (q) =>
+					q.eq("editToken", args.editToken as string),
+				)
+				.collect();
+			const validResponse = responses.find(
+				(r) => r.eventId === args.eventId,
+			);
+			if (!validResponse) {
+				throw new Error("This event is password-protected");
+			}
+		}
+
+		const { adminToken: _adminToken, password: _password, ...safeEvent } =
+			event;
+		return safeEvent;
 	},
 });
 
@@ -60,11 +85,15 @@ export const getByIdWithResponseCount = query({
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
 			.collect();
 
-		// Strip password hash from returned event
-		const { password: _password, ...eventWithoutPassword } = event;
+		// Strip sensitive fields from returned event
+		const {
+			adminToken: _adminToken,
+			password: _password,
+			...safeEvent
+		} = event;
 
 		return {
-			event: { ...eventWithoutPassword, isPasswordProtected: !!event.password },
+			event: { ...safeEvent, isPasswordProtected: !!event.password },
 			responseCount: responses.length,
 			passwordRequired: false,
 			wrongPassword: false,

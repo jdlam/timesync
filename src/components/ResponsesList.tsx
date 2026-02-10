@@ -1,11 +1,11 @@
 import { format } from "date-fns";
 import { MessageSquare, Trash2 } from "lucide-react";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { PublicResponse } from "../../convex/shared_types";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
 interface ResponsesListProps {
-	responses: Doc<"responses">[];
+	responses: PublicResponse[];
 	onDeleteResponse: (id: string) => void;
 	isDeletingId?: string | null;
 	selectedResponseId?: string | null;

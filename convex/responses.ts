@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
 
-// Query: Get all responses for an event
+// Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
 	args: { eventId: v.id("events") },
 	handler: async (ctx, args) => {
@@ -11,7 +11,7 @@ export const getByEventId = query({
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
 			.order("desc")
 			.collect();
-		return responses;
+		return responses.map(({ editToken: _editToken, ...response }) => response);
 	},
 });
 
@@ -102,10 +102,11 @@ export const submit = mutation({
 	},
 });
 
-// Mutation: Update an existing response
+// Mutation: Update an existing response (requires editToken)
 export const update = mutation({
 	args: {
 		responseId: v.id("responses"),
+		editToken: v.string(),
 		respondentName: v.string(),
 		respondentComment: v.optional(v.string()),
 		selectedSlots: v.array(v.string()),
@@ -114,6 +115,10 @@ export const update = mutation({
 		const existing = await ctx.db.get(args.responseId);
 		if (!existing) {
 			throw new Error("Response not found");
+		}
+
+		if (existing.editToken !== args.editToken) {
+			throw new Error("Invalid edit token");
 		}
 
 		await ctx.db.patch(args.responseId, {
@@ -127,10 +132,20 @@ export const update = mutation({
 	},
 });
 
-// Mutation: Delete a response
+// Mutation: Delete a response (requires adminToken for the event)
 export const remove = mutation({
-	args: { responseId: v.id("responses") },
+	args: { responseId: v.id("responses"), adminToken: v.string() },
 	handler: async (ctx, args) => {
+		const response = await ctx.db.get(args.responseId);
+		if (!response) {
+			throw new Error("Response not found");
+		}
+
+		const event = await ctx.db.get(response.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			throw new Error("Invalid admin token");
+		}
+
 		await ctx.db.delete(args.responseId);
 		return { success: true };
 	},

@@ -33,6 +33,7 @@ import { exportEventToCsv } from "@/lib/csv-export";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
+import type { PublicResponse } from "../../../../../convex/shared_types";
 
 export const Route = createFileRoute("/events/$eventId/admin/$adminToken")({
 	component: AdminDashboard,
@@ -87,7 +88,7 @@ function AdminDashboardContent({
 	adminToken,
 }: {
 	event: Doc<"events">;
-	responses: Doc<"responses">[];
+	responses: PublicResponse[];
 	adminToken: string;
 }) {
 	const navigate = useNavigate();
@@ -124,6 +125,7 @@ function AdminDashboardContent({
 		try {
 			await deleteResponseMutation({
 				responseId: responseToDelete as Id<"responses">,
+				adminToken,
 			});
 
 			// Convex will automatically update the responses query
