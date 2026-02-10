@@ -259,13 +259,15 @@ Key fields:
 
 ### Test Requirements
 
-**All new features must include unit tests.** This is a mandatory part of feature implementation, not a follow-up task.
+**All new features and changes must include unit tests.** This is a mandatory part of every implementation, not a follow-up task. This applies to new features, bug fixes, and any behavioral changes.
 
-When implementing a new feature, you must:
+When implementing a feature or change, you must:
 1. Add tests for new Convex queries/mutations in `convex/*.test.ts`
 2. Add tests for new validation schemas in `src/lib/validation-schemas.test.ts`
 3. Add tests for new utility functions in `src/lib/*.test.ts`
-4. Run `npm run test` before considering a feature complete
+4. Add or update tests for React component behavior changes in colocated `*.test.tsx` files
+5. Update existing tests if your change affects their expected behavior
+6. Run `npm run test` before considering a change complete
 
 ### Unit Tests
 ```bash
