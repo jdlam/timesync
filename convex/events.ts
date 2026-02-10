@@ -160,21 +160,21 @@ export const update = mutation({
 			throw new Error("Time range must be in HH:mm format");
 		}
 
-		// Validate time range ordering when both are provided
-		const effectiveStart = args.timeRangeStart;
-		const effectiveEnd = args.timeRangeEnd;
-		if (effectiveStart !== undefined && effectiveEnd !== undefined) {
+		// Validate admin token and load event for tier-aware checks
+		const event = await ctx.db.get(args.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			throw new Error("Event not found or invalid admin token");
+		}
+
+		// Validate time range ordering using effective values (fall back to existing event values)
+		if (args.timeRangeStart !== undefined || args.timeRangeEnd !== undefined) {
+			const effectiveStart = args.timeRangeStart ?? event.timeRangeStart;
+			const effectiveEnd = args.timeRangeEnd ?? event.timeRangeEnd;
 			const [startH, startM] = effectiveStart.split(":").map(Number);
 			const [endH, endM] = effectiveEnd.split(":").map(Number);
 			if (startH * 60 + startM >= endH * 60 + endM) {
 				throw new Error("End time must be after start time");
 			}
-		}
-
-		// Validate admin token and load event for tier-aware checks
-		const event = await ctx.db.get(args.eventId);
-		if (!event || event.adminToken !== args.adminToken) {
-			throw new Error("Event not found or invalid admin token");
 		}
 
 		// Tier-aware validation
@@ -283,15 +283,12 @@ export const create = mutation({
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		// Server-side input validation
+		// Server-side input validation (format checks first)
 		if (!args.title || args.title.length > 255) {
 			throw new Error("Title must be between 1 and 255 characters");
 		}
 		if (args.description && args.description.length > 1000) {
 			throw new Error("Description must be at most 1000 characters");
-		}
-		if (args.dates.length === 0 || args.dates.length > 365) {
-			throw new Error("Must have between 1 and 365 dates");
 		}
 		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
 			throw new Error("Time range must be in HH:mm format");
@@ -304,13 +301,9 @@ export const create = mutation({
 		if (![15, 30, 60].includes(args.slotDuration)) {
 			throw new Error("Slot duration must be 15, 30, or 60 minutes");
 		}
-		if (args.password !== undefined && (args.password.length < 4 || args.password.length > 128)) {
-			throw new Error("Password must be between 4 and 128 characters");
-		}
 
 		// Check if creator has premium subscription
 		let isPremium = false;
-		let actualMaxRespondents = args.maxRespondents;
 
 		if (args.creatorId) {
 			const user = await ctx.db
@@ -326,12 +319,26 @@ export const create = mutation({
 
 				if (isSubscriptionActive) {
 					isPremium = true;
-					actualMaxRespondents = -1; // Unlimited for premium
 				}
 			}
 		}
 
-		// Hash password if provided and premium
+		// Tier-aware validation
+		const maxDates = isPremium ? 365 : 14;
+		if (args.dates.length === 0 || args.dates.length > maxDates) {
+			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		}
+		if (args.password !== undefined) {
+			if (!isPremium) {
+				throw new Error("Password protection is a premium feature");
+			}
+			if (args.password.length < 4 || args.password.length > 128) {
+				throw new Error("Password must be between 4 and 128 characters");
+			}
+		}
+
+		// Derive server-side values based on tier
+		const actualMaxRespondents = isPremium ? -1 : args.maxRespondents;
 		const hashedPassword =
 			args.password && isPremium
 				? await hashPassword(args.password)
