@@ -93,6 +93,244 @@ describe("events", () => {
 			expect(event?.createdAt).toBeDefined();
 			expect(event?.updatedAt).toBeDefined();
 		});
+
+		it("should reject title longer than 255 characters", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "a".repeat(256),
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Title must be between 1 and 255 characters");
+		});
+
+		it("should reject invalid slot duration", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 45,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Slot duration must be 15, 30, or 60 minutes");
+		});
+
+		it("should reject invalid time format", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "9am",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
+
+		it("should reject out-of-range time values like 99:99", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "99:99",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
+
+		it("should reject out-of-range hour 25:00", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "25:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
+
+		it("should reject end time before start time", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "17:00",
+					timeRangeEnd: "09:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("End time must be after start time");
+		});
+
+		it("should reject invalid date format", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["not-a-date"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Each date must be a valid calendar date in YYYY-MM-DD format");
+		});
+
+		it("should reject impossible date like Feb 31", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-02-31"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Each date must be a valid calendar date in YYYY-MM-DD format");
+		});
+
+		it("should reject empty password", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "",
+				}),
+			).rejects.toThrow("Password protection is a premium feature");
+		});
+
+		it("should enforce free-tier date limit of 14", async () => {
+			const t = convexTest(schema, modules);
+
+			const tooManyDates = Array.from({ length: 15 }, (_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`);
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: tooManyDates,
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Must have between 1 and 14 dates");
+		});
+
+		it("should clamp maxRespondents for free tier", async () => {
+			const t = convexTest(schema, modules);
+
+			// Free user tries to pass -1 (unlimited) — server should clamp to free-tier max
+			const result = await t.mutation(api.events.create, {
+				title: "Free Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: -1,
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			// Free tier clamped to min 1, max 5
+			expect(event?.maxRespondents).toBe(1);
+		});
+
+		it("should cap maxRespondents at 5 for free tier", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Free Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 100,
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.maxRespondents).toBe(5);
+		});
+
+		it("should set maxRespondents to -1 for premium users", async () => {
+			const t = convexTest(schema, modules);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_max_resp",
+					subscriptionTier: "premium",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const result = await t.mutation(api.events.create, {
+				title: "Premium Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+				creatorId: "premium_max_resp",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			// Premium users always get unlimited, regardless of what was passed
+			expect(event?.maxRespondents).toBe(-1);
+		});
 	});
 
 	describe("getById", () => {
@@ -688,6 +926,213 @@ describe("events", () => {
 				}),
 			).rejects.toThrow("Event not found or invalid admin token");
 		});
+
+		it("should reject invalid time format in update", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					timeRangeStart: "99:99",
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
+
+		it("should reject end time before start time in update", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					timeRangeStart: "17:00",
+					timeRangeEnd: "09:00",
+				}),
+			).rejects.toThrow("End time must be after start time");
+		});
+
+		it("should reject single-field time update that creates invalid range", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "12:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			// Only updating start to after existing end (12:00)
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					timeRangeStart: "14:00",
+				}),
+			).rejects.toThrow("End time must be after start time");
+		});
+
+		it("should reject too many dates for free-tier event", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Free Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const tooManyDates = Array.from({ length: 15 }, (_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`);
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					dates: tooManyDates,
+				}),
+			).rejects.toThrow("Must have between 1 and 14 dates");
+		});
+
+		it("should allow many dates for premium-tier event", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Premium Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: -1,
+					isPremium: true,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const manyDates = Array.from({ length: 30 }, (_, i) => `2025-01-${String(i + 1).padStart(2, "0")}`);
+			const result = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				dates: manyDates,
+			});
+
+			expect(result?.dates).toHaveLength(30);
+		});
+
+		it("should reject password update on non-premium event", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Free Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					password: "secret123",
+				}),
+			).rejects.toThrow("Password protection is a premium feature");
+		});
+
+		it("should reject description over 1000 characters in update", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					description: "a".repeat(1001),
+				}),
+			).rejects.toThrow("Description must be at most 1000 characters");
+		});
 	});
 
 	describe("toggleStatusByAdminToken", () => {
@@ -1018,25 +1463,21 @@ describe("events", () => {
 			expect(event?.password).toContain(":"); // salt:hash format
 		});
 
-		it("should ignore password for non-premium event", async () => {
+		it("should reject password for non-premium event", async () => {
 			const t = convexTest(schema, modules);
 
-			const result = await t.mutation(api.events.create, {
-				title: "Free Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				password: "secret123",
-			});
-
-			const event = await t.run(async (ctx) => {
-				return await ctx.db.get(result.eventId);
-			});
-
-			expect(event?.password).toBeUndefined();
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Free Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "secret123",
+				}),
+			).rejects.toThrow("Password protection is a premium feature");
 		});
 
 		it("should not store password when premium user leaves it empty", async () => {
@@ -1072,32 +1513,21 @@ describe("events", () => {
 			expect(event?.password).toBeUndefined();
 		});
 
-		it("should not gate access when non-premium event was created with password arg", async () => {
+		it("should reject password for non-premium event even with valid length", async () => {
 			const t = convexTest(schema, modules);
 
-			// Free user tries to set a password — backend ignores it
-			const result = await t.mutation(api.events.create, {
-				title: "Free Event With Password Attempt",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				password: "should-be-ignored",
-			});
-
-			// Query should return full event without requiring password
-			const queryResult = await t.query(
-				api.events.getByIdWithResponseCount,
-				{ eventId: result.eventId },
-			);
-
-			expect(queryResult.event).not.toBeNull();
-			expect(queryResult.passwordRequired).toBe(false);
-			expect(queryResult.event?.title).toBe(
-				"Free Event With Password Attempt",
-			);
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Free Event With Password Attempt",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "should-be-rejected",
+				}),
+			).rejects.toThrow("Password protection is a premium feature");
 		});
 	});
 

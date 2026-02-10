@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { hashPassword, verifyPassword } from "./lib/password";
+import { TIER_LIMITS, isValidDateString } from "./lib/tier_config";
 
 // Query: Get event by ID (public — strips sensitive fields, respects password gate)
 export const getById = query({
@@ -146,10 +147,59 @@ export const update = mutation({
 		password: v.optional(v.union(v.string(), v.null())),
 	},
 	handler: async (ctx, args) => {
-		// Validate admin token
+		// Server-side input validation
+		if (args.title !== undefined && (args.title.length === 0 || args.title.length > 255)) {
+			throw new Error("Title must be between 1 and 255 characters");
+		}
+		if (args.description !== undefined && args.description !== null && args.description.length > 1000) {
+			throw new Error("Description must be at most 1000 characters");
+		}
+		if (args.timeRangeStart !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart)) {
+			throw new Error("Time range must be in HH:mm format");
+		}
+		if (args.timeRangeEnd !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
+			throw new Error("Time range must be in HH:mm format");
+		}
+
+		// Validate admin token and load event for tier-aware checks
 		const event = await ctx.db.get(args.eventId);
 		if (!event || event.adminToken !== args.adminToken) {
 			throw new Error("Event not found or invalid admin token");
+		}
+
+		// Validate time range ordering using effective values (fall back to existing event values)
+		if (args.timeRangeStart !== undefined || args.timeRangeEnd !== undefined) {
+			const effectiveStart = args.timeRangeStart ?? event.timeRangeStart;
+			const effectiveEnd = args.timeRangeEnd ?? event.timeRangeEnd;
+			const [startH, startM] = effectiveStart.split(":").map(Number);
+			const [endH, endM] = effectiveEnd.split(":").map(Number);
+			if (startH * 60 + startM >= endH * 60 + endM) {
+				throw new Error("End time must be after start time");
+			}
+		}
+
+		// Tier-aware validation
+		const tier = event.isPremium ? "premium" : "free";
+		const maxDates = TIER_LIMITS[tier].maxDates;
+		if (args.dates !== undefined) {
+			if (args.dates.length === 0 || args.dates.length > maxDates) {
+				throw new Error(`Must have between 1 and ${maxDates} dates`);
+			}
+			for (const d of args.dates) {
+				if (!isValidDateString(d)) {
+					throw new Error(
+						"Each date must be a valid calendar date in YYYY-MM-DD format",
+					);
+				}
+			}
+		}
+		if (args.password !== undefined && args.password !== null) {
+			if (!event.isPremium) {
+				throw new Error("Password protection is a premium feature");
+			}
+			if (args.password.length < 4 || args.password.length > 128) {
+				throw new Error("Password must be between 4 and 128 characters");
+			}
 		}
 
 		// Build update object with only provided fields
@@ -166,7 +216,7 @@ export const update = mutation({
 		// Password: null = remove, string = set/change, undefined = no change
 		if (args.password === null) {
 			updates.password = undefined;
-		} else if (typeof args.password === "string" && event.isPremium) {
+		} else if (typeof args.password === "string") {
 			updates.password = await hashPassword(args.password);
 		}
 
@@ -244,9 +294,27 @@ export const create = mutation({
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation (format checks first)
+		if (!args.title || args.title.length > 255) {
+			throw new Error("Title must be between 1 and 255 characters");
+		}
+		if (args.description && args.description.length > 1000) {
+			throw new Error("Description must be at most 1000 characters");
+		}
+		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
+			throw new Error("Time range must be in HH:mm format");
+		}
+		const [startH, startM] = args.timeRangeStart.split(":").map(Number);
+		const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
+		if (startH * 60 + startM >= endH * 60 + endM) {
+			throw new Error("End time must be after start time");
+		}
+		if (![15, 30, 60].includes(args.slotDuration)) {
+			throw new Error("Slot duration must be 15, 30, or 60 minutes");
+		}
+
 		// Check if creator has premium subscription
 		let isPremium = false;
-		let actualMaxRespondents = args.maxRespondents;
 
 		if (args.creatorId) {
 			const user = await ctx.db
@@ -262,12 +330,39 @@ export const create = mutation({
 
 				if (isSubscriptionActive) {
 					isPremium = true;
-					actualMaxRespondents = -1; // Unlimited for premium
 				}
 			}
 		}
 
-		// Hash password if provided and premium
+		// Tier-aware validation
+		const tier = isPremium ? "premium" : "free";
+		const maxDates = TIER_LIMITS[tier].maxDates;
+		if (args.dates.length === 0 || args.dates.length > maxDates) {
+			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		}
+		for (const d of args.dates) {
+			if (!isValidDateString(d)) {
+				throw new Error(
+					"Each date must be a valid calendar date in YYYY-MM-DD format",
+				);
+			}
+		}
+		if (args.password !== undefined) {
+			if (!isPremium) {
+				throw new Error("Password protection is a premium feature");
+			}
+			if (args.password.length < 4 || args.password.length > 128) {
+				throw new Error("Password must be between 4 and 128 characters");
+			}
+		}
+
+		// Derive server-side values based on tier
+		const actualMaxRespondents = isPremium
+			? TIER_LIMITS.premium.maxParticipants
+			: Math.min(
+					Math.max(1, args.maxRespondents),
+					TIER_LIMITS.free.maxParticipants,
+				);
 		const hashedPassword =
 			args.password && isPremium
 				? await hashPassword(args.password)

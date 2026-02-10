@@ -17,7 +17,7 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 
 			description: z
 				.string()
-				.max(1000, "Description must be less than 1000 characters")
+				.max(1000, "Description must be at most 1000 characters")
 				.optional(),
 
 			timeZone: z.string().min(1, "Timezone is required"),
@@ -95,7 +95,7 @@ export const submitResponseSchema = z.object({
 
 	respondentComment: z
 		.string()
-		.max(500, "Comment must be less than 500 characters")
+		.max(500, "Comment must be at most 500 characters")
 		.optional(),
 
 	selectedSlots: z
@@ -120,7 +120,7 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 
 			description: z
 				.string()
-				.max(1000, "Description must be less than 1000 characters")
+				.max(1000, "Description must be at most 1000 characters")
 				.optional()
 				.nullable(),
 

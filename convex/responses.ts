@@ -2,6 +2,13 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
 
+// Max possible slots: 365 days * 24 hours * (60 / 15 min slots) = 35,040
+const MAX_SELECTED_SLOTS = 365 * 24 * (60 / 15);
+
+// ISO 8601 datetime pattern with range-checked month/day/hour/minute/second
+const ISO_DATETIME_REGEX =
+	/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,3})?Z$/;
+
 // Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
 	args: { eventId: v.id("events") },
@@ -54,6 +61,25 @@ export const submit = mutation({
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation
+		if (!args.respondentName || args.respondentName.length > 255) {
+			throw new Error("Name must be between 1 and 255 characters");
+		}
+		if (args.respondentComment && args.respondentComment.length > 500) {
+			throw new Error("Comment must be at most 500 characters");
+		}
+		if (args.selectedSlots.length === 0) {
+			throw new Error("Please select at least one time slot");
+		}
+		if (args.selectedSlots.length > MAX_SELECTED_SLOTS) {
+			throw new Error("Too many time slots selected");
+		}
+		for (const slot of args.selectedSlots) {
+			if (!ISO_DATETIME_REGEX.test(slot)) {
+				throw new Error("Each time slot must be a valid ISO 8601 datetime");
+			}
+		}
+
 		// Check max respondents limit
 		const event = await ctx.db.get(args.eventId);
 		if (!event) {
@@ -112,6 +138,25 @@ export const update = mutation({
 		selectedSlots: v.array(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation
+		if (!args.respondentName || args.respondentName.length > 255) {
+			throw new Error("Name must be between 1 and 255 characters");
+		}
+		if (args.respondentComment && args.respondentComment.length > 500) {
+			throw new Error("Comment must be at most 500 characters");
+		}
+		if (args.selectedSlots.length === 0) {
+			throw new Error("Please select at least one time slot");
+		}
+		if (args.selectedSlots.length > MAX_SELECTED_SLOTS) {
+			throw new Error("Too many time slots selected");
+		}
+		for (const slot of args.selectedSlots) {
+			if (!ISO_DATETIME_REGEX.test(slot)) {
+				throw new Error("Each time slot must be a valid ISO 8601 datetime");
+			}
+		}
+
 		const existing = await ctx.db.get(args.responseId);
 		if (!existing) {
 			throw new Error("Response not found");
