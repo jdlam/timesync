@@ -15,7 +15,7 @@ import type { Doc } from "../../../convex/_generated/dataModel";
 import { GridCell } from "./GridCell";
 
 interface AvailabilityGridProps {
-	event: Doc<"events">;
+	event: Omit<Doc<"events">, "adminToken" | "password">;
 	initialSelections?: string[];
 	onChange?: (selectedSlots: string[]) => void;
 	mode?: "select" | "view";

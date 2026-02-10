@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
 
-// Query: Get all responses for an event
+// Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
 	args: { eventId: v.id("events") },
 	handler: async (ctx, args) => {
@@ -11,7 +11,7 @@ export const getByEventId = query({
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
 			.order("desc")
 			.collect();
-		return responses;
+		return responses.map(({ editToken: _editToken, ...response }) => response);
 	},
 });
 

@@ -87,7 +87,7 @@ function AdminDashboardContent({
 	adminToken,
 }: {
 	event: Doc<"events">;
-	responses: Doc<"responses">[];
+	responses: Omit<Doc<"responses">, "editToken">[];
 	adminToken: string;
 }) {
 	const navigate = useNavigate();

@@ -89,7 +89,9 @@ function EventResponseContent({
 	eventPassword,
 	isPasswordProtected,
 }: {
-	event: Doc<"events"> & { isPasswordProtected?: boolean };
+	event: Omit<Doc<"events">, "adminToken" | "password"> & {
+		isPasswordProtected?: boolean;
+	};
 	responseCount: number;
 	eventPassword?: string;
 	isPasswordProtected?: boolean;

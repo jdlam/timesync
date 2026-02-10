@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { hashPassword, verifyPassword } from "./lib/password";
 
-// Query: Get event by ID
+// Query: Get event by ID (public — strips sensitive fields)
 export const getById = query({
 	args: { eventId: v.id("events") },
 	handler: async (ctx, args) => {
@@ -13,7 +13,9 @@ export const getById = query({
 		if (!event.isActive) {
 			throw new Error("This event is no longer accepting responses");
 		}
-		return event;
+		const { adminToken: _adminToken, password: _password, ...safeEvent } =
+			event;
+		return safeEvent;
 	},
 });
 
@@ -60,11 +62,15 @@ export const getByIdWithResponseCount = query({
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
 			.collect();
 
-		// Strip password hash from returned event
-		const { password: _password, ...eventWithoutPassword } = event;
+		// Strip sensitive fields from returned event
+		const {
+			adminToken: _adminToken,
+			password: _password,
+			...safeEvent
+		} = event;
 
 		return {
-			event: { ...eventWithoutPassword, isPasswordProtected: !!event.password },
+			event: { ...safeEvent, isPasswordProtected: !!event.password },
 			responseCount: responses.length,
 			passwordRequired: false,
 			wrongPassword: false,

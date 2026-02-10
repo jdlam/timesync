@@ -35,9 +35,9 @@ import type { Doc } from "../../../convex/_generated/dataModel";
 import { HeatmapCell } from "./HeatmapCell";
 
 interface HeatmapGridProps {
-	event: Doc<"events">;
-	responses: Doc<"responses">[];
-	highlightedResponse?: Doc<"responses">;
+	event: Omit<Doc<"events">, "adminToken" | "password">;
+	responses: Omit<Doc<"responses">, "editToken">[];
+	highlightedResponse?: Omit<Doc<"responses">, "editToken">;
 	onClearHighlight?: () => void;
 	onSelectResponse?: (responseId: string | null) => void;
 }

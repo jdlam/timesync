@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
 interface ResponsesListProps {
-	responses: Doc<"responses">[];
+	responses: Omit<Doc<"responses">, "editToken">[];
 	onDeleteResponse: (id: string) => void;
 	isDeletingId?: string | null;
 	selectedResponseId?: string | null;

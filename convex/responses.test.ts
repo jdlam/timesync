@@ -208,6 +208,32 @@ describe("responses", () => {
 			expect(responses).toEqual([]);
 		});
 
+		it("should not return editToken in responses", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "secret-edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const responses = await t.query(api.responses.getByEventId, {
+				eventId,
+			});
+
+			expect(responses).toHaveLength(1);
+			expect(responses[0].respondentName).toBe("Alice");
+			expect(
+				(responses[0] as Record<string, unknown>).editToken,
+			).toBeUndefined();
+		});
+
 		it("should return all responses for an event", async () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t);

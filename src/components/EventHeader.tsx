@@ -4,7 +4,7 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import { TimezoneBanner } from "./TimezoneBanner";
 
 interface EventHeaderProps {
-	event: Doc<"events">;
+	event: Omit<Doc<"events">, "adminToken" | "password">;
 	responseCount?: number;
 	isPasswordProtected?: boolean;
 }

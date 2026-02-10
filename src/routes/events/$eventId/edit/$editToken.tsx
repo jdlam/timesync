@@ -62,7 +62,7 @@ function EditResponseForm({
 	event,
 	response,
 }: {
-	event: Doc<"events">;
+	event: Omit<Doc<"events">, "adminToken" | "password">;
 	response: Doc<"responses">;
 }) {
 	const updateResponseMutation = useMutation(api.responses.update);
