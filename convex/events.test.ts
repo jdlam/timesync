@@ -21,7 +21,35 @@ describe("events", () => {
 			});
 
 			expect(result.eventId).toBeDefined();
-			expect(result.adminToken).toBeDefined();
+			expect(result.adminToken).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			);
+		});
+
+		it("should generate unique admin tokens for different events", async () => {
+			const t = convexTest(schema, modules);
+
+			const result1 = await t.mutation(api.events.create, {
+				title: "Event 1",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			const result2 = await t.mutation(api.events.create, {
+				title: "Event 2",
+				timeZone: "UTC",
+				dates: ["2025-01-21"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			expect(result1.adminToken).not.toBe(result2.adminToken);
 		});
 
 		it("should create an event without optional description", async () => {

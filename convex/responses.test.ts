@@ -48,7 +48,28 @@ describe("responses", () => {
 			});
 
 			expect(result.responseId).toBeDefined();
-			expect(result.editToken).toBeDefined();
+			expect(result.editToken).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			);
+		});
+
+		it("should generate unique edit tokens for different responses", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const result1 = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Alice",
+				selectedSlots: ["2025-01-20T10:00:00Z"],
+			});
+
+			const result2 = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Bob",
+				selectedSlots: ["2025-01-20T11:00:00Z"],
+			});
+
+			expect(result1.editToken).not.toBe(result2.editToken);
 		});
 
 		it("should submit a response without optional comment", async () => {
