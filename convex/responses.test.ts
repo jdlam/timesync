@@ -235,7 +235,7 @@ describe("responses", () => {
 					respondentComment: "a".repeat(501),
 					selectedSlots: ["2025-01-20T10:00:00Z"],
 				}),
-			).rejects.toThrow("Comment must be less than 500 characters");
+			).rejects.toThrow("Comment must be at most 500 characters");
 		});
 
 		it("should reject empty selectedSlots", async () => {

@@ -141,6 +141,55 @@ describe("events", () => {
 				}),
 			).rejects.toThrow("Time range must be in HH:mm format");
 		});
+
+		it("should reject out-of-range time values like 99:99", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "99:99",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
+
+		it("should reject out-of-range hour 25:00", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "25:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
+
+		it("should reject empty password", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "",
+				}),
+			).rejects.toThrow("Password must be between 4 and 128 characters");
+		});
 	});
 
 	describe("getById", () => {

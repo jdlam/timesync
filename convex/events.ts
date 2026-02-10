@@ -151,15 +151,15 @@ export const update = mutation({
 			throw new Error("Title must be between 1 and 255 characters");
 		}
 		if (args.description !== undefined && args.description !== null && args.description.length > 1000) {
-			throw new Error("Description must be less than 1000 characters");
+			throw new Error("Description must be at most 1000 characters");
 		}
 		if (args.dates !== undefined && (args.dates.length === 0 || args.dates.length > 365)) {
 			throw new Error("Must have between 1 and 365 dates");
 		}
-		if (args.timeRangeStart !== undefined && !/^\d{2}:\d{2}$/.test(args.timeRangeStart)) {
+		if (args.timeRangeStart !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart)) {
 			throw new Error("Time range must be in HH:mm format");
 		}
-		if (args.timeRangeEnd !== undefined && !/^\d{2}:\d{2}$/.test(args.timeRangeEnd)) {
+		if (args.timeRangeEnd !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
 			throw new Error("Time range must be in HH:mm format");
 		}
 		if (args.password !== undefined && args.password !== null && (args.password.length < 4 || args.password.length > 128)) {
@@ -269,18 +269,18 @@ export const create = mutation({
 			throw new Error("Title must be between 1 and 255 characters");
 		}
 		if (args.description && args.description.length > 1000) {
-			throw new Error("Description must be less than 1000 characters");
+			throw new Error("Description must be at most 1000 characters");
 		}
 		if (args.dates.length === 0 || args.dates.length > 365) {
 			throw new Error("Must have between 1 and 365 dates");
 		}
-		if (!/^\d{2}:\d{2}$/.test(args.timeRangeStart) || !/^\d{2}:\d{2}$/.test(args.timeRangeEnd)) {
+		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
 			throw new Error("Time range must be in HH:mm format");
 		}
 		if (![15, 30, 60].includes(args.slotDuration)) {
 			throw new Error("Slot duration must be 15, 30, or 60 minutes");
 		}
-		if (args.password && (args.password.length < 4 || args.password.length > 128)) {
+		if (args.password !== undefined && (args.password.length < 4 || args.password.length > 128)) {
 			throw new Error("Password must be between 4 and 128 characters");
 		}
 

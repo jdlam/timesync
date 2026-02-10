@@ -59,7 +59,7 @@ export const submit = mutation({
 			throw new Error("Name must be between 1 and 255 characters");
 		}
 		if (args.respondentComment && args.respondentComment.length > 500) {
-			throw new Error("Comment must be less than 500 characters");
+			throw new Error("Comment must be at most 500 characters");
 		}
 		if (args.selectedSlots.length === 0) {
 			throw new Error("Please select at least one time slot");
@@ -128,7 +128,7 @@ export const update = mutation({
 			throw new Error("Name must be between 1 and 255 characters");
 		}
 		if (args.respondentComment && args.respondentComment.length > 500) {
-			throw new Error("Comment must be less than 500 characters");
+			throw new Error("Comment must be at most 500 characters");
 		}
 		if (args.selectedSlots.length === 0) {
 			throw new Error("Please select at least one time slot");
