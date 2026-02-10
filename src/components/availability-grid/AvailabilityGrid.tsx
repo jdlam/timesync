@@ -11,7 +11,7 @@ import {
 } from "@/lib/time-utils";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
 import { cn } from "@/lib/utils";
-import type { PublicEvent } from "../../../convex/shared-types";
+import type { PublicEvent } from "../../../convex/shared_types";
 import { GridCell } from "./GridCell";
 
 interface AvailabilityGridProps {

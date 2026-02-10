@@ -1,6 +1,6 @@
 import { Calendar, Clock, Globe, Lock, MapPin, Users } from "lucide-react";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
-import type { PublicEvent } from "../../convex/shared-types";
+import type { PublicEvent } from "../../convex/shared_types";
 import { TimezoneBanner } from "./TimezoneBanner";
 
 interface EventHeaderProps {

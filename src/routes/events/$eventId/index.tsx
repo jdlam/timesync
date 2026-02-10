@@ -23,7 +23,7 @@ import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { generateEditToken } from "@/lib/token-utils";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import type { PublicEvent } from "../../../../convex/shared-types";
+import type { PublicEvent } from "../../../../convex/shared_types";
 
 export const Route = createFileRoute("/events/$eventId/")({
 	component: EventResponse,
