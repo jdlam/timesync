@@ -2,6 +2,9 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
 
+// Max possible slots: 365 days * 24 hours * (60 / 15 min slots) = 35,040
+const MAX_SELECTED_SLOTS = 365 * 24 * (60 / 15);
+
 // Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
 	args: { eventId: v.id("events") },
@@ -64,7 +67,7 @@ export const submit = mutation({
 		if (args.selectedSlots.length === 0) {
 			throw new Error("Please select at least one time slot");
 		}
-		if (args.selectedSlots.length > 35040) {
+		if (args.selectedSlots.length > MAX_SELECTED_SLOTS) {
 			throw new Error("Too many time slots selected");
 		}
 
@@ -136,7 +139,7 @@ export const update = mutation({
 		if (args.selectedSlots.length === 0) {
 			throw new Error("Please select at least one time slot");
 		}
-		if (args.selectedSlots.length > 35040) {
+		if (args.selectedSlots.length > MAX_SELECTED_SLOTS) {
 			throw new Error("Too many time slots selected");
 		}
 

@@ -224,11 +224,10 @@ describe("events", () => {
 			).rejects.toThrow("Must have between 1 and 14 dates");
 		});
 
-		it("should override maxRespondents server-side for free tier", async () => {
+		it("should clamp maxRespondents for free tier", async () => {
 			const t = convexTest(schema, modules);
 
-			// Free user tries to pass -1 (unlimited) — server should use their passed value
-			// but NOT allow unlimited (premium only)
+			// Free user tries to pass -1 (unlimited) — server should clamp to free-tier max
 			const result = await t.mutation(api.events.create, {
 				title: "Free Event",
 				timeZone: "UTC",
@@ -243,9 +242,28 @@ describe("events", () => {
 				return await ctx.db.get(result.eventId);
 			});
 
-			// For free users, the passed maxRespondents is used as-is
-			// The frontend enforces reasonable limits; server trusts it for free tier
-			expect(event?.maxRespondents).toBe(-1);
+			// Free tier clamped to min 1, max 5
+			expect(event?.maxRespondents).toBe(1);
+		});
+
+		it("should cap maxRespondents at 5 for free tier", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Free Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 100,
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.maxRespondents).toBe(5);
 		});
 
 		it("should set maxRespondents to -1 for premium users", async () => {

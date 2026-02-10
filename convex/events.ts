@@ -338,7 +338,10 @@ export const create = mutation({
 		}
 
 		// Derive server-side values based on tier
-		const actualMaxRespondents = isPremium ? -1 : args.maxRespondents;
+		const FREE_MAX_RESPONDENTS = 5;
+		const actualMaxRespondents = isPremium
+			? -1
+			: Math.min(Math.max(1, args.maxRespondents), FREE_MAX_RESPONDENTS);
 		const hashedPassword =
 			args.password && isPremium
 				? await hashPassword(args.password)
