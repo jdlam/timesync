@@ -19,8 +19,14 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
 	const { isSignedIn } = useUser();
-	const { isPremium, isLoading, upgrade, manageSubscription, syncUser } =
-		useSubscription();
+	const {
+		isPremium,
+		isSuperAdmin,
+		isLoading,
+		upgrade,
+		manageSubscription,
+		syncUser,
+	} = useSubscription();
 	const { success, canceled } = useSearch({ from: "/pricing" });
 
 	// Sync user on page load (creates user record if needed)
@@ -210,6 +216,10 @@ function PricingPage() {
 						{isLoading ? (
 							<Button className="w-full" disabled>
 								Loading...
+							</Button>
+						) : isPremium && isSuperAdmin ? (
+							<Button variant="outline" className="w-full" disabled>
+								Admin Access
 							</Button>
 						) : isPremium ? (
 							<Button
