@@ -4,6 +4,40 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 /**
+ * Validate that a redirect URL belongs to the app's own domain.
+ * Prevents open redirect attacks via Stripe redirect URLs.
+ */
+export function validateRedirectUrl(url: string): void {
+	const allowedDomain = process.env.APP_URL;
+	if (!allowedDomain) {
+		// If APP_URL is not configured, allow any HTTPS URL as a fallback
+		// but still block javascript: and data: schemes
+		try {
+			const parsed = new URL(url);
+			if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+				throw new Error("Invalid redirect URL: must use HTTP(S)");
+			}
+		} catch {
+			throw new Error("Invalid redirect URL");
+		}
+		return;
+	}
+
+	try {
+		const parsed = new URL(url);
+		const allowed = new URL(allowedDomain);
+		if (parsed.hostname !== allowed.hostname) {
+			throw new Error("Invalid redirect URL: domain mismatch");
+		}
+	} catch (e) {
+		if (e instanceof Error && e.message.includes("redirect URL")) {
+			throw e;
+		}
+		throw new Error("Invalid redirect URL");
+	}
+}
+
+/**
  * Create a Stripe Checkout session for subscription
  * Returns the checkout URL to redirect the user to
  */
@@ -13,6 +47,10 @@ export const createCheckoutSession = action({
 		cancelUrl: v.string(),
 	},
 	handler: async (ctx, args): Promise<{ url: string }> => {
+		// Validate redirect URLs before proceeding
+		validateRedirectUrl(args.successUrl);
+		validateRedirectUrl(args.cancelUrl);
+
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) {
 			throw new Error("Not authenticated. Please sign in to subscribe.");
@@ -100,6 +138,9 @@ export const createPortalSession = action({
 		returnUrl: v.string(),
 	},
 	handler: async (ctx, args): Promise<{ url: string }> => {
+		// Validate redirect URL before proceeding
+		validateRedirectUrl(args.returnUrl);
+
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) {
 			throw new Error("Not authenticated");
