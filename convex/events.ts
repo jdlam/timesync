@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { hashPassword, verifyPassword } from "./lib/password";
+import { TIER_LIMITS, isValidDateString } from "./lib/tier_config";
 
 // Query: Get event by ID (public — strips sensitive fields, respects password gate)
 export const getById = query({
@@ -178,9 +179,19 @@ export const update = mutation({
 		}
 
 		// Tier-aware validation
-		const maxDates = event.isPremium ? 365 : 14;
-		if (args.dates !== undefined && (args.dates.length === 0 || args.dates.length > maxDates)) {
-			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		const tier = event.isPremium ? "premium" : "free";
+		const maxDates = TIER_LIMITS[tier].maxDates;
+		if (args.dates !== undefined) {
+			if (args.dates.length === 0 || args.dates.length > maxDates) {
+				throw new Error(`Must have between 1 and ${maxDates} dates`);
+			}
+			for (const d of args.dates) {
+				if (!isValidDateString(d)) {
+					throw new Error(
+						"Each date must be a valid calendar date in YYYY-MM-DD format",
+					);
+				}
+			}
 		}
 		if (args.password !== undefined && args.password !== null) {
 			if (!event.isPremium) {
@@ -324,9 +335,17 @@ export const create = mutation({
 		}
 
 		// Tier-aware validation
-		const maxDates = isPremium ? 365 : 14;
+		const tier = isPremium ? "premium" : "free";
+		const maxDates = TIER_LIMITS[tier].maxDates;
 		if (args.dates.length === 0 || args.dates.length > maxDates) {
 			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		}
+		for (const d of args.dates) {
+			if (!isValidDateString(d)) {
+				throw new Error(
+					"Each date must be a valid calendar date in YYYY-MM-DD format",
+				);
+			}
 		}
 		if (args.password !== undefined) {
 			if (!isPremium) {
@@ -338,10 +357,12 @@ export const create = mutation({
 		}
 
 		// Derive server-side values based on tier
-		const FREE_MAX_RESPONDENTS = 5;
 		const actualMaxRespondents = isPremium
-			? -1
-			: Math.min(Math.max(1, args.maxRespondents), FREE_MAX_RESPONDENTS);
+			? TIER_LIMITS.premium.maxParticipants
+			: Math.min(
+					Math.max(1, args.maxRespondents),
+					TIER_LIMITS.free.maxParticipants,
+				);
 		const hashedPassword =
 			args.password && isPremium
 				? await hashPassword(args.password)

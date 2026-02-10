@@ -5,6 +5,9 @@ import { verifyPassword } from "./lib/password";
 // Max possible slots: 365 days * 24 hours * (60 / 15 min slots) = 35,040
 const MAX_SELECTED_SLOTS = 365 * 24 * (60 / 15);
 
+// ISO 8601 datetime pattern: YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DDTHH:mm:ss.sssZ
+const ISO_DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+
 // Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
 	args: { eventId: v.id("events") },
@@ -69,6 +72,11 @@ export const submit = mutation({
 		}
 		if (args.selectedSlots.length > MAX_SELECTED_SLOTS) {
 			throw new Error("Too many time slots selected");
+		}
+		for (const slot of args.selectedSlots) {
+			if (!ISO_DATETIME_REGEX.test(slot)) {
+				throw new Error("Each time slot must be a valid ISO 8601 datetime");
+			}
 		}
 
 		// Check max respondents limit
@@ -141,6 +149,11 @@ export const update = mutation({
 		}
 		if (args.selectedSlots.length > MAX_SELECTED_SLOTS) {
 			throw new Error("Too many time slots selected");
+		}
+		for (const slot of args.selectedSlots) {
+			if (!ISO_DATETIME_REGEX.test(slot)) {
+				throw new Error("Each time slot must be a valid ISO 8601 datetime");
+			}
 		}
 
 		const existing = await ctx.db.get(args.responseId);

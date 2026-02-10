@@ -190,6 +190,38 @@ describe("events", () => {
 			).rejects.toThrow("End time must be after start time");
 		});
 
+		it("should reject invalid date format", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["not-a-date"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Each date must be a valid calendar date in YYYY-MM-DD format");
+		});
+
+		it("should reject impossible date like Feb 31", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-02-31"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Each date must be a valid calendar date in YYYY-MM-DD format");
+		});
+
 		it("should reject empty password", async () => {
 			const t = convexTest(schema, modules);
 
@@ -1034,7 +1066,7 @@ describe("events", () => {
 				});
 			});
 
-			const manyDates = Array.from({ length: 30 }, (_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`);
+			const manyDates = Array.from({ length: 30 }, (_, i) => `2025-01-${String(i + 1).padStart(2, "0")}`);
 			const result = await t.mutation(api.events.update, {
 				eventId,
 				adminToken: "admin-token",

@@ -250,6 +250,32 @@ describe("responses", () => {
 				}),
 			).rejects.toThrow("Please select at least one time slot");
 		});
+
+		it("should reject invalid slot format", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["not-a-datetime"],
+				}),
+			).rejects.toThrow("Each time slot must be a valid ISO 8601 datetime");
+		});
+
+		it("should accept valid ISO 8601 slots", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const result = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Alice",
+				selectedSlots: ["2025-01-20T10:00:00Z", "2025-01-20T10:30:00.000Z"],
+			});
+
+			expect(result.responseId).toBeDefined();
+		});
 	});
 
 	describe("getByEventId", () => {
