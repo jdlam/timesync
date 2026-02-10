@@ -102,10 +102,11 @@ export const submit = mutation({
 	},
 });
 
-// Mutation: Update an existing response
+// Mutation: Update an existing response (requires editToken)
 export const update = mutation({
 	args: {
 		responseId: v.id("responses"),
+		editToken: v.string(),
 		respondentName: v.string(),
 		respondentComment: v.optional(v.string()),
 		selectedSlots: v.array(v.string()),
@@ -114,6 +115,10 @@ export const update = mutation({
 		const existing = await ctx.db.get(args.responseId);
 		if (!existing) {
 			throw new Error("Response not found");
+		}
+
+		if (existing.editToken !== args.editToken) {
+			throw new Error("Invalid edit token");
 		}
 
 		await ctx.db.patch(args.responseId, {
@@ -127,10 +132,20 @@ export const update = mutation({
 	},
 });
 
-// Mutation: Delete a response
+// Mutation: Delete a response (requires adminToken for the event)
 export const remove = mutation({
-	args: { responseId: v.id("responses") },
+	args: { responseId: v.id("responses"), adminToken: v.string() },
 	handler: async (ctx, args) => {
+		const response = await ctx.db.get(args.responseId);
+		if (!response) {
+			throw new Error("Response not found");
+		}
+
+		const event = await ctx.db.get(response.eventId);
+		if (!event || event.adminToken !== args.adminToken) {
+			throw new Error("Invalid admin token");
+		}
+
 		await ctx.db.delete(args.responseId);
 		return { success: true };
 	},

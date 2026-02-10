@@ -124,6 +124,7 @@ function AdminDashboardContent({
 		try {
 			await deleteResponseMutation({
 				responseId: responseToDelete as Id<"responses">,
+				adminToken,
 			});
 
 			// Convex will automatically update the responses query

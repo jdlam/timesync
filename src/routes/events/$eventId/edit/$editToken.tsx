@@ -97,6 +97,7 @@ function EditResponseForm({
 		try {
 			await updateResponseMutation({
 				responseId: response._id,
+				editToken: response.editToken,
 				respondentName: name.trim(),
 				respondentComment: comment.trim() || undefined,
 				selectedSlots,
