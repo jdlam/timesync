@@ -496,6 +496,82 @@ describe("responses", () => {
 				}),
 			).rejects.toThrow("Response not found");
 		});
+
+		it("should reject name longer than 255 characters in update", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "a".repeat(256),
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				}),
+			).rejects.toThrow("Name must be between 1 and 255 characters");
+		});
+
+		it("should reject comment longer than 500 characters in update", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Alice",
+					respondentComment: "a".repeat(501),
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				}),
+			).rejects.toThrow("Comment must be at most 500 characters");
+		});
+
+		it("should reject empty selectedSlots in update", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Alice",
+					selectedSlots: [],
+				}),
+			).rejects.toThrow("Please select at least one time slot");
+		});
 	});
 
 	describe("remove", () => {

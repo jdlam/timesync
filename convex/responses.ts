@@ -64,6 +64,9 @@ export const submit = mutation({
 		if (args.selectedSlots.length === 0) {
 			throw new Error("Please select at least one time slot");
 		}
+		if (args.selectedSlots.length > 35040) {
+			throw new Error("Too many time slots selected");
+		}
 
 		// Check max respondents limit
 		const event = await ctx.db.get(args.eventId);
@@ -132,6 +135,9 @@ export const update = mutation({
 		}
 		if (args.selectedSlots.length === 0) {
 			throw new Error("Please select at least one time slot");
+		}
+		if (args.selectedSlots.length > 35040) {
+			throw new Error("Too many time slots selected");
 		}
 
 		const existing = await ctx.db.get(args.responseId);

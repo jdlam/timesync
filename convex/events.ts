@@ -153,23 +153,42 @@ export const update = mutation({
 		if (args.description !== undefined && args.description !== null && args.description.length > 1000) {
 			throw new Error("Description must be at most 1000 characters");
 		}
-		if (args.dates !== undefined && (args.dates.length === 0 || args.dates.length > 365)) {
-			throw new Error("Must have between 1 and 365 dates");
-		}
 		if (args.timeRangeStart !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart)) {
 			throw new Error("Time range must be in HH:mm format");
 		}
 		if (args.timeRangeEnd !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
 			throw new Error("Time range must be in HH:mm format");
 		}
-		if (args.password !== undefined && args.password !== null && (args.password.length < 4 || args.password.length > 128)) {
-			throw new Error("Password must be between 4 and 128 characters");
+
+		// Validate time range ordering when both are provided
+		const effectiveStart = args.timeRangeStart;
+		const effectiveEnd = args.timeRangeEnd;
+		if (effectiveStart !== undefined && effectiveEnd !== undefined) {
+			const [startH, startM] = effectiveStart.split(":").map(Number);
+			const [endH, endM] = effectiveEnd.split(":").map(Number);
+			if (startH * 60 + startM >= endH * 60 + endM) {
+				throw new Error("End time must be after start time");
+			}
 		}
 
-		// Validate admin token
+		// Validate admin token and load event for tier-aware checks
 		const event = await ctx.db.get(args.eventId);
 		if (!event || event.adminToken !== args.adminToken) {
 			throw new Error("Event not found or invalid admin token");
+		}
+
+		// Tier-aware validation
+		const maxDates = event.isPremium ? 365 : 14;
+		if (args.dates !== undefined && (args.dates.length === 0 || args.dates.length > maxDates)) {
+			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		}
+		if (args.password !== undefined && args.password !== null) {
+			if (!event.isPremium) {
+				throw new Error("Password protection is a premium feature");
+			}
+			if (args.password.length < 4 || args.password.length > 128) {
+				throw new Error("Password must be between 4 and 128 characters");
+			}
 		}
 
 		// Build update object with only provided fields
@@ -186,7 +205,7 @@ export const update = mutation({
 		// Password: null = remove, string = set/change, undefined = no change
 		if (args.password === null) {
 			updates.password = undefined;
-		} else if (typeof args.password === "string" && event.isPremium) {
+		} else if (typeof args.password === "string") {
 			updates.password = await hashPassword(args.password);
 		}
 
@@ -276,6 +295,11 @@ export const create = mutation({
 		}
 		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
 			throw new Error("Time range must be in HH:mm format");
+		}
+		const [startH, startM] = args.timeRangeStart.split(":").map(Number);
+		const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
+		if (startH * 60 + startM >= endH * 60 + endM) {
+			throw new Error("End time must be after start time");
 		}
 		if (![15, 30, 60].includes(args.slotDuration)) {
 			throw new Error("Slot duration must be 15, 30, or 60 minutes");
