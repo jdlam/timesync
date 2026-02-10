@@ -22,7 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { generateEditToken } from "@/lib/token-utils";
 import { api } from "../../../../convex/_generated/api";
-import type { Doc, Id } from "../../../../convex/_generated/dataModel";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import type { PublicEvent } from "../../../../convex/shared-types";
 
 export const Route = createFileRoute("/events/$eventId/")({
 	component: EventResponse,
@@ -89,9 +90,7 @@ function EventResponseContent({
 	eventPassword,
 	isPasswordProtected,
 }: {
-	event: Omit<Doc<"events">, "adminToken" | "password"> & {
-		isPasswordProtected?: boolean;
-	};
+	event: PublicEvent & { isPasswordProtected?: boolean };
 	responseCount: number;
 	eventPassword?: string;
 	isPasswordProtected?: boolean;

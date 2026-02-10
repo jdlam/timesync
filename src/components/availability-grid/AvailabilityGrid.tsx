@@ -11,11 +11,11 @@ import {
 } from "@/lib/time-utils";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
 import { cn } from "@/lib/utils";
-import type { Doc } from "../../../convex/_generated/dataModel";
+import type { PublicEvent } from "../../../convex/shared-types";
 import { GridCell } from "./GridCell";
 
 interface AvailabilityGridProps {
-	event: Omit<Doc<"events">, "adminToken" | "password">;
+	event: PublicEvent;
 	initialSelections?: string[];
 	onChange?: (selectedSlots: string[]) => void;
 	mode?: "select" | "view";

@@ -33,6 +33,7 @@ import { exportEventToCsv } from "@/lib/csv-export";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
+import type { PublicResponse } from "../../../../../convex/shared-types";
 
 export const Route = createFileRoute("/events/$eventId/admin/$adminToken")({
 	component: AdminDashboard,
@@ -87,7 +88,7 @@ function AdminDashboardContent({
 	adminToken,
 }: {
 	event: Doc<"events">;
-	responses: Omit<Doc<"responses">, "editToken">[];
+	responses: PublicResponse[];
 	adminToken: string;
 }) {
 	const navigate = useNavigate();

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
+import type { PublicEvent } from "../../../../../convex/shared-types";
 
 export const Route = createFileRoute("/events/$eventId/edit/$editToken")({
 	component: EditResponseWrapper,
@@ -21,9 +22,10 @@ export const Route = createFileRoute("/events/$eventId/edit/$editToken")({
 function EditResponseWrapper() {
 	const { eventId, editToken } = Route.useParams();
 
-	// Fetch event
+	// Fetch event (pass editToken to bypass password gate)
 	const event = useQuery(api.events.getById, {
 		eventId: eventId as Id<"events">,
+		editToken,
 	});
 
 	// Fetch response by edit token
@@ -62,7 +64,7 @@ function EditResponseForm({
 	event,
 	response,
 }: {
-	event: Omit<Doc<"events">, "adminToken" | "password">;
+	event: PublicEvent;
 	response: Doc<"responses">;
 }) {
 	const updateResponseMutation = useMutation(api.responses.update);

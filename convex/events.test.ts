@@ -147,7 +147,22 @@ describe("events", () => {
 				});
 			});
 
-			const event = await t.query(api.events.getById, { eventId });
+			// Create a response so we have a valid editToken to bypass the password gate
+			await t.run(async (ctx) => {
+				await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "valid-edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const event = await t.query(api.events.getById, {
+				eventId,
+				editToken: "valid-edit-token",
+			});
 
 			expect(event.title).toBe("Test Event");
 			expect(
@@ -156,6 +171,41 @@ describe("events", () => {
 			expect(
 				(event as Record<string, unknown>).password,
 			).toBeUndefined();
+		});
+
+		it("should block password-protected events without valid editToken", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Protected Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					password: "hashed:password",
+					maxRespondents: 5,
+					isPremium: true,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			// Without editToken
+			await expect(
+				t.query(api.events.getById, { eventId }),
+			).rejects.toThrow("This event is password-protected");
+
+			// With invalid editToken
+			await expect(
+				t.query(api.events.getById, {
+					eventId,
+					editToken: "wrong-token",
+				}),
+			).rejects.toThrow("This event is password-protected");
 		});
 
 		it("should throw error for inactive event", async () => {

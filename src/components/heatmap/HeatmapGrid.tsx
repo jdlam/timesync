@@ -31,13 +31,13 @@ import {
 } from "@/lib/time-utils";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
 import { cn } from "@/lib/utils";
-import type { Doc } from "../../../convex/_generated/dataModel";
+import type { PublicEvent, PublicResponse } from "../../../convex/shared-types";
 import { HeatmapCell } from "./HeatmapCell";
 
 interface HeatmapGridProps {
-	event: Omit<Doc<"events">, "adminToken" | "password">;
-	responses: Omit<Doc<"responses">, "editToken">[];
-	highlightedResponse?: Omit<Doc<"responses">, "editToken">;
+	event: PublicEvent;
+	responses: PublicResponse[];
+	highlightedResponse?: PublicResponse;
 	onClearHighlight?: () => void;
 	onSelectResponse?: (responseId: string | null) => void;
 }
