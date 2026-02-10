@@ -45,11 +45,10 @@ describe("responses", () => {
 				respondentName: "Alice",
 				respondentComment: "Looking forward to it!",
 				selectedSlots: ["2025-01-20T10:00:00Z", "2025-01-20T10:30:00Z"],
-				editToken: "edit-token-alice",
 			});
 
 			expect(result.responseId).toBeDefined();
-			expect(result.editToken).toBe("edit-token-alice");
+			expect(result.editToken).toBeDefined();
 		});
 
 		it("should submit a response without optional comment", async () => {
@@ -60,7 +59,6 @@ describe("responses", () => {
 				eventId,
 				respondentName: "Bob",
 				selectedSlots: ["2025-01-20T14:00:00Z"],
-				editToken: "edit-token-bob",
 			});
 
 			expect(result.responseId).toBeDefined();
@@ -94,7 +92,6 @@ describe("responses", () => {
 					eventId,
 					respondentName: "Test",
 					selectedSlots: [],
-					editToken: "token",
 				}),
 			).rejects.toThrow("Event not found");
 		});
@@ -129,7 +126,6 @@ describe("responses", () => {
 					eventId,
 					respondentName: "User 3",
 					selectedSlots: ["2025-01-20T12:00:00Z"],
-					editToken: "token-3",
 				}),
 			).rejects.toThrow("Maximum number of respondents reached");
 		});
@@ -147,7 +143,6 @@ describe("responses", () => {
 					eventId,
 					respondentName: `User ${i}`,
 					selectedSlots: ["2025-01-20T10:00:00Z"],
-					editToken: `token-unlimited-${i}`,
 				});
 			}
 
@@ -156,7 +151,6 @@ describe("responses", () => {
 				eventId,
 				respondentName: "User 11",
 				selectedSlots: ["2025-01-20T10:00:00Z"],
-				editToken: "token-unlimited-11",
 			});
 
 			expect(result.responseId).toBeDefined();
@@ -191,7 +185,6 @@ describe("responses", () => {
 				eventId,
 				respondentName: "User 3",
 				selectedSlots: ["2025-01-20T10:00:00Z"],
-				editToken: "token-3",
 			});
 
 			expect(result.responseId).toBeDefined();
@@ -428,7 +421,6 @@ describe("responses", () => {
 				eventId,
 				respondentName: "Alice",
 				selectedSlots: ["2025-01-20T10:00:00Z"],
-				editToken: "token-1",
 			});
 
 			expect(result.responseId).toBeDefined();
@@ -451,7 +443,6 @@ describe("responses", () => {
 					eventId,
 					respondentName: "Alice",
 					selectedSlots: ["2025-01-20T10:00:00Z"],
-					editToken: "token-1",
 				}),
 			).rejects.toThrow("Password is required for this event");
 		});
@@ -472,7 +463,6 @@ describe("responses", () => {
 					eventId,
 					respondentName: "Alice",
 					selectedSlots: ["2025-01-20T10:00:00Z"],
-					editToken: "token-1",
 					password: "wrong-pass",
 				}),
 			).rejects.toThrow("Incorrect event password");
@@ -493,7 +483,6 @@ describe("responses", () => {
 				eventId,
 				respondentName: "Alice",
 				selectedSlots: ["2025-01-20T10:00:00Z"],
-				editToken: "token-1",
 				password: "correct-pass",
 			});
 

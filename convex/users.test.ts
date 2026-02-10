@@ -529,7 +529,6 @@ describe("events with subscription tier", () => {
 			timeRangeStart: "09:00",
 			timeRangeEnd: "17:00",
 			slotDuration: 30,
-			adminToken: "token",
 			maxRespondents: 5, // Will be overridden to -1
 			creatorId: "premium_creator",
 		});
@@ -552,7 +551,6 @@ describe("events with subscription tier", () => {
 			timeRangeStart: "09:00",
 			timeRangeEnd: "17:00",
 			slotDuration: 30,
-			adminToken: "token",
 			maxRespondents: 5,
 			creatorId: "nonexistent_user",
 		});
@@ -575,7 +573,6 @@ describe("events with subscription tier", () => {
 			timeRangeStart: "09:00",
 			timeRangeEnd: "17:00",
 			slotDuration: 30,
-			adminToken: "token",
 			maxRespondents: 5,
 		});
 
@@ -612,7 +609,6 @@ describe("events with subscription tier", () => {
 			timeRangeStart: "09:00",
 			timeRangeEnd: "17:00",
 			slotDuration: 30,
-			adminToken: "token",
 			maxRespondents: 5,
 			creatorId: "expired_premium_creator",
 		});

@@ -51,7 +51,6 @@ export const submit = mutation({
 		respondentName: v.string(),
 		respondentComment: v.optional(v.string()),
 		selectedSlots: v.array(v.string()),
-		editToken: v.string(),
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
@@ -84,20 +83,21 @@ export const submit = mutation({
 			throw new Error("Maximum number of respondents reached");
 		}
 
+		const editToken = crypto.randomUUID();
 		const now = Date.now();
 		const responseId = await ctx.db.insert("responses", {
 			eventId: args.eventId,
 			respondentName: args.respondentName,
 			respondentComment: args.respondentComment,
 			selectedSlots: args.selectedSlots,
-			editToken: args.editToken,
+			editToken,
 			createdAt: now,
 			updatedAt: now,
 		});
 
 		return {
 			responseId,
-			editToken: args.editToken,
+			editToken,
 		};
 	},
 });

@@ -209,7 +209,6 @@ export const create = mutation({
 		timeRangeStart: v.string(),
 		timeRangeEnd: v.string(),
 		slotDuration: v.number(),
-		adminToken: v.string(),
 		maxRespondents: v.number(),
 		creatorId: v.optional(v.string()),
 		creatorEmail: v.optional(v.string()),
@@ -245,6 +244,7 @@ export const create = mutation({
 				? await hashPassword(args.password)
 				: undefined;
 
+		const adminToken = crypto.randomUUID();
 		const now = Date.now();
 		const eventId = await ctx.db.insert("events", {
 			title: args.title,
@@ -254,7 +254,7 @@ export const create = mutation({
 			timeRangeStart: args.timeRangeStart,
 			timeRangeEnd: args.timeRangeEnd,
 			slotDuration: args.slotDuration,
-			adminToken: args.adminToken,
+			adminToken,
 			isPremium,
 			password: hashedPassword,
 			maxRespondents: actualMaxRespondents,
@@ -267,7 +267,7 @@ export const create = mutation({
 
 		return {
 			eventId,
-			adminToken: args.adminToken,
+			adminToken,
 		};
 	},
 });

@@ -30,7 +30,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone } from "@/lib/time-utils";
-import { generateAdminToken } from "@/lib/token-utils";
 import { createEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../../convex/_generated/api";
 
@@ -72,7 +71,6 @@ function CreateEvent() {
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				const adminToken = generateAdminToken();
 				const result = await createEventMutation({
 					title: value.title,
 					description: value.description || undefined,
@@ -81,7 +79,6 @@ function CreateEvent() {
 					timeRangeStart: value.timeRangeStart,
 					timeRangeEnd: value.timeRangeEnd,
 					slotDuration: Number.parseInt(value.slotDuration, 10),
-					adminToken,
 					maxRespondents: tierLimits.maxParticipants,
 					creatorId: user?.id, // Clerk subject ID or undefined for guests
 					creatorEmail: user?.primaryEmailAddress?.emailAddress, // Creator's email or undefined for guests

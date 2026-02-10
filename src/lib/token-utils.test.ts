@@ -1,47 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-	generateAdminToken,
-	generateEditToken,
-	isValidUUID,
-} from "./token-utils";
+import { isValidUUID } from "./token-utils";
 
 describe("token-utils", () => {
-	describe("generateAdminToken", () => {
-		it("should generate a valid UUID", () => {
-			const token = generateAdminToken();
-
-			expect(isValidUUID(token)).toBe(true);
-		});
-
-		it("should generate unique tokens", () => {
-			const tokens = new Set<string>();
-
-			for (let i = 0; i < 100; i++) {
-				tokens.add(generateAdminToken());
-			}
-
-			expect(tokens.size).toBe(100);
-		});
-	});
-
-	describe("generateEditToken", () => {
-		it("should generate a valid UUID", () => {
-			const token = generateEditToken();
-
-			expect(isValidUUID(token)).toBe(true);
-		});
-
-		it("should generate unique tokens", () => {
-			const tokens = new Set<string>();
-
-			for (let i = 0; i < 100; i++) {
-				tokens.add(generateEditToken());
-			}
-
-			expect(tokens.size).toBe(100);
-		});
-	});
-
 	describe("isValidUUID", () => {
 		it("should return true for valid UUID v4", () => {
 			expect(isValidUUID("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
