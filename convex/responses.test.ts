@@ -362,7 +362,7 @@ describe("responses", () => {
 	});
 
 	describe("update", () => {
-		it("should update response fields", async () => {
+		it("should update response fields with valid editToken", async () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t);
 
@@ -371,7 +371,7 @@ describe("responses", () => {
 					eventId,
 					respondentName: "Original Name",
 					selectedSlots: ["2025-01-20T10:00:00Z"],
-					editToken: "token",
+					editToken: "valid-edit-token",
 					createdAt: Date.now(),
 					updatedAt: Date.now(),
 				});
@@ -379,6 +379,7 @@ describe("responses", () => {
 
 			const updated = await t.mutation(api.responses.update, {
 				responseId,
+				editToken: "valid-edit-token",
 				respondentName: "Updated Name",
 				respondentComment: "New comment",
 				selectedSlots: ["2025-01-20T14:00:00Z", "2025-01-20T14:30:00Z"],
@@ -387,6 +388,31 @@ describe("responses", () => {
 			expect(updated?.respondentName).toBe("Updated Name");
 			expect(updated?.respondentComment).toBe("New comment");
 			expect(updated?.selectedSlots).toHaveLength(2);
+		});
+
+		it("should reject update with invalid editToken", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Original Name",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "correct-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "wrong-token",
+					respondentName: "Hacked Name",
+					selectedSlots: [],
+				}),
+			).rejects.toThrow("Invalid edit token");
 		});
 
 		it("should throw error for non-existent response", async () => {
@@ -410,6 +436,7 @@ describe("responses", () => {
 			await expect(
 				t.mutation(api.responses.update, {
 					responseId,
+					editToken: "token",
 					respondentName: "New Name",
 					selectedSlots: [],
 				}),
@@ -418,7 +445,7 @@ describe("responses", () => {
 	});
 
 	describe("remove", () => {
-		it("should delete a response", async () => {
+		it("should delete a response with valid adminToken", async () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t);
 
@@ -433,7 +460,10 @@ describe("responses", () => {
 				});
 			});
 
-			const result = await t.mutation(api.responses.remove, { responseId });
+			const result = await t.mutation(api.responses.remove, {
+				responseId,
+				adminToken: "admin-token",
+			});
 
 			expect(result.success).toBe(true);
 
@@ -442,6 +472,54 @@ describe("responses", () => {
 				return await ctx.db.get(responseId);
 			});
 			expect(deleted).toBeNull();
+		});
+
+		it("should reject deletion with invalid adminToken", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Protected",
+					selectedSlots: [],
+					editToken: "token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.remove, {
+					responseId,
+					adminToken: "wrong-admin-token",
+				}),
+			).rejects.toThrow("Invalid admin token");
+		});
+
+		it("should reject deletion of non-existent response", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				const id = await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Temp",
+					selectedSlots: [],
+					editToken: "token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+				await ctx.db.delete(id);
+				return id;
+			});
+
+			await expect(
+				t.mutation(api.responses.remove, {
+					responseId,
+					adminToken: "admin-token",
+				}),
+			).rejects.toThrow("Response not found");
 		});
 	});
 
