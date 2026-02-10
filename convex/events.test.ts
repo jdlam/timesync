@@ -93,6 +93,54 @@ describe("events", () => {
 			expect(event?.createdAt).toBeDefined();
 			expect(event?.updatedAt).toBeDefined();
 		});
+
+		it("should reject title longer than 255 characters", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "a".repeat(256),
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Title must be between 1 and 255 characters");
+		});
+
+		it("should reject invalid slot duration", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 45,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Slot duration must be 15, 30, or 60 minutes");
+		});
+
+		it("should reject invalid time format", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "9am",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Time range must be in HH:mm format");
+		});
 	});
 
 	describe("getById", () => {

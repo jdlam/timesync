@@ -54,6 +54,17 @@ export const submit = mutation({
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation
+		if (!args.respondentName || args.respondentName.length > 255) {
+			throw new Error("Name must be between 1 and 255 characters");
+		}
+		if (args.respondentComment && args.respondentComment.length > 500) {
+			throw new Error("Comment must be less than 500 characters");
+		}
+		if (args.selectedSlots.length === 0) {
+			throw new Error("Please select at least one time slot");
+		}
+
 		// Check max respondents limit
 		const event = await ctx.db.get(args.eventId);
 		if (!event) {
@@ -112,6 +123,17 @@ export const update = mutation({
 		selectedSlots: v.array(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation
+		if (!args.respondentName || args.respondentName.length > 255) {
+			throw new Error("Name must be between 1 and 255 characters");
+		}
+		if (args.respondentComment && args.respondentComment.length > 500) {
+			throw new Error("Comment must be less than 500 characters");
+		}
+		if (args.selectedSlots.length === 0) {
+			throw new Error("Please select at least one time slot");
+		}
+
 		const existing = await ctx.db.get(args.responseId);
 		if (!existing) {
 			throw new Error("Response not found");

@@ -112,7 +112,7 @@ describe("responses", () => {
 				t.mutation(api.responses.submit, {
 					eventId,
 					respondentName: "Test",
-					selectedSlots: [],
+					selectedSlots: ["2025-01-20T10:00:00Z"],
 				}),
 			).rejects.toThrow("Event not found");
 		});
@@ -209,6 +209,46 @@ describe("responses", () => {
 			});
 
 			expect(result.responseId).toBeDefined();
+		});
+
+		it("should reject name longer than 255 characters", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "a".repeat(256),
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				}),
+			).rejects.toThrow("Name must be between 1 and 255 characters");
+		});
+
+		it("should reject comment longer than 500 characters", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					respondentComment: "a".repeat(501),
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				}),
+			).rejects.toThrow("Comment must be less than 500 characters");
+		});
+
+		it("should reject empty selectedSlots", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: [],
+				}),
+			).rejects.toThrow("Please select at least one time slot");
 		});
 	});
 
@@ -424,7 +464,7 @@ describe("responses", () => {
 					responseId,
 					editToken: "wrong-token",
 					respondentName: "Hacked Name",
-					selectedSlots: [],
+					selectedSlots: ["2025-01-20T10:00:00Z"],
 				}),
 			).rejects.toThrow("Invalid edit token");
 		});
@@ -452,7 +492,7 @@ describe("responses", () => {
 					responseId,
 					editToken: "token",
 					respondentName: "New Name",
-					selectedSlots: [],
+					selectedSlots: ["2025-01-20T10:00:00Z"],
 				}),
 			).rejects.toThrow("Response not found");
 		});

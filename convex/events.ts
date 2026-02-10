@@ -146,6 +146,26 @@ export const update = mutation({
 		password: v.optional(v.union(v.string(), v.null())),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation
+		if (args.title !== undefined && (args.title.length === 0 || args.title.length > 255)) {
+			throw new Error("Title must be between 1 and 255 characters");
+		}
+		if (args.description !== undefined && args.description !== null && args.description.length > 1000) {
+			throw new Error("Description must be less than 1000 characters");
+		}
+		if (args.dates !== undefined && (args.dates.length === 0 || args.dates.length > 365)) {
+			throw new Error("Must have between 1 and 365 dates");
+		}
+		if (args.timeRangeStart !== undefined && !/^\d{2}:\d{2}$/.test(args.timeRangeStart)) {
+			throw new Error("Time range must be in HH:mm format");
+		}
+		if (args.timeRangeEnd !== undefined && !/^\d{2}:\d{2}$/.test(args.timeRangeEnd)) {
+			throw new Error("Time range must be in HH:mm format");
+		}
+		if (args.password !== undefined && args.password !== null && (args.password.length < 4 || args.password.length > 128)) {
+			throw new Error("Password must be between 4 and 128 characters");
+		}
+
 		// Validate admin token
 		const event = await ctx.db.get(args.eventId);
 		if (!event || event.adminToken !== args.adminToken) {
@@ -244,6 +264,26 @@ export const create = mutation({
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Server-side input validation
+		if (!args.title || args.title.length > 255) {
+			throw new Error("Title must be between 1 and 255 characters");
+		}
+		if (args.description && args.description.length > 1000) {
+			throw new Error("Description must be less than 1000 characters");
+		}
+		if (args.dates.length === 0 || args.dates.length > 365) {
+			throw new Error("Must have between 1 and 365 dates");
+		}
+		if (!/^\d{2}:\d{2}$/.test(args.timeRangeStart) || !/^\d{2}:\d{2}$/.test(args.timeRangeEnd)) {
+			throw new Error("Time range must be in HH:mm format");
+		}
+		if (![15, 30, 60].includes(args.slotDuration)) {
+			throw new Error("Slot duration must be 15, 30, or 60 minutes");
+		}
+		if (args.password && (args.password.length < 4 || args.password.length > 128)) {
+			throw new Error("Password must be between 4 and 128 characters");
+		}
+
 		// Check if creator has premium subscription
 		let isPremium = false;
 		let actualMaxRespondents = args.maxRespondents;
