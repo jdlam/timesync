@@ -117,6 +117,19 @@ describe("responses", () => {
 			).rejects.toThrow("Event not found");
 		});
 
+		it("should throw error when event is inactive", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t, { isActive: false });
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				}),
+			).rejects.toThrow("This event is no longer accepting responses");
+		});
+
 		it("should throw error when max respondents reached", async () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t, { maxRespondents: 2 });
@@ -521,6 +534,31 @@ describe("responses", () => {
 					selectedSlots: ["2025-01-20T10:00:00Z"],
 				}),
 			).rejects.toThrow("Response not found");
+		});
+
+		it("should reject update when event is inactive", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t, { isActive: false });
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "valid-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "valid-token",
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:30:00Z"],
+				}),
+			).rejects.toThrow("This event is no longer accepting responses");
 		});
 
 		it("should reject name longer than 255 characters in update", async () => {

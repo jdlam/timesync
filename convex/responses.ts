@@ -85,6 +85,9 @@ export const submit = mutation({
 		if (!event) {
 			throw new Error("Event not found");
 		}
+		if (!event.isActive) {
+			throw new Error("This event is no longer accepting responses");
+		}
 
 		// Verify password if event is password-protected
 		if (event.password) {
@@ -164,6 +167,14 @@ export const update = mutation({
 
 		if (existing.editToken !== args.editToken) {
 			throw new Error("Invalid edit token");
+		}
+
+		const event = await ctx.db.get(existing.eventId);
+		if (!event) {
+			throw new Error("Event not found");
+		}
+		if (!event.isActive) {
+			throw new Error("This event is no longer accepting responses");
 		}
 
 		await ctx.db.patch(args.responseId, {
