@@ -95,8 +95,8 @@ http.route({
 									`[Stripe Webhook] SUCCESS: Activated premium for customer=${customerId}, subscription=${subscriptionId}`,
 								);
 							} else {
-								console.error(
-									`[Stripe Webhook] FAILED to activate premium: customer=${customerId}, error=${result.error}`,
+								throw new Error(
+									`Failed to activate premium for customer=${customerId}: ${result.error}`,
 								);
 							}
 						} else {
@@ -187,8 +187,8 @@ http.route({
 							`[Stripe Webhook] Updated subscription: customer=${customerId}, status=${subscription.status}, tier=${isActive ? "premium" : "free"}`,
 						);
 					} else {
-						console.error(
-							`[Stripe Webhook] FAILED to update subscription: customer=${customerId}, error=${result.error}`,
+						throw new Error(
+							`Failed to update subscription for customer=${customerId}: ${result.error}`,
 						);
 					}
 					break;
@@ -216,8 +216,8 @@ http.route({
 							`[Stripe Webhook] Cancelled subscription: customer=${customerId}, subscription=${subscription.id}`,
 						);
 					} else {
-						console.error(
-							`[Stripe Webhook] FAILED to cancel subscription: customer=${customerId}, error=${result.error}`,
+						throw new Error(
+							`Failed to cancel subscription for customer=${customerId}: ${result.error}`,
 						);
 					}
 					break;
@@ -229,8 +229,10 @@ http.route({
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error(`[Stripe Webhook] Error processing event: ${message}`);
-			// Return 200 to acknowledge receipt even if processing failed
-			// Stripe will retry if we return an error
+			// Return 500 so Stripe retries transient failures.
+			return new Response(`Webhook processing failed: ${message}`, {
+				status: 500,
+			});
 		}
 
 		return new Response("OK", { status: 200 });
