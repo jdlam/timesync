@@ -50,6 +50,7 @@ function AdminDashboard() {
 
 	const responses = useQuery(api.responses.getByEventId, {
 		eventId: eventId as Id<"events">,
+		adminToken,
 	});
 
 	// Loading state
