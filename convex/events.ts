@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { isSuperAdmin } from "./lib/auth";
 import { hashPassword, verifyPassword } from "./lib/password";
 import { TIER_LIMITS, isValidDateString } from "./lib/tier_config";
 
@@ -294,6 +295,10 @@ export const create = mutation({
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity();
+		const creatorId = identity?.subject;
+		const creatorEmail = identity?.email ?? undefined;
+
 		// Server-side input validation (format checks first)
 		if (!args.title || args.title.length > 255) {
 			throw new Error("Title must be between 1 and 255 characters");
@@ -316,20 +321,24 @@ export const create = mutation({
 		// Check if creator has premium subscription
 		let isPremium = false;
 
-		if (args.creatorId) {
-			const user = await ctx.db
-				.query("users")
-				.withIndex("by_clerk_id", (q) => q.eq("clerkId", args.creatorId as string))
-				.unique();
+		if (identity) {
+			if (isSuperAdmin(identity.email)) {
+				isPremium = true;
+			} else if (creatorId) {
+				const user = await ctx.db
+					.query("users")
+					.withIndex("by_clerk_id", (q) => q.eq("clerkId", creatorId))
+					.unique();
 
-			if (user) {
-				const isSubscriptionActive =
-					user.subscriptionTier === "premium" &&
-					(!user.subscriptionExpiresAt ||
-						user.subscriptionExpiresAt > Date.now());
+				if (user) {
+					const isSubscriptionActive =
+						user.subscriptionTier === "premium" &&
+						(!user.subscriptionExpiresAt ||
+							user.subscriptionExpiresAt > Date.now());
 
-				if (isSubscriptionActive) {
-					isPremium = true;
+					if (isSubscriptionActive) {
+						isPremium = true;
+					}
 				}
 			}
 		}
@@ -382,8 +391,8 @@ export const create = mutation({
 			isPremium,
 			password: hashedPassword,
 			maxRespondents: actualMaxRespondents,
-			creatorId: args.creatorId, // Clerk subject ID or undefined for guests
-			creatorEmail: args.creatorEmail, // Creator's email or undefined for guests
+			creatorId, // Clerk subject ID or undefined for guests
+			creatorEmail, // Creator email or undefined for guests
 			isActive: true,
 			createdAt: now,
 			updatedAt: now,

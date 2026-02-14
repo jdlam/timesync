@@ -313,16 +313,20 @@ describe("events", () => {
 				});
 			});
 
-			const result = await t.mutation(api.events.create, {
-				title: "Premium Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "premium_max_resp",
-			});
+			const result = await t
+				.withIdentity({
+					subject: "premium_max_resp",
+					email: "premium@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Premium Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				});
 
 			const event = await t.run(async (ctx) => {
 				return await ctx.db.get(result.eventId);
@@ -1380,20 +1384,25 @@ describe("events", () => {
 	});
 
 	describe("create with creatorEmail", () => {
-		it("should store creatorId and creatorEmail when provided", async () => {
+		it("should store creator identity from auth context", async () => {
 			const t = convexTest(schema, modules);
 
-			const result = await t.mutation(api.events.create, {
-				title: "Logged In User Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "user_12345",
-				creatorEmail: "user@example.com",
-			});
+			const result = await t
+				.withIdentity({
+					subject: "user_12345",
+					email: "user@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Logged In User Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					creatorId: "spoofed-id",
+					creatorEmail: "spoofed@example.com",
+				});
 
 			const event = await t.run(async (ctx) => {
 				return await ctx.db.get(result.eventId);
@@ -1442,17 +1451,21 @@ describe("events", () => {
 				});
 			});
 
-			const result = await t.mutation(api.events.create, {
-				title: "Premium Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "premium_user_123",
-				password: "secret123",
-			});
+			const result = await t
+				.withIdentity({
+					subject: "premium_user_123",
+					email: "premium@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Premium Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "secret123",
+				});
 
 			const event = await t.run(async (ctx) => {
 				return await ctx.db.get(result.eventId);
@@ -1495,16 +1508,20 @@ describe("events", () => {
 				});
 			});
 
-			const result = await t.mutation(api.events.create, {
-				title: "Premium No Password",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "premium_user_empty_pw",
-			});
+			const result = await t
+				.withIdentity({
+					subject: "premium_user_empty_pw",
+					email: "premium@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Premium No Password",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				});
 
 			const event = await t.run(async (ctx) => {
 				return await ctx.db.get(result.eventId);
@@ -1608,17 +1625,21 @@ describe("events", () => {
 				});
 			});
 
-			const createResult = await t.mutation(api.events.create, {
-				title: "Protected Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "premium_user_pw",
-				password: "correct-password",
-			});
+			const createResult = await t
+				.withIdentity({
+					subject: "premium_user_pw",
+					email: "premium@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Protected Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "correct-password",
+				});
 
 			const result = await t.query(api.events.getByIdWithResponseCount, {
 				eventId: createResult.eventId,
@@ -1645,17 +1666,21 @@ describe("events", () => {
 				});
 			});
 
-			const createResult = await t.mutation(api.events.create, {
-				title: "Protected Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "premium_user_pw2",
-				password: "correct-password",
-			});
+			const createResult = await t
+				.withIdentity({
+					subject: "premium_user_pw2",
+					email: "premium@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Protected Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "correct-password",
+				});
 
 			const result = await t.query(api.events.getByIdWithResponseCount, {
 				eventId: createResult.eventId,
@@ -1682,17 +1707,21 @@ describe("events", () => {
 				});
 			});
 
-			const createResult = await t.mutation(api.events.create, {
-				title: "Protected Event",
-				timeZone: "UTC",
-				dates: ["2025-01-20"],
-				timeRangeStart: "09:00",
-				timeRangeEnd: "17:00",
-				slotDuration: 30,
-				maxRespondents: 5,
-				creatorId: "premium_user_pw3",
-				password: "my-password",
-			});
+			const createResult = await t
+				.withIdentity({
+					subject: "premium_user_pw3",
+					email: "premium@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Protected Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					password: "my-password",
+				});
 
 			const result = await t.query(api.events.getByIdWithResponseCount, {
 				eventId: createResult.eventId,
