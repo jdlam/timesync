@@ -5,7 +5,7 @@ import { ConvexClientProvider } from "../components/ConvexClientProvider";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import Header from "../components/Header";
 import { Toaster } from "../components/ui/sonner";
-import { getUmamiScriptConfig } from "../lib/analytics";
+import { getUmamiScriptConfig, umamiBeforeSendScript } from "../lib/analytics";
 import { ThemeProvider } from "../lib/theme";
 
 import appCss from "../styles.css?url";
@@ -20,8 +20,7 @@ const themeScript = `
 })();
 `;
 
-// Umami analytics (optional). Auto pageview tracking is disabled in
-// getUmamiScriptConfig for token privacy.
+// Umami analytics (optional). Token paths are sanitized via beforeSend hook.
 const umamiScripts = getUmamiScriptConfig(
 	import.meta.env.VITE_UMAMI_SCRIPT_URL,
 	import.meta.env.VITE_UMAMI_WEBSITE_ID,
@@ -94,6 +93,8 @@ export const Route = createRootRoute({
 			{
 				children: themeScript,
 			},
+			// Define the beforeSend handler before the Umami tracker loads.
+			...(umamiScripts.length > 0 ? [{ children: umamiBeforeSendScript }] : []),
 			...umamiScripts,
 		],
 	}),

@@ -9,9 +9,34 @@ export interface UmamiScriptConfig {
 	src: string;
 	defer: boolean;
 	"data-website-id": string;
-	"data-auto-track": "false";
+	"data-before-send": string;
 	"data-exclude-search": "true";
 }
+
+/**
+ * Inline script that defines the global beforeSend handler for Umami.
+ * Redacts admin and edit tokens from tracked URLs and referrers so
+ * sensitive tokens are never sent to the analytics service.
+ *
+ * Must be loaded before the Umami tracker script.
+ */
+export const umamiBeforeSendScript = `
+(function() {
+  function sanitize(url) {
+    if (!url) return url;
+    return url
+      .replace(/\\/admin\\/[^\\/]+/g, '/admin/[redacted]')
+      .replace(/\\/edit\\/[^\\/]+/g, '/edit/[redacted]');
+  }
+  window.__umami_before_send = function(type, payload) {
+    if (payload) {
+      payload.url = sanitize(payload.url);
+      payload.referrer = sanitize(payload.referrer);
+    }
+    return payload;
+  };
+})();
+`;
 
 /**
  * Returns Umami script configuration if both URL and website ID are provided.
@@ -30,9 +55,9 @@ export function getUmamiScriptConfig(
 			src: scriptUrl,
 			defer: true,
 			"data-website-id": websiteId,
-			// Disable automatic URL tracking so tokenized admin/edit paths are never
-			// captured by default.
-			"data-auto-track": "false",
+			// Points to the global function defined by umamiBeforeSendScript
+			// that redacts admin/edit tokens from tracked URLs.
+			"data-before-send": "__umami_before_send",
 			"data-exclude-search": "true",
 		},
 	];
