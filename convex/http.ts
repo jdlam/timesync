@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import Stripe from "stripe";
+import { USER_NOT_FOUND_ERROR } from "./users";
 
 const http = httpRouter();
 
@@ -16,7 +17,7 @@ function handleSubscriptionUpdateResult(params: {
 		return;
 	}
 
-	if (result.error === "User not found") {
+	if (result.error === USER_NOT_FOUND_ERROR) {
 		// Permanent mapping issue: Stripe customer doesn't exist in our users table.
 		// Acknowledge the webhook to avoid infinite retries and rely on logs/alerting.
 		console.warn(
@@ -262,7 +263,10 @@ http.route({
 			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
-			console.error(`[Stripe Webhook] Error processing event: ${message}`);
+			console.error(
+				`[Stripe Webhook] Error processing event ${event.id} (${event.type}): ${message}`,
+				err,
+			);
 			// Return 500 so Stripe retries transient failures, but do not expose internals.
 			return new Response("Webhook processing failed", {
 				status: 500,
