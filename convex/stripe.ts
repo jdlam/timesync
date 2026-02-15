@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import Stripe from "stripe";
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 /**
  * Validate that a redirect URL belongs to the app's own domain.
@@ -57,6 +57,12 @@ export const createCheckoutSession = action({
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) {
 			throw new Error("Not authenticated. Please sign in to subscribe.");
+		}
+
+		// Prevent duplicate subscriptions for users who already have premium access.
+		const subscription = await ctx.runQuery(api.users.getCurrentUserSubscription, {});
+		if (subscription?.isPremium) {
+			throw new Error("You already have an active premium subscription.");
 		}
 
 		const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
