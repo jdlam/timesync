@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Calendar, Clock, Eye, Smartphone, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TIER_LIMITS } from "@/lib/tier-config";
 
 export const Route = createFileRoute("/")({ component: LandingPage });
 
@@ -32,15 +33,13 @@ function LandingPage() {
 		},
 		{
 			icon: <Users className="w-12 h-12 text-teal-400" />,
-			title: "Unlimited Participants",
-			description:
-				"Collect availability from up to 20 participants on the free tier. Perfect for team meetings and events.",
+			title: "Participants by Plan",
+			description: `Collect availability from up to ${TIER_LIMITS.free.maxParticipants} participants on free. Upgrade to Premium for unlimited participants.`,
 		},
 		{
 			icon: <Calendar className="w-12 h-12 text-teal-400" />,
 			title: "Multi-Day Support",
-			description:
-				"Select up to 14 dates for your event. Great for finding the best day and time across a whole week.",
+			description: `Select up to ${TIER_LIMITS.free.maxDates} dates on free, or up to ${TIER_LIMITS.premium.maxDates} dates on Premium.`,
 		},
 	];
 

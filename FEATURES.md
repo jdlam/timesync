@@ -255,7 +255,7 @@ This document lists all features currently implemented in TimeSync.
 
 - **Event Password Protection** for premium users
   - Optional password field during event creation
-  - Password hashed server-side with SHA-256 + random salt (stored as `salt:hash`)
+  - Password hashed server-side with PBKDF2-HMAC-SHA256 + random salt
   - Respondents see a password gate before accessing the event
   - Wrong password shows clear error message
   - Password verified on both query and response submission (server-side)
@@ -389,8 +389,7 @@ This document lists all features currently implemented in TimeSync.
 - Unlimited participants
 - Up to 365 dates
 - CSV export
-- Password protection (schema ready, UI planned)
-- Custom branding (schema ready, UI planned)
+- Password protection
 - Tier enforcement active in event creation form via `useSubscription` hook
 
 ---

@@ -92,16 +92,6 @@ function PricingPage() {
 			free: false,
 			premium: true,
 		},
-		{
-			name: "Custom branding",
-			free: false,
-			premium: true,
-		},
-		{
-			name: "Priority support",
-			free: false,
-			premium: true,
-		},
 	];
 
 	return (
@@ -206,11 +196,9 @@ function PricingPage() {
 							</li>
 							<li className="flex items-center gap-3">
 								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
-								<span className="text-foreground">Custom branding</span>
-							</li>
-							<li className="flex items-center gap-3">
-								<Check className="w-5 h-5 text-teal-500 flex-shrink-0" />
-								<span className="text-foreground">Priority support</span>
+								<span className="text-foreground">
+									More premium features coming soon
+								</span>
 							</li>
 						</ul>
 						{isLoading ? (
