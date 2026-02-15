@@ -6,7 +6,7 @@ import { USER_NOT_FOUND_ERROR } from "./users";
 
 const http = httpRouter();
 
-function handleSubscriptionUpdateResult(params: {
+export function handleSubscriptionUpdateResult(params: {
 	result: { success: boolean; error?: string };
 	action: string;
 	customerId: string;
