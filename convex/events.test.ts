@@ -1383,7 +1383,33 @@ describe("events", () => {
 		});
 	});
 
-	describe("create with creatorEmail", () => {
+	describe("creator identity from auth context", () => {
+		it("should reject client-provided creator metadata", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t
+					.withIdentity({
+						subject: "user_12345",
+						email: "user@example.com",
+					})
+					.mutation(
+						api.events.create,
+						{
+							title: "Logged In User Event",
+							timeZone: "UTC",
+							dates: ["2025-01-20"],
+							timeRangeStart: "09:00",
+							timeRangeEnd: "17:00",
+							slotDuration: 30,
+							maxRespondents: 5,
+							creatorId: "spoofed-id",
+							creatorEmail: "spoofed@example.com",
+						} as any,
+					),
+			).rejects.toThrow(/creatorId|creatorEmail/);
+		});
+
 		it("should store creator identity from auth context", async () => {
 			const t = convexTest(schema, modules);
 
@@ -1400,8 +1426,6 @@ describe("events", () => {
 					timeRangeEnd: "17:00",
 					slotDuration: 30,
 					maxRespondents: 5,
-					creatorId: "spoofed-id",
-					creatorEmail: "spoofed@example.com",
 				});
 
 			const event = await t.run(async (ctx) => {

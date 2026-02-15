@@ -290,8 +290,6 @@ export const create = mutation({
 		timeRangeEnd: v.string(),
 		slotDuration: v.number(),
 		maxRespondents: v.number(),
-		creatorId: v.optional(v.string()),
-		creatorEmail: v.optional(v.string()),
 		password: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {

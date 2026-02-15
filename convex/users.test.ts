@@ -634,12 +634,25 @@ describe("events with subscription tier", () => {
 		expect(event?.maxRespondents).toBe(5);
 	});
 
-	it("should create premium event for super admin without subscription", async () => {
-		const t = convexTest(schema, modules);
-		const originalEnv = process.env.SUPER_ADMIN_EMAILS;
-		process.env.SUPER_ADMIN_EMAILS = "superadmin@example.com";
+	describe("super admin event creation", () => {
+		let originalEnv: string | undefined;
 
-		try {
+		beforeEach(() => {
+			originalEnv = process.env.SUPER_ADMIN_EMAILS;
+			process.env.SUPER_ADMIN_EMAILS = "superadmin@example.com";
+		});
+
+		afterEach(() => {
+			if (originalEnv === undefined) {
+				delete process.env.SUPER_ADMIN_EMAILS;
+			} else {
+				process.env.SUPER_ADMIN_EMAILS = originalEnv;
+			}
+		});
+
+		it("should create premium event for super admin without subscription", async () => {
+			const t = convexTest(schema, modules);
+
 			const result = await t
 				.withIdentity({
 					subject: "super_admin_creator",
@@ -661,12 +674,6 @@ describe("events with subscription tier", () => {
 
 			expect(event?.isPremium).toBe(true);
 			expect(event?.maxRespondents).toBe(-1);
-		} finally {
-			if (originalEnv === undefined) {
-				delete process.env.SUPER_ADMIN_EMAILS;
-			} else {
-				process.env.SUPER_ADMIN_EMAILS = originalEnv;
-			}
-		}
+		});
 	});
 });
