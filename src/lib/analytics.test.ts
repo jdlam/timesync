@@ -13,6 +13,8 @@ describe("getUmamiScriptConfig", () => {
 			src: validScriptUrl,
 			defer: true,
 			"data-website-id": validWebsiteId,
+			"data-auto-track": "false",
+			"data-exclude-search": "true",
 		});
 	});
 

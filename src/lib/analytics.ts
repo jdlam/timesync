@@ -9,6 +9,8 @@ export interface UmamiScriptConfig {
 	src: string;
 	defer: boolean;
 	"data-website-id": string;
+	"data-auto-track": "false";
+	"data-exclude-search": "true";
 }
 
 /**
@@ -28,6 +30,10 @@ export function getUmamiScriptConfig(
 			src: scriptUrl,
 			defer: true,
 			"data-website-id": websiteId,
+			// Disable automatic URL tracking so tokenized admin/edit paths are never
+			// captured by default.
+			"data-auto-track": "false",
+			"data-exclude-search": "true",
 		},
 	];
 }

@@ -20,7 +20,8 @@ const themeScript = `
 })();
 `;
 
-// Umami analytics (optional - only loaded when both env vars are set)
+// Umami analytics (optional). Auto pageview tracking is disabled in
+// getUmamiScriptConfig for token privacy.
 const umamiScripts = getUmamiScriptConfig(
 	import.meta.env.VITE_UMAMI_SCRIPT_URL,
 	import.meta.env.VITE_UMAMI_WEBSITE_ID,
@@ -35,6 +36,10 @@ export const Route = createRootRoute({
 			{
 				name: "viewport",
 				content: "width=device-width, initial-scale=1",
+			},
+			{
+				name: "referrer",
+				content: "strict-origin-when-cross-origin",
 			},
 			{
 				title: "TimeSync - Find the Perfect Time",
