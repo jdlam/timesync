@@ -13,8 +13,10 @@ import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_password from "../lib/password.js";
+import type * as lib_tier_config from "../lib/tier_config.js";
 import type * as myEvents from "../myEvents.js";
 import type * as responses from "../responses.js";
+import type * as shared_types from "../shared_types.js";
 import type * as stripe from "../stripe.js";
 import type * as users from "../users.js";
 
@@ -30,8 +32,10 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/auth": typeof lib_auth;
   "lib/password": typeof lib_password;
+  "lib/tier_config": typeof lib_tier_config;
   myEvents: typeof myEvents;
   responses: typeof responses;
+  shared_types: typeof shared_types;
   stripe: typeof stripe;
   users: typeof users;
 }>;
