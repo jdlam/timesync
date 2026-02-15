@@ -129,8 +129,10 @@ http.route({
 								});
 							}
 						} else {
-							console.error(
-								`[Stripe Webhook] ERROR: No customer ID in checkout session ${session.id}`,
+							// Non-retriable: Stripe retries would replay the same payload and
+							// continue to lack customer information.
+							console.warn(
+								`[Stripe Webhook] NON-RETRIABLE: Missing customer ID in checkout session ${session.id} (subscription=${subscriptionId})`,
 							);
 						}
 					} else {
