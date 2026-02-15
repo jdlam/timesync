@@ -25,8 +25,8 @@ export const umamiBeforeSendScript = `
   function sanitize(url) {
     if (!url) return url;
     return url
-      .replace(/\\/admin\\/[^\\/]+/g, '/admin/[redacted]')
-      .replace(/\\/edit\\/[^\\/]+/g, '/edit/[redacted]');
+      .replace(/(\\/events\\/[^\\/]+\\/admin\\/)[^\\/?#]+/g, '$1[redacted]')
+      .replace(/(\\/events\\/[^\\/]+\\/edit\\/)[^\\/?#]+/g, '$1[redacted]');
   }
   window.__umami_before_send = function(type, payload) {
     if (payload) {

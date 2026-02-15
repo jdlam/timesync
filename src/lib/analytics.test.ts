@@ -102,6 +102,15 @@ describe("umamiBeforeSendScript", () => {
 		expect(result.referrer).toBe("/pricing");
 	});
 
+	it("should not redact non-token admin routes", () => {
+		const result = beforeSend("event", {
+			url: "/admin/logs",
+			referrer: "/admin/events/123",
+		});
+		expect(result.url).toBe("/admin/logs");
+		expect(result.referrer).toBe("/admin/events/123");
+	});
+
 	it("should handle missing url and referrer gracefully", () => {
 		const result = beforeSend("event", {});
 		expect(result.url).toBeUndefined();
