@@ -93,9 +93,11 @@ describe("validateRedirectUrl", () => {
 
 describe("stripe actions", () => {
 	let originalAppUrl: string | undefined;
+	let originalSuperAdminEmails: string | undefined;
 
 	beforeEach(() => {
 		originalAppUrl = process.env.APP_URL;
+		originalSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS;
 		process.env.APP_URL = "https://example.com";
 	});
 
@@ -104,6 +106,11 @@ describe("stripe actions", () => {
 			delete process.env.APP_URL;
 		} else {
 			process.env.APP_URL = originalAppUrl;
+		}
+		if (originalSuperAdminEmails === undefined) {
+			delete process.env.SUPER_ADMIN_EMAILS;
+		} else {
+			process.env.SUPER_ADMIN_EMAILS = originalSuperAdminEmails;
 		}
 	});
 
@@ -128,6 +135,52 @@ describe("stripe actions", () => {
 					cancelUrl: "https://example.com/cancel",
 				}),
 			).rejects.toThrow("Invalid redirect URL");
+		});
+
+		it("should reject checkout when user already has active premium", async () => {
+			const t = convexTest(schema, modules);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("users", {
+					email: "premium@example.com",
+					name: "Premium User",
+					emailVerified: true,
+					clerkId: "premium_user_123",
+					subscriptionTier: "premium",
+					subscriptionId: "sub_123",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t
+					.withIdentity({
+						subject: "premium_user_123",
+						email: "premium@example.com",
+					})
+					.action(api.stripe.createCheckoutSession, {
+						successUrl: "https://example.com/success",
+						cancelUrl: "https://example.com/cancel",
+					}),
+			).rejects.toThrow("You already have an active premium subscription.");
+		});
+
+		it("should reject checkout for super admins (already premium)", async () => {
+			process.env.SUPER_ADMIN_EMAILS = "admin@example.com";
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t
+					.withIdentity({
+						subject: "admin_user",
+						email: "admin@example.com",
+					})
+					.action(api.stripe.createCheckoutSession, {
+						successUrl: "https://example.com/success",
+						cancelUrl: "https://example.com/cancel",
+					}),
+			).rejects.toThrow("You already have an active premium subscription.");
 		});
 	});
 
