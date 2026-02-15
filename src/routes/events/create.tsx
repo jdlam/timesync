@@ -28,7 +28,7 @@ import { useAppForm } from "@/hooks/form";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
-import { getBrowserTimezone } from "@/lib/time-utils";
+import { getBrowserTimezone, isDateInPast } from "@/lib/time-utils";
 import { createEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../../convex/_generated/api";
 
@@ -245,7 +245,9 @@ function CreateEvent() {
 												mode="multiple"
 												selected={selectedDates}
 												onSelect={handleDateSelect}
-												disabled={(date) => date < new Date()}
+												disabled={(date) =>
+													isDateInPast(format(date, "yyyy-MM-dd"))
+												}
 												className="rounded-md"
 											/>
 										</div>
