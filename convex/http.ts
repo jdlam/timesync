@@ -5,6 +5,31 @@ import Stripe from "stripe";
 
 const http = httpRouter();
 
+function handleSubscriptionUpdateResult(params: {
+	result: { success: boolean; error?: string };
+	action: string;
+	customerId: string;
+	subscriptionId: string;
+}): void {
+	const { result, action, customerId, subscriptionId } = params;
+	if (result.success) {
+		return;
+	}
+
+	if (result.error === "User not found") {
+		// Permanent mapping issue: Stripe customer doesn't exist in our users table.
+		// Acknowledge the webhook to avoid infinite retries and rely on logs/alerting.
+		console.warn(
+			`[Stripe Webhook] NON-RETRIABLE: ${action} skipped because user not found: customer=${customerId}, subscription=${subscriptionId}`,
+		);
+		return;
+	}
+
+	throw new Error(
+		`Failed to ${action} for customer=${customerId}, subscription=${subscriptionId}: ${result.error ?? "Unknown error"}`,
+	);
+}
+
 /**
  * Stripe webhook handler
  * Handles subscription lifecycle events from Stripe
@@ -95,9 +120,12 @@ http.route({
 									`[Stripe Webhook] SUCCESS: Activated premium for customer=${customerId}, subscription=${subscriptionId}`,
 								);
 							} else {
-								throw new Error(
-									`Failed to activate premium for customer=${customerId}: ${result.error}`,
-								);
+								handleSubscriptionUpdateResult({
+									result,
+									action: "activate premium",
+									customerId,
+									subscriptionId,
+								});
 							}
 						} else {
 							console.error(
@@ -187,9 +215,12 @@ http.route({
 							`[Stripe Webhook] Updated subscription: customer=${customerId}, status=${subscription.status}, tier=${isActive ? "premium" : "free"}`,
 						);
 					} else {
-						throw new Error(
-							`Failed to update subscription for customer=${customerId}: ${result.error}`,
-						);
+						handleSubscriptionUpdateResult({
+							result,
+							action: "update subscription",
+							customerId,
+							subscriptionId: subscription.id,
+						});
 					}
 					break;
 				}
@@ -216,9 +247,12 @@ http.route({
 							`[Stripe Webhook] Cancelled subscription: customer=${customerId}, subscription=${subscription.id}`,
 						);
 					} else {
-						throw new Error(
-							`Failed to cancel subscription for customer=${customerId}: ${result.error}`,
-						);
+						handleSubscriptionUpdateResult({
+							result,
+							action: "cancel subscription",
+							customerId,
+							subscriptionId: subscription.id,
+						});
 					}
 					break;
 				}
@@ -229,8 +263,8 @@ http.route({
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error(`[Stripe Webhook] Error processing event: ${message}`);
-			// Return 500 so Stripe retries transient failures.
-			return new Response(`Webhook processing failed: ${message}`, {
+			// Return 500 so Stripe retries transient failures, but do not expose internals.
+			return new Response("Webhook processing failed", {
 				status: 500,
 			});
 		}
