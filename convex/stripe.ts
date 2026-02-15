@@ -10,22 +10,21 @@ import { internal } from "./_generated/api";
 export function validateRedirectUrl(url: string): void {
 	const allowedDomain = process.env.APP_URL;
 	if (!allowedDomain) {
-		// If APP_URL is not configured, allow any HTTP(S) URL as a fallback,
-		// which blocks javascript:, data:, and other non-HTTP(S) schemes.
-		try {
-			const parsed = new URL(url);
-			if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-				throw new Error("Invalid redirect URL: must use HTTP(S)");
-			}
-		} catch {
-			throw new Error("Invalid redirect URL");
-		}
-		return;
+		throw new Error("APP_URL is not configured");
+	}
+
+	let allowed: URL;
+	try {
+		allowed = new URL(allowedDomain);
+	} catch {
+		throw new Error("APP_URL is invalid");
+	}
+	if (allowed.protocol !== "https:" && allowed.protocol !== "http:") {
+		throw new Error("APP_URL must use HTTP(S)");
 	}
 
 	try {
 		const parsed = new URL(url);
-		const allowed = new URL(allowedDomain);
 		// Enforce HTTP(S) scheme and matching origin (protocol + hostname + port)
 		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
 			throw new Error("Invalid redirect URL: must use HTTP(S)");

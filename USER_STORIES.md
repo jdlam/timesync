@@ -355,7 +355,7 @@
 - Webhook handler in `convex/http.ts` handles: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 - `useSubscription` hook manages client-side subscription state and actions
 - Stripe Customer Portal for subscription management
-- Requires env vars: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`
+- Requires env vars: `APP_URL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`
 
 ---
 
@@ -632,6 +632,7 @@
 **Future Variables (when features added):**
 - `STRIPE_SECRET_KEY` - Stripe API key
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
+- `APP_URL` - Frontend origin used to validate Stripe redirect URLs
 - Auth provider credentials
 
 ---

@@ -25,34 +25,26 @@ describe("validateRedirectUrl", () => {
 			delete process.env.APP_URL;
 		});
 
-		it("should allow valid HTTPS URLs", () => {
+		it("should throw configuration error", () => {
 			expect(() =>
 				validateRedirectUrl("https://example.com/success"),
-			).not.toThrow();
+			).toThrow("APP_URL is not configured");
 		});
+	});
 
-		it("should allow valid HTTP URLs", () => {
+	describe("with invalid APP_URL configured", () => {
+		it("should reject invalid APP_URL values", () => {
+			process.env.APP_URL = "not-a-url";
 			expect(() =>
-				validateRedirectUrl("http://localhost:3000/success"),
-			).not.toThrow();
+				validateRedirectUrl("https://timesync.app/success"),
+			).toThrow("APP_URL is invalid");
 		});
 
-		it("should reject javascript: URLs", () => {
+		it("should reject non-http APP_URL schemes", () => {
+			process.env.APP_URL = "ftp://timesync.app";
 			expect(() =>
-				validateRedirectUrl("javascript:alert(1)"),
-			).toThrow("Invalid redirect URL");
-		});
-
-		it("should reject data: URLs", () => {
-			expect(() =>
-				validateRedirectUrl("data:text/html,<script>alert(1)</script>"),
-			).toThrow("Invalid redirect URL");
-		});
-
-		it("should reject invalid URLs", () => {
-			expect(() => validateRedirectUrl("not-a-url")).toThrow(
-				"Invalid redirect URL",
-			);
+				validateRedirectUrl("https://timesync.app/success"),
+			).toThrow("APP_URL must use HTTP(S)");
 		});
 	});
 
@@ -100,6 +92,21 @@ describe("validateRedirectUrl", () => {
 });
 
 describe("stripe actions", () => {
+	let originalAppUrl: string | undefined;
+
+	beforeEach(() => {
+		originalAppUrl = process.env.APP_URL;
+		process.env.APP_URL = "https://example.com";
+	});
+
+	afterEach(() => {
+		if (originalAppUrl === undefined) {
+			delete process.env.APP_URL;
+		} else {
+			process.env.APP_URL = originalAppUrl;
+		}
+	});
+
 	describe("createCheckoutSession", () => {
 		it("should throw error when not authenticated", async () => {
 			const t = convexTest(schema, modules);
