@@ -93,6 +93,19 @@ describe("umamiBeforeSendScript", () => {
 		expect(result.referrer).toBe("/events/abc123/admin/[redacted]");
 	});
 
+	it("should redact tokens in absolute URLs", () => {
+		const result = beforeSend("event", {
+			url: "https://timesync.me/events/abc123/admin/secret-token?foo=bar",
+			referrer: "https://timesync.me/events/abc123/edit/secret-edit-token",
+		});
+		expect(result.url).toBe(
+			"https://timesync.me/events/abc123/admin/[redacted]?foo=bar",
+		);
+		expect(result.referrer).toBe(
+			"https://timesync.me/events/abc123/edit/[redacted]",
+		);
+	});
+
 	it("should not modify URLs without tokens", () => {
 		const result = beforeSend("event", {
 			url: "/events/abc123",
