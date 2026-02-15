@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import { addMinutes, parse } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
 
@@ -8,6 +10,65 @@ const MAX_SELECTED_SLOTS = 365 * 24 * (60 / 15);
 // ISO 8601 datetime pattern with range-checked month/day/hour/minute/second
 const ISO_DATETIME_REGEX =
 	/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,3})?Z$/;
+
+interface EventForSlotValidation {
+	dates: string[];
+	timeRangeStart: string;
+	timeRangeEnd: string;
+	slotDuration: number;
+	timeZone: string;
+}
+
+function parseTimeInZone(
+	dateStr: string,
+	timeStr: string,
+	timeZone: string,
+): Date {
+	const parsedDate = parse(
+		`${dateStr} ${timeStr}`,
+		"yyyy-MM-dd HH:mm",
+		new Date(),
+	);
+	return fromZonedTime(parsedDate, timeZone);
+}
+
+function generateAllowedSlots(event: EventForSlotValidation): Set<string> {
+	const allowed = new Set<string>();
+
+	for (const dateStr of event.dates) {
+		const start = parseTimeInZone(
+			dateStr,
+			event.timeRangeStart,
+			event.timeZone,
+		);
+		const end = parseTimeInZone(dateStr, event.timeRangeEnd, event.timeZone);
+
+		let cursor = start;
+		while (cursor < end) {
+			allowed.add(cursor.toISOString());
+			cursor = addMinutes(cursor, event.slotDuration);
+		}
+	}
+
+	return allowed;
+}
+
+function normalizeSelectedSlots(selectedSlots: string[]): string[] {
+	return selectedSlots.map((slot) => new Date(slot).toISOString());
+}
+
+function validateSelectedSlotsAgainstEvent(
+	selectedSlots: string[],
+	event: EventForSlotValidation,
+): void {
+	const allowedSlots = generateAllowedSlots(event);
+	const invalidSlot = selectedSlots.find((slot) => !allowedSlots.has(slot));
+	if (invalidSlot) {
+		throw new Error(
+			"Selected time slots must match the event's configured schedule",
+		);
+	}
+}
 
 // Query: Get all responses for an event (strips editToken)
 export const getByEventId = query({
@@ -84,6 +145,7 @@ export const submit = mutation({
 				throw new Error("Each time slot must be a valid ISO 8601 datetime");
 			}
 		}
+		const normalizedSelectedSlots = normalizeSelectedSlots(args.selectedSlots);
 
 		// Check max respondents limit
 		const event = await ctx.db.get(args.eventId);
@@ -93,6 +155,7 @@ export const submit = mutation({
 		if (!event.isActive) {
 			throw new Error("This event is no longer accepting responses");
 		}
+		validateSelectedSlotsAgainstEvent(normalizedSelectedSlots, event);
 
 		// Verify password if event is password-protected
 		if (event.password) {
@@ -123,7 +186,7 @@ export const submit = mutation({
 			eventId: args.eventId,
 			respondentName: args.respondentName,
 			respondentComment: args.respondentComment,
-			selectedSlots: args.selectedSlots,
+			selectedSlots: normalizedSelectedSlots,
 			editToken,
 			createdAt: now,
 			updatedAt: now,
@@ -164,6 +227,7 @@ export const update = mutation({
 				throw new Error("Each time slot must be a valid ISO 8601 datetime");
 			}
 		}
+		const normalizedSelectedSlots = normalizeSelectedSlots(args.selectedSlots);
 
 		const existing = await ctx.db.get(args.responseId);
 		if (!existing) {
@@ -181,11 +245,12 @@ export const update = mutation({
 		if (!event.isActive) {
 			throw new Error("This event is no longer accepting responses");
 		}
+		validateSelectedSlotsAgainstEvent(normalizedSelectedSlots, event);
 
 		await ctx.db.patch(args.responseId, {
 			respondentName: args.respondentName,
 			respondentComment: args.respondentComment,
-			selectedSlots: args.selectedSlots,
+			selectedSlots: normalizedSelectedSlots,
 			updatedAt: Date.now(),
 		});
 
