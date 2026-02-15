@@ -289,6 +289,21 @@ describe("responses", () => {
 
 			expect(result.responseId).toBeDefined();
 		});
+
+		it("should reject slots that are outside the event schedule", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T08:30:00Z"],
+				}),
+			).rejects.toThrow(
+				"Selected time slots must match the event's configured schedule",
+			);
+		});
 	});
 
 	describe("getByEventId", () => {
@@ -665,6 +680,33 @@ describe("responses", () => {
 					selectedSlots: [],
 				}),
 			).rejects.toThrow("Please select at least one time slot");
+		});
+
+		it("should reject update with slots outside the event schedule", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T18:00:00Z"],
+				}),
+			).rejects.toThrow(
+				"Selected time slots must match the event's configured schedule",
+			);
 		});
 	});
 
