@@ -1,186 +1,97 @@
-# Deployment Guide: Vercel + Neon Integration
+# Deployment Guide: Vercel + Convex + Clerk + Stripe
 
-This guide walks through deploying TimeSync with automatic database branching for preview deployments.
+This project deploys a static frontend to Vercel and backend functions to Convex.
+Stripe billing and webhook processing run through Convex.
 
-## Architecture Overview
+## Architecture
 
-```
-main branch (GitHub) ──► Production deployment (Vercel) ──► Production database (Neon main branch)
-                                                                    │
-PR / feature branch ──► Preview deployment (Vercel) ──► Preview database (Neon branch)
-```
+- Frontend: Vercel (`npm run build`, output `.output`)
+- Backend: Convex deployment (queried by `VITE_CONVEX_URL`)
+- Auth: Clerk (JWT verified by Convex)
+- Billing: Stripe Checkout + Customer Portal + Convex webhook at `/stripe-webhook`
 
-Each pull request gets its own:
-- Vercel preview deployment
-- Neon database branch (copy-on-write from production)
+## 1. Create/Confirm Convex Production Deployment
 
-When the PR is merged/closed, the preview database branch is automatically deleted.
+1. Open [Convex Dashboard](https://dashboard.convex.dev).
+2. Create/select your project.
+3. Ensure you have a production deployment.
+4. Copy:
+- Deployment URL (for `VITE_CONVEX_URL`)
+- Deploy key (for `CONVEX_DEPLOY_KEY` used by Vercel builds)
 
----
+## 2. Configure Convex Environment Variables (Production)
 
-## Step 1: Set Up Neon Database
+Set these in Convex Dashboard -> Project -> Settings -> Environment Variables:
 
-1. Go to [Neon Console](https://console.neon.tech)
-2. Create a new project (or use existing)
-3. Note your **Project ID** from the project settings
-4. Your main branch is automatically created - this will be your production database
+- `CLERK_JWT_ISSUER_DOMAIN` (from Clerk)
+- `SUPER_ADMIN_EMAILS` (comma-separated)
+- `APP_URL` (your canonical app origin, e.g. `https://timesync.me`)
+- `STRIPE_SECRET_KEY` (`sk_live_...` for live)
+- `STRIPE_WEBHOOK_SECRET` (`whsec_...` for live webhook)
+- `STRIPE_PRICE_ID` (live recurring price id)
 
-## Step 2: Deploy to Vercel
+Important:
+- `APP_URL` must be your app origin, not a Stripe URL.
+- For live launch, this should match production exactly (scheme + host + optional port).
 
-1. Go to [Vercel](https://vercel.com) and import your GitHub repository
-2. Vercel will auto-detect the framework settings
-3. **Don't deploy yet** - first install the Neon integration
+## 3. Configure Stripe (Live)
 
-## Step 3: Install Neon Vercel Integration
+1. Create/confirm your live product + recurring price.
+2. Add webhook endpoint:
+- `https://<your-convex-production-deployment>.convex.site/stripe-webhook`
+3. Subscribe webhook to:
+- `checkout.session.completed`
+- `checkout.session.expired`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_failed`
+4. Copy webhook signing secret into Convex as `STRIPE_WEBHOOK_SECRET`.
 
-1. Go to [Neon Vercel Integration](https://vercel.com/integrations/neon)
-2. Click "Add Integration"
-3. Select your Vercel account and project
-4. Connect your Neon account and select your project
-5. Configure the integration:
-   - **Production branch**: `main` (your Neon main branch)
-   - **Development branch**: Choose to create preview branches for each PR
-   - Enable "Create a branch for each preview deployment"
+## 4. Configure Vercel Project
 
-The integration automatically:
-- Sets `DATABASE_URL` for production deployments (pointing to main branch)
-- Creates a new Neon branch for each preview deployment
-- Sets `DATABASE_URL` for preview deployments (pointing to the preview branch)
-- Deletes preview branches when deployments are removed
+The repo already uses this build command (`vercel.json`):
 
-## Step 4: Configure Environment Variables
-
-In Vercel project settings, add these environment variables:
-
-| Variable | Description | Scope |
-|----------|-------------|-------|
-| `DATABASE_URL` | Set automatically by Neon integration | All |
-| `VITE_CONVEX_URL` | Your Convex deployment URL from [dashboard.convex.dev](https://dashboard.convex.dev) | Production / Preview |
-| `CONVEX_DEPLOY_KEY` | Deploy key from Convex dashboard (Settings → Deploy Key) | Production / Preview |
-| `BETTER_AUTH_SECRET` | Generate with `openssl rand -base64 32` | All |
-| `BETTER_AUTH_URL` | Production: your domain, Preview: `https://*.vercel.app` | Production / Preview |
-| `NODE_ENV` | `production` | Production |
-
-For preview deployments, you can use:
-- `BETTER_AUTH_URL`: Use Vercel's automatic URL or set to your preview domain pattern
-
-## Step 5: Run Initial Migration
-
-Before your first deployment, ensure your production database has the schema:
-
-```bash
-# Set your production DATABASE_URL locally
-export DATABASE_URL="postgresql://..."
-
-# Generate and run migrations
-npm run db:generate
-npm run db:migrate
+```json
+"buildCommand": "npx convex deploy --yes --cmd \"npm run build\""
 ```
 
-Or use Vercel's deployment to run migrations automatically by adding a build step.
+Set Vercel environment variables:
 
-## Step 6: Deploy
+Required:
+- `VITE_CONVEX_URL` (Convex production deployment URL)
+- `VITE_CLERK_PUBLISHABLE_KEY` (Clerk publishable key)
+- `CONVEX_DEPLOY_KEY` (Convex deploy key)
 
-1. Push to your main branch
-2. Vercel will automatically deploy to production (including Convex functions)
-3. Create a PR to test preview deployments
+Optional:
+- `VITE_STRIPE_PUBLISHABLE_KEY` (recommended if exposing client Stripe usage)
+- `VITE_UMAMI_SCRIPT_URL`
+- `VITE_UMAMI_WEBSITE_ID`
 
-**Note:** The build command (`npx convex deploy && npm run build`) automatically deploys Convex functions before building the frontend. This ensures your Convex backend is always in sync with your frontend deployment.
+Make sure required vars are enabled for the environments you deploy (`Production`, and `Preview` if needed).
 
----
+## 5. Clerk Configuration
 
-## GitHub Actions CI
+- Vercel uses `VITE_CLERK_PUBLISHABLE_KEY`.
+- Convex verifies tokens using `CLERK_JWT_ISSUER_DOMAIN`.
+- Ensure both point to the same Clerk instance.
 
-The `.github/workflows/ci.yml` file runs on every push and PR:
-- **Lint**: Checks code style with Biome
-- **Typecheck**: Validates TypeScript types
-- **Test**: Runs Vitest tests
-- **Build**: Ensures the app builds successfully
+## 6. Launch Checklist
 
-CI runs independently of Vercel deployments but must pass before merging.
-
----
-
-## Database Branching Workflow
-
-### Development Flow
-
-1. Create a feature branch in Git
-2. Open a PR
-3. Neon integration creates a database branch automatically
-4. Your preview deployment uses the isolated database branch
-5. Test freely - changes won't affect production
-6. Merge PR - preview branch is deleted, changes go to production
-
-### Running Migrations on Preview Branches
-
-Preview branches start as a copy of production. To test schema changes:
-
-```bash
-# In your PR, migrations run against the preview branch
-# Add this to your build command if needed:
-npm run db:migrate && npm run build
-```
-
-### Manual Branch Management
-
-You can also manage branches via Neon Console or CLI:
-
-```bash
-# Install Neon CLI
-npm install -g neonctl
-
-# Create a branch manually
-neonctl branches create --name my-feature
-
-# List branches
-neonctl branches list
-
-# Delete a branch
-neonctl branches delete my-feature
-```
-
----
+1. `npm run typecheck`
+2. `npm test`
+3. Confirm Stripe webhook endpoint is reachable and signed.
+4. Confirm Convex production env vars are all set (especially `APP_URL`, Stripe keys/secrets).
+5. Trigger a live upgrade flow and verify webhook updates user tier to premium.
+6. Verify Customer Portal opens and returns correctly.
+7. Verify admin/edit token pages work and analytics/security headers are as expected.
 
 ## Troubleshooting
 
-### Preview deployment can't connect to database
-- Check the Neon integration is properly configured
-- Verify `DATABASE_URL` is set in Vercel environment variables
-- Check Neon dashboard for the preview branch status
-
-### Migrations fail on preview
-- Ensure migrations are committed to your branch
-- Check that `drizzle-kit` is in dependencies (not just devDependencies) if running in production build
-
-### Build fails on Vercel
-- Check the build logs for specific errors
-- Ensure all dependencies are properly installed
-- Verify `NITRO_PRESET=vercel` if auto-detection fails
-
----
-
-## Optional: Neon GitHub Actions
-
-For more control, you can use Neon's GitHub Actions directly:
-
-```yaml
-# .github/workflows/preview-db.yml
-name: Create Preview Database
-
-on:
-  pull_request:
-    types: [opened, synchronize]
-
-jobs:
-  create-branch:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: neondatabase/create-branch-action@v5
-        with:
-          project_id: ${{ secrets.NEON_PROJECT_ID }}
-          branch_name: preview/pr-${{ github.event.pull_request.number }}
-          api_key: ${{ secrets.NEON_API_KEY }}
-```
-
-This is optional if using the Vercel integration, which handles this automatically.
+- `APP_URL is not configured` or redirect mismatch:
+  - Set/fix `APP_URL` in Convex production env vars.
+- Stripe checkout fails in production:
+  - Check live `STRIPE_SECRET_KEY` + live `STRIPE_PRICE_ID`.
+- Webhook events not updating subscriptions:
+  - Verify endpoint URL, webhook event subscriptions, and `STRIPE_WEBHOOK_SECRET`.
+- Vercel build cannot deploy Convex:
+  - Confirm `CONVEX_DEPLOY_KEY` is set in Vercel for that environment.
