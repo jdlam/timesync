@@ -388,10 +388,10 @@
 - [x] Invitees must enter password before viewing event
 - [x] Wrong password shows error message
 - [x] Admin can change/remove password later
-- [x] Password stored securely (hashed) - SHA-256 + random salt
+- [x] Password stored securely (hashed) - PBKDF2-HMAC-SHA256 + random salt
 
 **Technical Notes:**
-- Password hashed with SHA-256 + 16-byte random salt, stored as `salt:hash` hex
+- Password hashed with PBKDF2-HMAC-SHA256 + 16-byte random salt in a versioned format
 - `convex/lib/password.ts` provides `hashPassword()` and `verifyPassword()`
 - Password verified server-side on both query (`getByIdWithResponseCount`) and mutation (`responses.submit`)
 - Admin page (via adminToken) and edit response page (via editToken) bypass password
