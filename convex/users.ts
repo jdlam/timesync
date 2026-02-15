@@ -2,6 +2,9 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { getCurrentUser, isSuperAdmin } from "./lib/auth";
 
+/** Stable error code returned when a Stripe customer ID has no matching user record. */
+export const USER_NOT_FOUND_ERROR = "USER_NOT_FOUND" as const;
+
 /**
  * Get or create a user record from Clerk identity
  * Called when a user signs in to sync their Clerk data with Convex
@@ -159,7 +162,7 @@ export const updateSubscription = internalMutation({
 			console.error(
 				`[Stripe Webhook] No user found for customer: ${args.stripeCustomerId}`,
 			);
-			return { success: false, error: "User not found" };
+			return { success: false, error: USER_NOT_FOUND_ERROR };
 		}
 
 		await ctx.db.patch(user._id, {
@@ -231,7 +234,7 @@ export const setStripeCustomerId = internalMutation({
 			console.error(
 				`[Stripe] No user found for clerkId: ${args.clerkId}`,
 			);
-			return { success: false, error: "User not found" };
+			return { success: false, error: USER_NOT_FOUND_ERROR };
 		}
 
 		await ctx.db.patch(user._id, {

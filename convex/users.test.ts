@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { modules } from "./test.setup";
+import { USER_NOT_FOUND_ERROR } from "./users";
 
 describe("users", () => {
 	describe("getOrCreateUser", () => {
@@ -365,7 +366,7 @@ describe("users", () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.error).toBe("User not found");
+			expect(result.error).toBe(USER_NOT_FOUND_ERROR);
 		});
 	});
 
@@ -408,7 +409,7 @@ describe("users", () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.error).toBe("User not found");
+			expect(result.error).toBe(USER_NOT_FOUND_ERROR);
 		});
 	});
 
