@@ -1497,7 +1497,7 @@ describe("events", () => {
 
 			expect(event?.password).toBeDefined();
 			expect(event?.password).not.toBe("secret123"); // Should be hashed
-			expect(event?.password).toContain(":"); // salt:hash format
+			expect(event?.password).toContain("pbkdf2_sha256$");
 		});
 
 		it("should reject password for non-premium event", async () => {
@@ -1791,7 +1791,7 @@ describe("events", () => {
 			});
 
 			expect(event?.password).toBeDefined();
-			expect(event?.password).toContain(":");
+			expect(event?.password).toContain("pbkdf2_sha256$");
 		});
 
 		it("should remove password with null", async () => {

@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword } from "./password";
 
+async function hashPasswordLegacy(password: string): Promise<string> {
+	const salt = crypto.getRandomValues(new Uint8Array(16));
+	const passwordBytes = new TextEncoder().encode(password);
+
+	const combined = new Uint8Array(salt.length + passwordBytes.length);
+	combined.set(salt);
+	combined.set(passwordBytes, salt.length);
+
+	const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", combined));
+	const toHex = (bytes: Uint8Array) =>
+		Array.from(bytes)
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("");
+
+	return `${toHex(salt)}:${toHex(digest)}`;
+}
+
 describe("password utilities", () => {
 	it("should hash and verify a correct password", async () => {
 		const password = "mySecurePassword";
@@ -28,12 +45,12 @@ describe("password utilities", () => {
 
 	it("should produce hash in salt:hash format with correct hex lengths", async () => {
 		const hash = await hashPassword("test");
-		const parts = hash.split(":");
-		expect(parts).toHaveLength(2);
-		// 16 bytes salt = 32 hex chars
-		expect(parts[0]).toHaveLength(32);
-		// SHA-256 = 32 bytes = 64 hex chars
-		expect(parts[1]).toHaveLength(64);
+		const parts = hash.split("$");
+		expect(parts).toHaveLength(4);
+		expect(parts[0]).toBe("pbkdf2_sha256");
+		expect(Number(parts[1])).toBeGreaterThan(0);
+		expect(parts[2]).toHaveLength(32);
+		expect(parts[3]).toHaveLength(64);
 	});
 
 	it("should handle empty string password", async () => {
@@ -47,5 +64,17 @@ describe("password utilities", () => {
 		expect(await verifyPassword("test", "")).toBe(false);
 		expect(await verifyPassword("test", "abc:def")).toBe(false);
 		expect(await verifyPassword("test", ":")).toBe(false);
+		expect(await verifyPassword("test", "pbkdf2_sha256$bad$abcd$abcd")).toBe(
+			false,
+		);
+		expect(await verifyPassword("test", "pbkdf2_sha256$10000$zzzz$abcd")).toBe(
+			false,
+		);
+	});
+
+	it("should verify legacy salt:hash passwords for backward compatibility", async () => {
+		const legacyHash = await hashPasswordLegacy("legacy-password");
+		expect(await verifyPassword("legacy-password", legacyHash)).toBe(true);
+		expect(await verifyPassword("wrong-password", legacyHash)).toBe(false);
 	});
 });
