@@ -522,16 +522,20 @@ describe("events with subscription tier", () => {
 			});
 		});
 
-		const result = await t.mutation(api.events.create, {
-			title: "Premium Event",
-			timeZone: "UTC",
-			dates: ["2025-01-20"],
-			timeRangeStart: "09:00",
-			timeRangeEnd: "17:00",
-			slotDuration: 30,
-			maxRespondents: 5, // Will be overridden to -1
-			creatorId: "premium_creator",
-		});
+		const result = await t
+			.withIdentity({
+				subject: "premium_creator",
+				email: "premium@example.com",
+			})
+			.mutation(api.events.create, {
+				title: "Premium Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5, // Will be overridden to -1
+			});
 
 		const event = await t.run(async (ctx) => {
 			return await ctx.db.get(result.eventId);
@@ -544,16 +548,20 @@ describe("events with subscription tier", () => {
 	it("should create free event for user without subscription", async () => {
 		const t = convexTest(schema, modules);
 
-		const result = await t.mutation(api.events.create, {
-			title: "Free Event",
-			timeZone: "UTC",
-			dates: ["2025-01-20"],
-			timeRangeStart: "09:00",
-			timeRangeEnd: "17:00",
-			slotDuration: 30,
-			maxRespondents: 5,
-			creatorId: "nonexistent_user",
-		});
+		const result = await t
+			.withIdentity({
+				subject: "nonexistent_user",
+				email: "nonexistent@example.com",
+			})
+			.mutation(api.events.create, {
+				title: "Free Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
 
 		const event = await t.run(async (ctx) => {
 			return await ctx.db.get(result.eventId);
@@ -602,16 +610,20 @@ describe("events with subscription tier", () => {
 			});
 		});
 
-		const result = await t.mutation(api.events.create, {
-			title: "Expired Premium Event",
-			timeZone: "UTC",
-			dates: ["2025-01-20"],
-			timeRangeStart: "09:00",
-			timeRangeEnd: "17:00",
-			slotDuration: 30,
-			maxRespondents: 5,
-			creatorId: "expired_premium_creator",
-		});
+		const result = await t
+			.withIdentity({
+				subject: "expired_premium_creator",
+				email: "expired@example.com",
+			})
+			.mutation(api.events.create, {
+				title: "Expired Premium Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
 
 		const event = await t.run(async (ctx) => {
 			return await ctx.db.get(result.eventId);
@@ -620,5 +632,48 @@ describe("events with subscription tier", () => {
 		// Should be treated as free tier since subscription is expired
 		expect(event?.isPremium).toBe(false);
 		expect(event?.maxRespondents).toBe(5);
+	});
+
+	describe("super admin event creation", () => {
+		let originalEnv: string | undefined;
+
+		beforeEach(() => {
+			originalEnv = process.env.SUPER_ADMIN_EMAILS;
+			process.env.SUPER_ADMIN_EMAILS = "superadmin@example.com";
+		});
+
+		afterEach(() => {
+			if (originalEnv === undefined) {
+				delete process.env.SUPER_ADMIN_EMAILS;
+			} else {
+				process.env.SUPER_ADMIN_EMAILS = originalEnv;
+			}
+		});
+
+		it("should create premium event for super admin without subscription", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t
+				.withIdentity({
+					subject: "super_admin_creator",
+					email: "superadmin@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Super Admin Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.isPremium).toBe(true);
+			expect(event?.maxRespondents).toBe(-1);
+		});
 	});
 });

@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/clerk-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
@@ -38,7 +37,6 @@ export const Route = createFileRoute("/events/create")({
 });
 
 function CreateEvent() {
-	const { user } = useUser();
 	const createEventMutation = useMutation(api.events.create);
 	const router = useRouter();
 	const { isPremium, tier } = useSubscription();
@@ -80,8 +78,6 @@ function CreateEvent() {
 					timeRangeEnd: value.timeRangeEnd,
 					slotDuration: Number.parseInt(value.slotDuration, 10),
 					maxRespondents: tierLimits.maxParticipants,
-					creatorId: user?.id, // Clerk subject ID or undefined for guests
-					creatorEmail: user?.primaryEmailAddress?.emailAddress, // Creator's email or undefined for guests
 					password: value.password || undefined,
 				});
 				setCreatedEvent({
