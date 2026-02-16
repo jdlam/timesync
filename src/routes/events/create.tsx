@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
-import { CalendarIcon, Crown, Eye, EyeOff, Lock } from "lucide-react";
+import { Bell, CalendarIcon, Crown, Eye, EyeOff, Lock } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/events/create")({
 function CreateEvent() {
 	const createEventMutation = useMutation(api.events.create);
 	const router = useRouter();
-	const { isPremium, tier } = useSubscription();
+	const { isPremium, tier, isAuthenticated } = useSubscription();
 	const [createdEvent, setCreatedEvent] = useState<{
 		eventId: string;
 		adminToken: string;
@@ -63,6 +64,7 @@ function CreateEvent() {
 			timeRangeEnd: "17:00",
 			slotDuration: "30" as "15" | "30" | "60",
 			password: "" as string | undefined,
+			notifyOnResponse: isAuthenticated ? true : undefined,
 		},
 		validators: {
 			onSubmit: eventSchema as never,
@@ -79,6 +81,7 @@ function CreateEvent() {
 					slotDuration: Number.parseInt(value.slotDuration, 10),
 					maxRespondents: tierLimits.maxParticipants,
 					password: value.password || undefined,
+					notifyOnResponse: value.notifyOnResponse || undefined,
 				});
 				setCreatedEvent({
 					eventId: result.eventId,
@@ -418,6 +421,30 @@ function CreateEvent() {
 								</Link>
 							</div>
 						</div>
+					)}
+
+					{/* Email Notifications */}
+					{isAuthenticated && (
+						<form.AppField name="notifyOnResponse">
+							{(field) => (
+								<div className="flex items-center gap-3">
+									<Checkbox
+										id="notify-on-response"
+										checked={field.state.value ?? false}
+										onCheckedChange={(checked) =>
+											field.handleChange(checked === true)
+										}
+									/>
+									<label
+										htmlFor="notify-on-response"
+										className="flex items-center gap-2 text-sm text-foreground"
+									>
+										<Bell className="h-4 w-4 text-muted-foreground" />
+										Email me when someone responds
+									</label>
+								</div>
+							)}
+						</form.AppField>
 					)}
 
 					{/* Submit Button */}

@@ -62,6 +62,9 @@ export default defineSchema({
 			}),
 		),
 
+		// Notifications
+		notifyOnResponse: v.optional(v.boolean()),
+
 		// Status
 		isActive: v.boolean(),
 		archivedAt: v.optional(v.number()),

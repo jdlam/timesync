@@ -66,6 +66,8 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 							.refine((val) => !val, {
 								message: "Password protection requires premium",
 							}),
+
+			notifyOnResponse: z.boolean().optional(),
 		})
 		.refine(
 			(data) => {
@@ -153,6 +155,8 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 								message: "Password must be less than 128 characters",
 							})
 					: z.string().optional().nullable(),
+
+			notifyOnResponse: z.boolean().optional(),
 		})
 		.refine(
 			(data) => {

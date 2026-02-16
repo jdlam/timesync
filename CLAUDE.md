@@ -388,7 +388,6 @@ See `USER_STORIES.md` for full status. Major missing features:
 - Full archive UI with filtered tabs (Story 7.1 - toggle implemented, archive tab not)
 - Custom slot duration UI for premium (Story 5.3 - schema ready, no UI)
 - Custom branding UI (schema ready, no UI)
-- Email notifications (Story 6.2)
 - E2E tests and CI pipeline (Story T.4)
 - Error tracking / Sentry integration (Story T.3)
 

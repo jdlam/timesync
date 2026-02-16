@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { addMinutes, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
 
@@ -191,6 +192,19 @@ export const submit = mutation({
 			createdAt: now,
 			updatedAt: now,
 		});
+
+		// Schedule email notification if enabled
+		if (event.notifyOnResponse && event.creatorId) {
+			await ctx.scheduler.runAfter(
+				0,
+				internal.email_actions.sendResponseNotification,
+				{
+					eventId: args.eventId,
+					respondentName: args.respondentName,
+					responseCount: existingResponses.length + 1,
+				},
+			);
+		}
 
 		return {
 			responseId,

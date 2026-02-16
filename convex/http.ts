@@ -279,4 +279,87 @@ http.route({
 	}),
 });
 
+/**
+ * Unsubscribe handler
+ * One-click unsubscribe from email notifications for an event
+ */
+http.route({
+	path: "/unsubscribe",
+	method: "GET",
+	handler: httpAction(async (ctx, request) => {
+		const url = new URL(request.url);
+		const eventId = url.searchParams.get("eventId");
+		const adminToken = url.searchParams.get("adminToken");
+
+		if (!eventId || !adminToken) {
+			return new Response(
+				htmlPage(
+					"Invalid Link",
+					"This unsubscribe link is invalid. Please check the link in your email.",
+				),
+				{ status: 400, headers: { "Content-Type": "text/html" } },
+			);
+		}
+
+		try {
+			const result = await ctx.runMutation(
+				internal.email.disableNotifications,
+				{
+					eventId: eventId as any,
+					adminToken,
+				},
+			);
+
+			if (!result.success) {
+				return new Response(
+					htmlPage(
+						"Invalid Link",
+						"This unsubscribe link is invalid or the event no longer exists.",
+					),
+					{ status: 400, headers: { "Content-Type": "text/html" } },
+				);
+			}
+
+			return new Response(
+				htmlPage(
+					"Unsubscribed",
+					"You have been unsubscribed from email notifications for this event. You can re-enable notifications from the event's admin page.",
+				),
+				{ status: 200, headers: { "Content-Type": "text/html" } },
+			);
+		} catch {
+			return new Response(
+				htmlPage(
+					"Error",
+					"Something went wrong. Please try again later.",
+				),
+				{ status: 500, headers: { "Content-Type": "text/html" } },
+			);
+		}
+	}),
+});
+
+function htmlPage(title: string, message: string): string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>${title} - TimeSync</title>
+	<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; }
+		.card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; text-align: center; }
+		h1 { color: #0d9488; margin-bottom: 0.5rem; }
+		p { color: #4b5563; line-height: 1.5; }
+	</style>
+</head>
+<body>
+	<div class="card">
+		<h1>${title}</h1>
+		<p>${message}</p>
+	</div>
+</body>
+</html>`;
+}
+
 export default http;

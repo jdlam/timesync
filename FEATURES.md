@@ -85,6 +85,16 @@ This document lists all features currently implemented in TimeSync.
 - Admin link (private)
 - One-click copy functionality with visual feedback
 
+### Email Notifications
+
+- Opt-in email notifications when a new response is submitted
+- Available only for signed-in event creators
+- Toggle on event creation form (default: checked for signed-in users)
+- Toggle on event edit dialog for existing events
+- Emails include respondent name, response count, and link to admin dashboard
+- One-click unsubscribe via link in email footer
+- Powered by SendGrid transactional email service
+
 ### Heatmap Visualization
 
 - Color-coded availability grid (green = high availability, red = low)

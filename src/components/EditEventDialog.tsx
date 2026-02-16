@@ -1,6 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { format, parse } from "date-fns";
-import { AlertTriangle, CalendarIcon, Clock, Globe, Lock } from "lucide-react";
+import {
+	AlertTriangle,
+	Bell,
+	CalendarIcon,
+	Clock,
+	Globe,
+	Lock,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
@@ -10,6 +17,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
+import { Checkbox } from "./ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -67,6 +75,7 @@ export function EditEventDialog({
 			timeRangeStart: event.timeRangeStart,
 			timeRangeEnd: event.timeRangeEnd,
 			password: "" as string | undefined | null,
+			notifyOnResponse: event.notifyOnResponse ?? false,
 		},
 		validators: {
 			onSubmit: editSchema as never,
@@ -92,6 +101,7 @@ export function EditEventDialog({
 					timeRangeStart: value.timeRangeStart,
 					timeRangeEnd: value.timeRangeEnd,
 					password: passwordValue,
+					notifyOnResponse: value.notifyOnResponse,
 				});
 				toast.success("Event updated successfully!");
 				onOpenChange(false);
@@ -119,6 +129,7 @@ export function EditEventDialog({
 			form.setFieldValue("timeRangeStart", event.timeRangeStart);
 			form.setFieldValue("timeRangeEnd", event.timeRangeEnd);
 			form.setFieldValue("password", "");
+			form.setFieldValue("notifyOnResponse", event.notifyOnResponse ?? false);
 			setSelectedDates(
 				event.dates.map((d) => parse(d, "yyyy-MM-dd", new Date())),
 			);
@@ -467,6 +478,30 @@ export function EditEventDialog({
 								</div>
 							)}
 						</div>
+					)}
+
+					{/* Email Notifications (only for events created by signed-in users) */}
+					{event.creatorId && (
+						<form.AppField name="notifyOnResponse">
+							{(field) => (
+								<div className="flex items-center gap-3">
+									<Checkbox
+										id="edit-notify-on-response"
+										checked={field.state.value ?? false}
+										onCheckedChange={(checked) =>
+											field.handleChange(checked === true)
+										}
+									/>
+									<label
+										htmlFor="edit-notify-on-response"
+										className="flex items-center gap-2 text-sm text-foreground"
+									>
+										<Bell className="h-4 w-4 text-muted-foreground" />
+										Email me when someone responds
+									</label>
+								</div>
+							)}
+						</form.AppField>
 					)}
 
 					{/* Submit Button */}
