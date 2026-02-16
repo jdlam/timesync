@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Capture the component passed to createFileRoute
@@ -84,6 +84,30 @@ describe("PricingPage", () => {
 		expect(
 			screen.getByRole("button", { name: "Upgrade to Premium" }),
 		).toBeDefined();
+	});
+
+	it("should disable upgrade button while checkout is starting", async () => {
+		mockSubscription.isPremium = false;
+		mockSubscription.isSuperAdmin = false;
+		mockSubscription.upgrade = vi.fn(async () => {
+			await new Promise(() => {});
+		});
+
+		render(<CapturedComponent />);
+
+		const button = screen.getByRole("button", { name: "Upgrade to Premium" });
+		fireEvent.click(button);
+
+		expect(
+			screen.getByRole("button", { name: "Redirecting..." }),
+		).toBeDefined();
+		expect(
+			(
+				screen.getByRole("button", {
+					name: "Redirecting...",
+				}) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
 	});
 
 	it("should show 'Loading...' when subscription is loading", () => {
