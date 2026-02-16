@@ -308,6 +308,34 @@ describe("responses", () => {
 				"Selected time slots must match the event's configured schedule",
 			);
 		});
+
+		it("should reject submission when event-scoped rate limit is exceeded", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t, {
+				maxRespondents: -1,
+				isPremium: true,
+			});
+			const now = Date.now();
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("rateLimits", {
+					key: `responses:submit:event:${eventId}`,
+					count: 120,
+					windowStart: now,
+					updatedAt: now,
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Rate Limited",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				}),
+			).rejects.toThrow(
+				"Too many responses submitted for this event right now. Please try again shortly.",
+			);
+		});
 	});
 
 	describe("getByEventId", () => {

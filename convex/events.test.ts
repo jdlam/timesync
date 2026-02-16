@@ -335,6 +335,39 @@ describe("events", () => {
 			// Premium users always get unlimited, regardless of what was passed
 			expect(event?.maxRespondents).toBe(-1);
 		});
+
+		it("should reject event creation when per-user rate limit is exceeded", async () => {
+			const t = convexTest(schema, modules);
+			const now = Date.now();
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("rateLimits", {
+					key: "events:create:user:rate_limited_user",
+					count: 30,
+					windowStart: now,
+					updatedAt: now,
+				});
+			});
+
+			await expect(
+				t
+					.withIdentity({
+						subject: "rate_limited_user",
+						email: "rate-limited@example.com",
+					})
+					.mutation(api.events.create, {
+						title: "Rate Limited Event",
+						timeZone: "UTC",
+						dates: ["2025-01-20"],
+						timeRangeStart: "09:00",
+						timeRangeEnd: "17:00",
+						slotDuration: 30,
+						maxRespondents: 5,
+					}),
+			).rejects.toThrow(
+				"Too many events created from this account. Please try again later.",
+			);
+		});
 	});
 
 	describe("getById", () => {

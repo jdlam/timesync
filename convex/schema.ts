@@ -96,6 +96,14 @@ export default defineSchema({
 		.index("by_event", ["eventId"])
 		.index("by_edit_token", ["editToken"]),
 
+	// Rate limits table (fixed-window counters for abuse mitigation)
+	rateLimits: defineTable({
+		key: v.string(),
+		count: v.number(),
+		windowStart: v.number(),
+		updatedAt: v.number(),
+	}).index("by_key", ["key"]),
+
 	// Audit logs table (for tracking super admin actions)
 	auditLogs: defineTable({
 		userId: v.string(),

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { isSuperAdmin } from "./lib/auth";
 import { hashPassword, verifyPassword } from "./lib/password";
+import { enforceRateLimit } from "./lib/rate_limit";
 import { TIER_LIMITS, isValidDateString } from "./lib/tier_config";
 
 // Query: Get event by ID (public — strips sensitive fields, respects password gate)
@@ -301,6 +302,22 @@ export const create = mutation({
 		const identity = await ctx.auth.getUserIdentity();
 		const creatorId = identity?.subject;
 		const creatorEmail = identity?.email ?? undefined;
+
+		// Basic abuse protection for event creation traffic.
+		await enforceRateLimit(ctx, {
+			key: "events:create:global",
+			maxRequests: 120,
+			windowMs: 10 * 60 * 1000,
+			errorMessage: "Too many event creations right now. Please try again shortly.",
+		});
+		if (creatorId) {
+			await enforceRateLimit(ctx, {
+				key: `events:create:user:${creatorId}`,
+				maxRequests: 30,
+				windowMs: 60 * 60 * 1000,
+				errorMessage: "Too many events created from this account. Please try again later.",
+			});
+		}
 
 		// Server-side input validation (format checks first)
 		if (!args.title || args.title.length > 255) {

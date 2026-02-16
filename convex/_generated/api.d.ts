@@ -15,6 +15,7 @@ import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_password from "../lib/password.js";
+import type * as lib_rate_limit from "../lib/rate_limit.js";
 import type * as lib_tier_config from "../lib/tier_config.js";
 import type * as myEvents from "../myEvents.js";
 import type * as responses from "../responses.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/auth": typeof lib_auth;
   "lib/password": typeof lib_password;
+  "lib/rate_limit": typeof lib_rate_limit;
   "lib/tier_config": typeof lib_tier_config;
   myEvents: typeof myEvents;
   responses: typeof responses;

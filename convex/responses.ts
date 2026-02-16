@@ -4,6 +4,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { verifyPassword } from "./lib/password";
+import { enforceRateLimit } from "./lib/rate_limit";
 
 // Max possible slots: 365 days * 24 hours * (60 / 15 min slots) = 35,040
 const MAX_SELECTED_SLOTS = 365 * 24 * (60 / 15);
@@ -146,6 +147,19 @@ export const submit = mutation({
 				throw new Error("Each time slot must be a valid ISO 8601 datetime");
 			}
 		}
+		await enforceRateLimit(ctx, {
+			key: "responses:submit:global",
+			maxRequests: 600,
+			windowMs: 10 * 60 * 1000,
+			errorMessage: "Too many responses submitted right now. Please try again shortly.",
+		});
+		await enforceRateLimit(ctx, {
+			key: `responses:submit:event:${args.eventId}`,
+			maxRequests: 120,
+			windowMs: 10 * 60 * 1000,
+			errorMessage:
+				"Too many responses submitted for this event right now. Please try again shortly.",
+		});
 		const normalizedSelectedSlots = normalizeSelectedSlots(args.selectedSlots);
 
 		// Check max respondents limit
