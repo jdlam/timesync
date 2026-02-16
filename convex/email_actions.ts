@@ -10,7 +10,8 @@ function escapeHtml(str: string): string {
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
 }
 
 /**
@@ -85,18 +86,19 @@ export const sendResponseNotification = internalAction({
 			? `${convexSiteUrl}/unsubscribe?eventId=${args.eventId}&adminToken=${event.adminToken}`
 			: undefined;
 
-		const subject = `New response to "${event.title}"`;
+		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
+		const subject = `New response to "${sanitizedTitle}"`;
 
 		const html = `
 			<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
 				<h2 style="color: #0d9488;">New Response Submitted</h2>
 				<p><strong>${escapeHtml(args.respondentName)}</strong> just submitted their availability for <strong>${escapeHtml(event.title)}</strong>.</p>
 				<p>Your event now has <strong>${args.responseCount}</strong> ${args.responseCount === 1 ? "response" : "responses"}.</p>
-				${adminUrl ? `<p><a href="${adminUrl}" style="display: inline-block; background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 8px;">View Results</a></p>` : ""}
+				${adminUrl ? `<p><a href="${escapeHtml(adminUrl)}" style="display: inline-block; background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 8px;">View Results</a></p>` : ""}
 				<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
 				<p style="color: #6b7280; font-size: 12px;">
 					This notification was sent by TimeSync.
-					${unsubscribeUrl ? `<br /><a href="${unsubscribeUrl}" style="color: #6b7280;">Unsubscribe from notifications for this event</a>` : ""}
+					${unsubscribeUrl ? `<br /><a href="${escapeHtml(unsubscribeUrl)}" style="color: #6b7280;">Unsubscribe from notifications for this event</a>` : ""}
 				</p>
 			</div>
 		`;

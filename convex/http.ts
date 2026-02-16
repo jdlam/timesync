@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import Stripe from "stripe";
 import { USER_NOT_FOUND_ERROR } from "./users";
 
@@ -305,7 +306,7 @@ http.route({
 			const result = await ctx.runMutation(
 				internal.email.disableNotifications,
 				{
-					eventId: eventId as any,
+					eventId: eventId as Id<"events">,
 					adminToken,
 				},
 			);
