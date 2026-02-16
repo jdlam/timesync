@@ -80,6 +80,8 @@ SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
 
 # Stripe billing
 APP_URL=https://timesync.example.com
+# Optional: additional allowed redirect origins (comma-separated)
+# APP_URL_ADDITIONAL_ORIGINS=https://www.timesync.example.com
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_PRICE_ID=price_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -91,6 +93,7 @@ SENDGRID_FROM_EMAIL=notifications@yourdomain.com
 
 Notes:
 - `APP_URL` is used for Stripe redirect URL validation and event admin links in notification emails.
+- `APP_URL_ADDITIONAL_ORIGINS` is optional and can be used when you serve the app from multiple trusted origins (for example apex + `www`).
 - `CONVEX_CLOUD_URL` is provided by Convex at runtime and is used to build unsubscribe links.
 
 ## Scripts

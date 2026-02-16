@@ -7,9 +7,11 @@ import { modules } from "./test.setup";
 
 describe("validateRedirectUrl", () => {
 	let originalAppUrl: string | undefined;
+	let originalAdditionalOrigins: string | undefined;
 
 	beforeEach(() => {
 		originalAppUrl = process.env.APP_URL;
+		originalAdditionalOrigins = process.env.APP_URL_ADDITIONAL_ORIGINS;
 	});
 
 	afterEach(() => {
@@ -18,11 +20,17 @@ describe("validateRedirectUrl", () => {
 		} else {
 			process.env.APP_URL = originalAppUrl;
 		}
+		if (originalAdditionalOrigins === undefined) {
+			delete process.env.APP_URL_ADDITIONAL_ORIGINS;
+		} else {
+			process.env.APP_URL_ADDITIONAL_ORIGINS = originalAdditionalOrigins;
+		}
 	});
 
 	describe("without APP_URL configured", () => {
 		beforeEach(() => {
 			delete process.env.APP_URL;
+			delete process.env.APP_URL_ADDITIONAL_ORIGINS;
 		});
 
 		it("should throw configuration error", () => {
@@ -51,6 +59,7 @@ describe("validateRedirectUrl", () => {
 	describe("with APP_URL configured", () => {
 		beforeEach(() => {
 			process.env.APP_URL = "https://timesync.app";
+			delete process.env.APP_URL_ADDITIONAL_ORIGINS;
 		});
 
 		it("should allow URLs matching the configured domain", () => {
@@ -88,17 +97,48 @@ describe("validateRedirectUrl", () => {
 				"Invalid redirect URL",
 			);
 		});
+
+		it("should allow URLs matching additional configured origins", () => {
+			process.env.APP_URL_ADDITIONAL_ORIGINS =
+				"https://www.timesync.app, https://timesync.me";
+
+			expect(() =>
+				validateRedirectUrl("https://www.timesync.app/pricing?success=true"),
+			).not.toThrow();
+			expect(() =>
+				validateRedirectUrl("https://timesync.me/pricing?success=true"),
+			).not.toThrow();
+		});
+
+		it("should reject invalid APP_URL_ADDITIONAL_ORIGINS values", () => {
+			process.env.APP_URL_ADDITIONAL_ORIGINS = "https://www.timesync.app,not-a-url";
+
+			expect(() =>
+				validateRedirectUrl("https://www.timesync.app/pricing?success=true"),
+			).toThrow("APP_URL_ADDITIONAL_ORIGINS contains an invalid URL");
+		});
+
+		it("should reject non-http APP_URL_ADDITIONAL_ORIGINS values", () => {
+			process.env.APP_URL_ADDITIONAL_ORIGINS = "ftp://timesync.app";
+
+			expect(() =>
+				validateRedirectUrl("https://timesync.app/pricing?success=true"),
+			).toThrow("APP_URL_ADDITIONAL_ORIGINS must use HTTP(S)");
+		});
 	});
 });
 
 describe("stripe actions", () => {
 	let originalAppUrl: string | undefined;
+	let originalAdditionalOrigins: string | undefined;
 	let originalSuperAdminEmails: string | undefined;
 
 	beforeEach(() => {
 		originalAppUrl = process.env.APP_URL;
+		originalAdditionalOrigins = process.env.APP_URL_ADDITIONAL_ORIGINS;
 		originalSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS;
 		process.env.APP_URL = "https://example.com";
+		delete process.env.APP_URL_ADDITIONAL_ORIGINS;
 	});
 
 	afterEach(() => {
@@ -106,6 +146,11 @@ describe("stripe actions", () => {
 			delete process.env.APP_URL;
 		} else {
 			process.env.APP_URL = originalAppUrl;
+		}
+		if (originalAdditionalOrigins === undefined) {
+			delete process.env.APP_URL_ADDITIONAL_ORIGINS;
+		} else {
+			process.env.APP_URL_ADDITIONAL_ORIGINS = originalAdditionalOrigins;
 		}
 		if (originalSuperAdminEmails === undefined) {
 			delete process.env.SUPER_ADMIN_EMAILS;

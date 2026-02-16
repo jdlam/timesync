@@ -7,21 +7,53 @@ import { api, internal } from "./_generated/api";
  * Validate that a redirect URL belongs to the app's own domain.
  * Prevents open redirect attacks via Stripe redirect URLs.
  */
-export function validateRedirectUrl(url: string): void {
-	const allowedDomain = process.env.APP_URL;
-	if (!allowedDomain) {
+export function getAllowedAppOrigins(): string[] {
+	const appUrl = process.env.APP_URL;
+	if (!appUrl) {
 		throw new Error("APP_URL is not configured");
 	}
 
-	let allowed: URL;
+	let primary: URL;
 	try {
-		allowed = new URL(allowedDomain);
+		primary = new URL(appUrl);
 	} catch {
 		throw new Error("APP_URL is invalid");
 	}
-	if (allowed.protocol !== "https:" && allowed.protocol !== "http:") {
+	if (primary.protocol !== "https:" && primary.protocol !== "http:") {
 		throw new Error("APP_URL must use HTTP(S)");
 	}
+
+	const origins = new Set<string>([primary.origin]);
+	const additionalOriginsRaw = process.env.APP_URL_ADDITIONAL_ORIGINS;
+	if (!additionalOriginsRaw) {
+		return [...origins];
+	}
+
+	const additionalOrigins = additionalOriginsRaw
+		.split(",")
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0);
+
+	for (const originValue of additionalOrigins) {
+		let parsed: URL;
+		try {
+			parsed = new URL(originValue);
+		} catch {
+			throw new Error(
+				"APP_URL_ADDITIONAL_ORIGINS contains an invalid URL",
+			);
+		}
+		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+			throw new Error("APP_URL_ADDITIONAL_ORIGINS must use HTTP(S)");
+		}
+		origins.add(parsed.origin);
+	}
+
+	return [...origins];
+}
+
+export function validateRedirectUrl(url: string): void {
+	const allowedOrigins = getAllowedAppOrigins();
 
 	try {
 		const parsed = new URL(url);
@@ -29,7 +61,7 @@ export function validateRedirectUrl(url: string): void {
 		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
 			throw new Error("Invalid redirect URL: must use HTTP(S)");
 		}
-		if (parsed.origin !== allowed.origin) {
+		if (!allowedOrigins.includes(parsed.origin)) {
 			throw new Error("Invalid redirect URL: domain mismatch");
 		}
 	} catch (e) {

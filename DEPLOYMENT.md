@@ -26,13 +26,15 @@ Set these in Convex Dashboard -> Project -> Settings -> Environment Variables:
 - `CLERK_JWT_ISSUER_DOMAIN` (from Clerk)
 - `SUPER_ADMIN_EMAILS` (comma-separated)
 - `APP_URL` (your canonical app origin, e.g. `https://timesync.me`)
+- `APP_URL_ADDITIONAL_ORIGINS` (optional comma-separated trusted origins, e.g. `https://www.timesync.me`)
 - `STRIPE_SECRET_KEY` (`sk_live_...` for live)
 - `STRIPE_WEBHOOK_SECRET` (`whsec_...` for live webhook)
 - `STRIPE_PRICE_ID` (live recurring price id)
 
 Important:
 - `APP_URL` must be your app origin, not a Stripe URL.
-- For live launch, this should match production exactly (scheme + host + optional port).
+- `APP_URL` must match one production origin exactly (scheme + host + optional port).
+- If you support multiple trusted origins (for example apex + `www`), set `APP_URL_ADDITIONAL_ORIGINS`.
 
 ## 3. Configure Stripe (Live)
 
@@ -89,6 +91,7 @@ Make sure required vars are enabled for the environments you deploy (`Production
 
 - `APP_URL is not configured` or redirect mismatch:
   - Set/fix `APP_URL` in Convex production env vars.
+  - If your app uses multiple trusted origins, also set `APP_URL_ADDITIONAL_ORIGINS`.
 - Stripe checkout fails in production:
   - Check live `STRIPE_SECRET_KEY` + live `STRIPE_PRICE_ID`.
 - Webhook events not updating subscriptions:
