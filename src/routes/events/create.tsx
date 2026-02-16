@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
 import { Bell, CalendarIcon, Crown, Eye, EyeOff, Lock } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
@@ -98,6 +98,13 @@ function CreateEvent() {
 			}
 		},
 	});
+
+	useEffect(() => {
+		const current = form.getFieldValue("notifyOnResponse");
+		if (isAuthenticated && current === undefined) {
+			form.setFieldValue("notifyOnResponse", true);
+		}
+	}, [form, isAuthenticated]);
 
 	// Handle calendar date selection
 	const handleDateSelect = (dates: Date[] | undefined) => {

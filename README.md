@@ -71,6 +71,28 @@ The `.env.local` file should contain:
 CONVEX_DEPLOYMENT=<your-convex-deployment>
 ```
 
+Configure these server-side variables in the Convex Dashboard:
+
+```bash
+# Auth
+CLERK_JWT_ISSUER_DOMAIN=https://your-instance.clerk.accounts.dev
+SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
+
+# Stripe billing
+APP_URL=https://timesync.example.com
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Email notifications
+SENDGRID_API_KEY=SG....
+SENDGRID_FROM_EMAIL=notifications@yourdomain.com
+```
+
+Notes:
+- `APP_URL` is used for Stripe redirect URL validation and event admin links in notification emails.
+- `CONVEX_CLOUD_URL` is provided by Convex at runtime and is used to build unsubscribe links.
+
 ## Scripts
 
 | Command | Description |

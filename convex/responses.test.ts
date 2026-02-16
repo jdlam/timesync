@@ -824,6 +824,7 @@ describe("responses", () => {
 	describe("submit with email notifications", () => {
 		it("should schedule email when notifyOnResponse is true and creator is signed in", async () => {
 			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
 				const t = convexTest(schema, modules);
 				const eventId = await createTestEvent(t, {
@@ -842,53 +843,97 @@ describe("responses", () => {
 				// Drain scheduled functions (the action may fail without SendGrid, that's OK)
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
+				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("SendGrid not configured"),
+				);
+				expect(sendGridWarningLogged).toBe(true);
 			} finally {
+				warnSpy.mockRestore();
 				vi.useRealTimers();
 			}
 		});
 
 		it("should not schedule email when notifyOnResponse is false", async () => {
-			const t = convexTest(schema, modules);
-			const eventId = await createTestEvent(t, {
-				notifyOnResponse: false,
-				creatorId: "user_123",
-			});
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: false,
+					creatorId: "user_123",
+				});
 
-			const result = await t.mutation(api.responses.submit, {
-				eventId,
-				respondentName: "Bob",
-				selectedSlots: ["2025-01-20T10:00:00Z"],
-			});
+				const result = await t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Bob",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				});
 
-			expect(result.responseId).toBeDefined();
+				expect(result.responseId).toBeDefined();
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("SendGrid not configured"),
+				);
+				expect(sendGridWarningLogged).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
 		});
 
 		it("should not schedule email when notifyOnResponse is undefined", async () => {
-			const t = convexTest(schema, modules);
-			const eventId = await createTestEvent(t);
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t);
 
-			const result = await t.mutation(api.responses.submit, {
-				eventId,
-				respondentName: "Charlie",
-				selectedSlots: ["2025-01-20T10:00:00Z"],
-			});
+				const result = await t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Charlie",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				});
 
-			expect(result.responseId).toBeDefined();
+				expect(result.responseId).toBeDefined();
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("SendGrid not configured"),
+				);
+				expect(sendGridWarningLogged).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
 		});
 
 		it("should not schedule email when creator is a guest (no creatorId)", async () => {
-			const t = convexTest(schema, modules);
-			const eventId = await createTestEvent(t, {
-				notifyOnResponse: true,
-			});
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: true,
+				});
 
-			const result = await t.mutation(api.responses.submit, {
-				eventId,
-				respondentName: "Dave",
-				selectedSlots: ["2025-01-20T10:00:00Z"],
-			});
+				const result = await t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Dave",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+				});
 
-			expect(result.responseId).toBeDefined();
+				expect(result.responseId).toBeDefined();
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("SendGrid not configured"),
+				);
+				expect(sendGridWarningLogged).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
 		});
 	});
 

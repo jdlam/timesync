@@ -203,5 +203,16 @@ describe("email", () => {
 
 			expect(result.success).toBe(false);
 		});
+
+		it("should fail for malformed event ID without throwing", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(internal.email.disableNotifications, {
+				eventId: "malformed-id",
+				adminToken: "token",
+			});
+
+			expect(result.success).toBe(false);
+		});
 	});
 });

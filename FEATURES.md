@@ -92,7 +92,7 @@ This document lists all features currently implemented in TimeSync.
 - Toggle on event creation form (default: checked for signed-in users)
 - Toggle on event edit dialog for existing events
 - Emails include respondent name, response count, and link to admin dashboard
-- One-click unsubscribe via link in email footer
+- Unsubscribe link opens confirmation page before disabling notifications
 - Powered by SendGrid transactional email service
 
 ### Heatmap Visualization

@@ -471,7 +471,7 @@
 - Uses SendGrid transactional email service
 - `notifyOnResponse` field on events table; only honored for authenticated users
 - Email action runs in Node.js runtime (`convex/email_actions.ts`) via `ctx.scheduler.runAfter`
-- Unsubscribe via Convex HTTP route (`/unsubscribe`) that validates adminToken
+- Unsubscribe via Convex HTTP route (`/unsubscribe`) with GET confirmation page and POST mutation
 - Toggle available in both create form and edit dialog
 
 ---
@@ -632,12 +632,14 @@
 
 **Required Variables:**
 - `CONVEX_DEPLOYMENT` - Convex deployment identifier
-
-**Future Variables (when features added):**
+- `CLERK_JWT_ISSUER_DOMAIN` - Clerk JWT issuer domain for Convex auth verification
+- `SUPER_ADMIN_EMAILS` - Comma-separated allowlist for super admin dashboard access
+- `APP_URL` - Frontend origin used to validate Stripe redirect URLs and build admin links
 - `STRIPE_SECRET_KEY` - Stripe API key
+- `STRIPE_PRICE_ID` - Stripe price ID for premium subscription
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
-- `APP_URL` - Frontend origin used to validate Stripe redirect URLs
-- Auth provider credentials
+- `SENDGRID_API_KEY` - SendGrid API key for transactional email notifications
+- `SENDGRID_FROM_EMAIL` - Verified sender email for notification emails
 
 ---
 

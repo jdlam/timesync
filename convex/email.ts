@@ -32,15 +32,18 @@ export const getUserEmailByClerkId = internalQuery({
  */
 export const disableNotifications = internalMutation({
 	args: {
-		eventId: v.id("events"),
+		eventId: v.string(),
 		adminToken: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const event = await ctx.db.get(args.eventId);
-		if (!event || event.adminToken !== args.adminToken) {
+		const event = await ctx.db
+			.query("events")
+			.withIndex("by_admin_token", (q) => q.eq("adminToken", args.adminToken))
+			.first();
+		if (!event || event._id !== args.eventId) {
 			return { success: false };
 		}
-		await ctx.db.patch(args.eventId, { notifyOnResponse: false });
+		await ctx.db.patch(event._id, { notifyOnResponse: false });
 		return { success: true };
 	},
 });
