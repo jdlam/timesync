@@ -1,7 +1,7 @@
 import { SignInButton, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { Check, Crown, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -28,6 +28,7 @@ function PricingPage() {
 		syncUser,
 	} = useSubscription();
 	const { success, canceled } = useSearch({ from: "/pricing" });
+	const [isCheckoutStarting, setIsCheckoutStarting] = useState(false);
 
 	// Sync user on page load (creates user record if needed)
 	useEffect(() => {
@@ -52,12 +53,19 @@ function PricingPage() {
 	}, [success, canceled]);
 
 	const handleUpgrade = async () => {
+		if (isCheckoutStarting) {
+			return;
+		}
+
+		setIsCheckoutStarting(true);
 		try {
 			await upgrade();
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Failed to start checkout";
 			toast.error(message);
+		} finally {
+			setIsCheckoutStarting(false);
 		}
 	};
 
@@ -221,8 +229,9 @@ function PricingPage() {
 							<Button
 								className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
 								onClick={handleUpgrade}
+								disabled={isCheckoutStarting}
 							>
-								Upgrade to Premium
+								{isCheckoutStarting ? "Redirecting..." : "Upgrade to Premium"}
 							</Button>
 						) : (
 							<SignInButton mode="modal">
