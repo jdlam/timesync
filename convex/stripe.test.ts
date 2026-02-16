@@ -125,6 +125,29 @@ describe("validateRedirectUrl", () => {
 				validateRedirectUrl("https://timesync.app/pricing?success=true"),
 			).toThrow("APP_URL_ADDITIONAL_ORIGINS must use HTTP(S)");
 		});
+
+		it("should handle empty APP_URL_ADDITIONAL_ORIGINS", () => {
+			process.env.APP_URL_ADDITIONAL_ORIGINS = "";
+
+			expect(() =>
+				validateRedirectUrl("https://timesync.app/pricing?success=true"),
+			).not.toThrow();
+			expect(() =>
+				validateRedirectUrl("https://other.com/pricing"),
+			).toThrow("domain mismatch");
+		});
+
+		it("should handle APP_URL_ADDITIONAL_ORIGINS with trailing comma", () => {
+			process.env.APP_URL_ADDITIONAL_ORIGINS =
+				"https://www.timesync.app,";
+
+			expect(() =>
+				validateRedirectUrl("https://www.timesync.app/pricing?success=true"),
+			).not.toThrow();
+			expect(() =>
+				validateRedirectUrl("https://timesync.app/pricing?success=true"),
+			).not.toThrow();
+		});
 	});
 });
 
