@@ -147,6 +147,7 @@ export const update = mutation({
 		timeRangeStart: v.optional(v.string()),
 		timeRangeEnd: v.optional(v.string()),
 		password: v.optional(v.union(v.string(), v.null())),
+		notifyOnResponse: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		// Server-side input validation
@@ -214,6 +215,9 @@ export const update = mutation({
 			updates.timeRangeStart = args.timeRangeStart;
 		if (args.timeRangeEnd !== undefined)
 			updates.timeRangeEnd = args.timeRangeEnd;
+
+		if (args.notifyOnResponse !== undefined)
+			updates.notifyOnResponse = args.notifyOnResponse;
 
 		// Password: null = remove, string = set/change, undefined = no change
 		if (args.password === null) {
@@ -292,6 +296,7 @@ export const create = mutation({
 		slotDuration: v.number(),
 		maxRespondents: v.number(),
 		password: v.optional(v.string()),
+		notifyOnResponse: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
@@ -394,6 +399,10 @@ export const create = mutation({
 
 		const adminToken = crypto.randomUUID();
 		const now = Date.now();
+		// Only honor notifyOnResponse for authenticated users
+		const notifyOnResponse =
+			identity && args.notifyOnResponse ? true : undefined;
+
 		const eventId = await ctx.db.insert("events", {
 			title: args.title,
 			description: args.description,
@@ -408,6 +417,7 @@ export const create = mutation({
 			maxRespondents: actualMaxRespondents,
 			creatorId, // Clerk subject ID or undefined for guests
 			creatorEmail, // Creator email or undefined for guests
+			notifyOnResponse,
 			isActive: true,
 			createdAt: now,
 			updatedAt: now,

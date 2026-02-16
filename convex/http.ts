@@ -279,4 +279,174 @@ http.route({
 	}),
 });
 
+/**
+ * Unsubscribe handler
+ * GET: render confirmation page
+ * POST: apply unsubscribe mutation
+ */
+http.route({
+	path: "/unsubscribe",
+	method: "GET",
+	handler: httpAction((ctx, request) => handleUnsubscribeRequest(ctx, request)),
+});
+
+http.route({
+	path: "/unsubscribe",
+	method: "POST",
+	handler: httpAction((ctx, request) => handleUnsubscribeRequest(ctx, request)),
+});
+
+type UnsubscribeContext = {
+	runMutation: (
+		ref: typeof internal.email.disableNotifications,
+		args: { eventId: string; adminToken: string },
+	) => Promise<{ success: boolean }>;
+};
+
+export async function handleUnsubscribeRequest(
+	ctx: UnsubscribeContext,
+	request: Request,
+): Promise<Response> {
+	const { eventId, adminToken } = await getUnsubscribeParams(request);
+
+	if (!eventId || !adminToken) {
+		return new Response(
+			htmlPage(
+				"Invalid Link",
+				"This unsubscribe link is invalid. Please check the link in your email.",
+			),
+			{ status: 400, headers: { "Content-Type": "text/html" } },
+		);
+	}
+
+	if (request.method === "GET") {
+		return new Response(renderUnsubscribeConfirmPage(eventId, adminToken), {
+			status: 200,
+			headers: { "Content-Type": "text/html" },
+		});
+	}
+
+	try {
+		const result = await ctx.runMutation(internal.email.disableNotifications, {
+			eventId,
+			adminToken,
+		});
+
+		if (!result.success) {
+			return new Response(
+				htmlPage(
+					"Invalid Link",
+					"This unsubscribe link is invalid or the event no longer exists.",
+				),
+				{ status: 400, headers: { "Content-Type": "text/html" } },
+			);
+		}
+
+		return new Response(
+			htmlPage(
+				"Unsubscribed",
+				"You have been unsubscribed from email notifications for this event. You can re-enable notifications from the event's admin page.",
+			),
+			{ status: 200, headers: { "Content-Type": "text/html" } },
+		);
+	} catch {
+		return new Response(
+			htmlPage(
+				"Error",
+				"Something went wrong. Please try again later.",
+			),
+			{ status: 500, headers: { "Content-Type": "text/html" } },
+		);
+	}
+}
+
+async function getUnsubscribeParams(
+	request: Request,
+): Promise<{ eventId: string | null; adminToken: string | null }> {
+	const url = new URL(request.url);
+
+	if (request.method === "POST") {
+		try {
+			const formData = await request.formData();
+			const eventId = asString(formData.get("eventId")) ?? url.searchParams.get("eventId");
+			const adminToken =
+				asString(formData.get("adminToken")) ?? url.searchParams.get("adminToken");
+			return { eventId, adminToken };
+		} catch {
+			// Fall back to query params if form parsing fails.
+		}
+	}
+
+	return {
+		eventId: url.searchParams.get("eventId"),
+		adminToken: url.searchParams.get("adminToken"),
+	};
+}
+
+function asString(value: FormDataEntryValue | null): string | null {
+	return typeof value === "string" ? value : null;
+}
+
+function escapeHtml(str: string): string {
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function renderUnsubscribeConfirmPage(eventId: string, adminToken: string): string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Unsubscribe - TimeSync</title>
+	<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; }
+		.card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 420px; text-align: center; }
+		h1 { color: #0d9488; margin-bottom: 0.5rem; }
+		p { color: #4b5563; line-height: 1.5; margin-bottom: 1.5rem; }
+		button { background: #0d9488; color: white; border: 0; border-radius: 8px; padding: 0.7rem 1rem; cursor: pointer; font-size: 0.95rem; }
+		button:hover { background: #0f766e; }
+	</style>
+</head>
+<body>
+	<div class="card">
+		<h1>Unsubscribe from notifications?</h1>
+		<p>Confirm to stop email notifications for this event. You can re-enable notifications from the event admin page.</p>
+		<form method="POST" action="/unsubscribe">
+			<input type="hidden" name="eventId" value="${escapeHtml(eventId)}" />
+			<input type="hidden" name="adminToken" value="${escapeHtml(adminToken)}" />
+			<button type="submit">Confirm unsubscribe</button>
+		</form>
+	</div>
+</body>
+</html>`;
+}
+
+function htmlPage(title: string, message: string): string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>${title} - TimeSync</title>
+	<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; }
+		.card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; text-align: center; }
+		h1 { color: #0d9488; margin-bottom: 0.5rem; }
+		p { color: #4b5563; line-height: 1.5; }
+	</style>
+</head>
+<body>
+	<div class="card">
+		<h1>${title}</h1>
+		<p>${message}</p>
+	</div>
+</body>
+</html>`;
+}
+
 export default http;

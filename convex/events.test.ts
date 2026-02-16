@@ -1416,6 +1416,178 @@ describe("events", () => {
 		});
 	});
 
+	describe("create with notifyOnResponse", () => {
+		it("should store notifyOnResponse for authenticated users", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t
+				.withIdentity({
+					subject: "user_notify",
+					email: "user@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Notify Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					notifyOnResponse: true,
+				});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.notifyOnResponse).toBe(true);
+		});
+
+		it("should not store notifyOnResponse for guest users", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Guest Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+				notifyOnResponse: true,
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.notifyOnResponse).toBeUndefined();
+		});
+
+		it("should default notifyOnResponse to undefined when not provided", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t
+				.withIdentity({
+					subject: "user_default",
+					email: "user@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Default Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.notifyOnResponse).toBeUndefined();
+		});
+	});
+
+	describe("update with notifyOnResponse", () => {
+		it("should update notifyOnResponse to true", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					creatorId: "user_123",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const updatedEvent = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				notifyOnResponse: true,
+			});
+
+			expect(updatedEvent?.notifyOnResponse).toBe(true);
+		});
+
+		it("should update notifyOnResponse to false", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					notifyOnResponse: true,
+					creatorId: "user_123",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const updatedEvent = await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				notifyOnResponse: false,
+			});
+
+			expect(updatedEvent?.notifyOnResponse).toBe(false);
+		});
+
+		it("should not change notifyOnResponse when not provided", async () => {
+			const t = convexTest(schema, modules);
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Test Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					notifyOnResponse: true,
+					creatorId: "user_123",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.mutation(api.events.update, {
+				eventId,
+				adminToken: "admin-token",
+				title: "Updated Title",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(eventId);
+			});
+
+			expect(event?.notifyOnResponse).toBe(true);
+		});
+	});
+
 	describe("creator identity from auth context", () => {
 		it("should reject client-provided creator metadata", async () => {
 			const t = convexTest(schema, modules);

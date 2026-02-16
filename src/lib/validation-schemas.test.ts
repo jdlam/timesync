@@ -668,6 +668,68 @@ describe("validation-schemas", () => {
 		});
 	});
 
+	describe("notifyOnResponse field", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const validEvent = {
+			title: "Test",
+			timeZone: "UTC",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+			slotDuration: "30" as const,
+		};
+
+		it("should accept notifyOnResponse in createEventSchema", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				notifyOnResponse: true,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept notifyOnResponse=false in createEventSchema", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				notifyOnResponse: false,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept missing notifyOnResponse in createEventSchema", () => {
+			const result = createEventSchemaForTier("free").safeParse(validEvent);
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept notifyOnResponse in editEventSchema", () => {
+			const result = editEventSchemaForTier("free").safeParse({
+				title: "Test",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				notifyOnResponse: true,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept missing notifyOnResponse in editEventSchema", () => {
+			const result = editEventSchemaForTier("free").safeParse({
+				title: "Test",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+			});
+			expect(result.success).toBe(true);
+		});
+	});
+
 	describe("tier-specific error messages", () => {
 		beforeEach(() => {
 			vi.useFakeTimers();

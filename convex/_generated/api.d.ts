@@ -9,6 +9,8 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as email from "../email.js";
+import type * as email_actions from "../email_actions.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -29,6 +31,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  email: typeof email;
+  email_actions: typeof email_actions;
   events: typeof events;
   http: typeof http;
   "lib/auth": typeof lib_auth;

@@ -454,21 +454,25 @@
 
 ---
 
-### Story 6.2 - Email Notification on New Response [P2] ❌
+### Story 6.2 - Email Notification on New Response [P2] ✅
 **As an** event creator
 **I want to** receive email notifications when someone responds
 **So that** I stay updated without checking the dashboard
 
 **Acceptance Criteria:**
-- [ ] Opt-in during event creation (checkbox)
-- [ ] Email sent to creator when new response submitted
-- [ ] Email includes respondent name and link to dashboard
-- [ ] Email is well-formatted (HTML template)
-- [ ] User can unsubscribe from notifications
+- [x] Opt-in during event creation (checkbox)
+- [x] Email sent to creator when new response submitted
+- [x] Email includes respondent name and link to dashboard
+- [x] Email is well-formatted (HTML template)
+- [x] User can unsubscribe from notifications
 
 **Technical Notes:**
 - Requires creator email (only for registered users)
-- Use transactional email service (Resend, SendGrid, etc.)
+- Uses SendGrid transactional email service
+- `notifyOnResponse` field on events table; only honored for authenticated users
+- Email action runs in Node.js runtime (`convex/email_actions.ts`) via `ctx.scheduler.runAfter`
+- Unsubscribe via Convex HTTP route (`/unsubscribe`) with GET confirmation page and POST mutation
+- Toggle available in both create form and edit dialog
 
 ---
 
@@ -628,12 +632,14 @@
 
 **Required Variables:**
 - `CONVEX_DEPLOYMENT` - Convex deployment identifier
-
-**Future Variables (when features added):**
+- `CLERK_JWT_ISSUER_DOMAIN` - Clerk JWT issuer domain for Convex auth verification
+- `SUPER_ADMIN_EMAILS` - Comma-separated allowlist for super admin dashboard access
+- `APP_URL` - Frontend origin used to validate Stripe redirect URLs and build admin links
 - `STRIPE_SECRET_KEY` - Stripe API key
+- `STRIPE_PRICE_ID` - Stripe price ID for premium subscription
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
-- `APP_URL` - Frontend origin used to validate Stripe redirect URLs
-- Auth provider credentials
+- `SENDGRID_API_KEY` - SendGrid API key for transactional email notifications
+- `SENDGRID_FROM_EMAIL` - Verified sender email for notification emails
 
 ---
 
@@ -700,6 +706,7 @@
 | 5.4 | Password protection (premium) | ✅ |
 | 5.5 | Unlimited date range (premium) | ✅ |
 | 6.1 | Copy links | ✅ |
+| 6.2 | Email notifications | ✅ |
 | 6.5 | Dark mode | ✅ |
 | 7.2 | Hard delete event (creator) | ✅ |
 | T.1 | Database setup | ✅ |
@@ -719,7 +726,6 @@
 |-------|-------------|----------|
 | 4.4 | Claim guest events | P2 |
 | 5.6 | Ad-free experience | P1 |
-| 6.2 | Email notifications | P2 |
 | 6.3 | Social media share | P2 |
 | 6.4 | Duplicate event | P2 |
 | 8.2 | Track link views | P2 |

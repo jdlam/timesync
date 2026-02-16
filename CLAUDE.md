@@ -380,6 +380,12 @@ Components are added to `src/components/ui/`.
 ```bash
 CLERK_JWT_ISSUER_DOMAIN=https://your-instance.clerk.accounts.dev
 SUPER_ADMIN_EMAILS=admin@example.com,other@example.com
+APP_URL=https://timesync.example.com
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+SENDGRID_API_KEY=SG....
+SENDGRID_FROM_EMAIL=notifications@yourdomain.com
 ```
 
 ## What's Not Implemented Yet
@@ -388,7 +394,6 @@ See `USER_STORIES.md` for full status. Major missing features:
 - Full archive UI with filtered tabs (Story 7.1 - toggle implemented, archive tab not)
 - Custom slot duration UI for premium (Story 5.3 - schema ready, no UI)
 - Custom branding UI (schema ready, no UI)
-- Email notifications (Story 6.2)
 - E2E tests and CI pipeline (Story T.4)
 - Error tracking / Sentry integration (Story T.3)
 

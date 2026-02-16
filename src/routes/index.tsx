@@ -221,9 +221,6 @@ function LandingPage() {
 			<footer className="border-t border-border py-8 px-6">
 				<div className="max-w-7xl mx-auto text-center text-muted-foreground text-sm">
 					<p>TimeSync - Find the perfect time for your group</p>
-					<p className="mt-2">
-						Built with TanStack Start, React, and Tailwind CSS
-					</p>
 				</div>
 			</footer>
 		</div>
