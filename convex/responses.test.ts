@@ -503,7 +503,10 @@ describe("responses", () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t);
 
-			const count = await t.query(api.responses.countByEventId, { eventId });
+			const count = await t.query(api.responses.countByEventId, {
+				eventId,
+				adminToken: "admin-token",
+			});
 
 			expect(count).toBe(0);
 		});
@@ -525,9 +528,35 @@ describe("responses", () => {
 				}
 			});
 
-			const count = await t.query(api.responses.countByEventId, { eventId });
+			const count = await t.query(api.responses.countByEventId, {
+				eventId,
+				adminToken: "admin-token",
+			});
 
 			expect(count).toBe(5);
+		});
+
+		it("should return 0 for invalid admin token", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			await t.run(async (ctx) => {
+				await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "token-alice",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const count = await t.query(api.responses.countByEventId, {
+				eventId,
+				adminToken: "wrong-token",
+			});
+
+			expect(count).toBe(0);
 		});
 	});
 

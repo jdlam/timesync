@@ -109,8 +109,14 @@ export const getByEditToken = query({
 
 // Query: Count responses for an event
 export const countByEventId = query({
-	args: { eventId: v.id("events") },
+	args: { eventId: v.id("events"), adminToken: v.string() },
 	handler: async (ctx, args) => {
+		const event = await ctx.db.get(args.eventId);
+		// Return 0 for invalid access to avoid leaking whether responses exist.
+		if (!event || event.adminToken !== args.adminToken) {
+			return 0;
+		}
+
 		const responses = await ctx.db
 			.query("responses")
 			.withIndex("by_event", (q) => q.eq("eventId", args.eventId))
