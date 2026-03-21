@@ -348,13 +348,14 @@ describe("time-utils", () => {
 		});
 
 		it("should return positive value when second timezone is ahead", () => {
-			// London is 5 hours ahead of New York in winter
+			// London is ahead of New York: 5 hours in winter (EST/GMT), 4 hours in summer (EDT/BST overlap)
 			const diff = getTimezoneOffsetDifference(
 				"America/New_York",
 				"Europe/London",
 			);
 
-			expect(diff).toBe(5);
+			expect(diff).toBeGreaterThanOrEqual(4);
+			expect(diff).toBeLessThanOrEqual(5);
 		});
 
 		it("should return negative value when second timezone is behind", () => {
