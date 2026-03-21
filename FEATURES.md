@@ -95,6 +95,15 @@ This document lists all features currently implemented in TimeSync.
 - Unsubscribe link opens confirmation page before disabling notifications
 - Powered by SendGrid transactional email service
 
+### Discord Subscription Notifications
+
+- Optional Discord webhook notifications for subscription events
+- Sends rich embed messages when users subscribe or unsubscribe
+- Subscribe notifications: teal-colored embed with user details
+- Unsubscribe notifications: red-colored embed with user details
+- Configured via `DISCORD_WEBHOOK_URL` environment variable
+- Gracefully skips if webhook URL is not configured
+
 ### Heatmap Visualization
 
 - Color-coded availability grid (green = high availability, red = low)

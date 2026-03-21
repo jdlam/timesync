@@ -6,6 +6,43 @@ import { USER_NOT_FOUND_ERROR } from "./users";
 
 const http = httpRouter();
 
+/**
+ * Look up user details by Stripe customer ID and send a Discord
+ * notification for subscription changes. Failures are logged but never
+ * block the webhook response.
+ */
+interface DiscordNotificationCtx {
+	// biome-ignore lint/suspicious/noExplicitAny: Convex generated types may not include discord module yet
+	runQuery: (ref: any, args: { stripeCustomerId: string }) => Promise<{ email: string; name: string } | null>;
+	// biome-ignore lint/suspicious/noExplicitAny: Convex generated types may not include discord module yet
+	runAction: (ref: any, args: { event: "subscribe" | "unsubscribe"; email: string; userName: string }) => Promise<void>;
+}
+
+export async function scheduleDiscordNotification(
+	ctx: DiscordNotificationCtx,
+	event: "subscribe" | "unsubscribe",
+	stripeCustomerId: string,
+): Promise<void> {
+	try {
+		const user = await ctx.runQuery(internal.users.getUserByStripeCustomer, {
+			stripeCustomerId,
+		});
+		if (!user) {
+			console.warn(
+				`[Discord] Could not find user for customer=${stripeCustomerId}. Skipping notification.`,
+			);
+			return;
+		}
+		await ctx.runAction(
+			// @ts-expect-error internal.discord may not exist in generated types until next codegen
+			internal.discord.sendSubscriptionNotification,
+			{ event, email: user.email, userName: user.name },
+		);
+	} catch (error) {
+		console.error("[Discord] Failed to schedule notification:", error);
+	}
+}
+
 export function handleSubscriptionUpdateResult(params: {
 	result: { success: boolean; error?: string };
 	action: string;
@@ -120,6 +157,7 @@ http.route({
 								console.log(
 									`[Stripe Webhook] SUCCESS: Activated premium for customer=${customerId}, subscription=${subscriptionId}`,
 								);
+								await scheduleDiscordNotification(ctx, "subscribe", customerId);
 							} else {
 								handleSubscriptionUpdateResult({
 									result,
@@ -249,6 +287,7 @@ http.route({
 						console.log(
 							`[Stripe Webhook] Cancelled subscription: customer=${customerId}, subscription=${subscription.id}`,
 						);
+						await scheduleDiscordNotification(ctx, "unsubscribe", customerId);
 					} else {
 						handleSubscriptionUpdateResult({
 							result,

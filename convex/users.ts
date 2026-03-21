@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getCurrentUser, isSuperAdmin } from "./lib/auth";
 
 /** Stable error code returned when a Stripe customer ID has no matching user record. */
@@ -213,6 +213,24 @@ export const ensureUserExists = internalMutation({
 
 		console.log(`[Users] Created new user record for clerkId: ${args.clerkId}`);
 		return { success: true, userId, created: true };
+	},
+});
+
+/**
+ * Internal query to get user details by Stripe customer ID.
+ * Used by Discord notifications to look up email/name.
+ */
+export const getUserByStripeCustomer = internalQuery({
+	args: { stripeCustomerId: v.string() },
+	handler: async (ctx, args) => {
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_stripe_customer", (q) =>
+				q.eq("stripeCustomerId", args.stripeCustomerId),
+			)
+			.unique();
+		if (!user) return null;
+		return { email: user.email, name: user.name };
 	},
 });
 
