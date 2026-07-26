@@ -108,6 +108,8 @@
 - [x] Dates mode hides time range + slot duration
 - [x] Creator defines the candidate day pool via a range (From → To) and/or
       individual days
+- [x] Free tier limits the pool by calendar **span** (5 weeks / 35 days from the
+      first day), not day count; premium allows up to a year
 - [x] Respondents pick the date ranges they're available on a calendar view
       (constrained to candidate days), plus optional name/comment
 - [x] Admin sees a calendar heatmap of per-day overlap with respondent details
@@ -122,6 +124,7 @@
   existing heatmap/response aggregation stack
 - Components: `DateAvailabilityCalendar`, `DateHeatmapCalendar`
 - Recommendation helper: `getBestConsecutiveRun` in `heatmap-utils.ts`
+- Span cap via `TIER_LIMITS.maxDateSpanDays` + `getDateRangeSpanDays`
 
 ---
 

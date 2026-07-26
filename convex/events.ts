@@ -3,7 +3,11 @@ import { mutation, query } from "./_generated/server";
 import { isSuperAdmin } from "./lib/auth";
 import { hashPassword, verifyPassword } from "./lib/password";
 import { enforceRateLimit } from "./lib/rate_limit";
-import { TIER_LIMITS, isValidDateString } from "./lib/tier_config";
+import {
+	getDateRangeSpanDays,
+	isValidDateString,
+	TIER_LIMITS,
+} from "./lib/tier_config";
 
 // Query: Get event by ID (public — strips sensitive fields, respects password gate)
 export const getById = query({
@@ -183,10 +187,23 @@ export const update = mutation({
 
 		// Tier-aware validation
 		const tier = event.isPremium ? "premium" : "free";
-		const maxDates = TIER_LIMITS[tier].maxDates;
 		if (args.dates !== undefined) {
-			if (args.dates.length === 0 || args.dates.length > maxDates) {
-				throw new Error(`Must have between 1 and ${maxDates} dates`);
+			if (args.dates.length === 0) {
+				throw new Error("At least one date is required");
+			}
+			if (event.eventMode === "dates") {
+				// Dates events are capped by calendar span, not day count.
+				const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
+				if (getDateRangeSpanDays(args.dates) > maxSpan) {
+					throw new Error(
+						`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
+					);
+				}
+			} else {
+				const maxDates = TIER_LIMITS[tier].maxDates;
+				if (args.dates.length > maxDates) {
+					throw new Error(`Must have between 1 and ${maxDates} dates`);
+				}
 			}
 			for (const d of args.dates) {
 				if (!isValidDateString(d)) {
@@ -372,9 +389,22 @@ export const create = mutation({
 
 		// Tier-aware validation
 		const tier = isPremium ? "premium" : "free";
-		const maxDates = TIER_LIMITS[tier].maxDates;
-		if (args.dates.length === 0 || args.dates.length > maxDates) {
-			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		if (args.dates.length === 0) {
+			throw new Error("At least one date is required");
+		}
+		if (isDatesMode) {
+			// Dates events are capped by calendar span, not day count.
+			const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
+			if (getDateRangeSpanDays(args.dates) > maxSpan) {
+				throw new Error(
+					`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
+				);
+			}
+		} else {
+			const maxDates = TIER_LIMITS[tier].maxDates;
+			if (args.dates.length > maxDates) {
+				throw new Error(`Must have between 1 and ${maxDates} dates`);
+			}
 		}
 		for (const d of args.dates) {
 			if (!isValidDateString(d)) {

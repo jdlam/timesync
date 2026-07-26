@@ -813,6 +813,57 @@ describe("validation-schemas", () => {
 			expect(result.success).toBe(false);
 		});
 
+		it("should accept a candidate pool spanning exactly 5 weeks (free)", () => {
+			// 2099-06-01 .. 2099-07-05 inclusive = 35 days = 5 weeks.
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: ["2099-06-01", "2099-07-05"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject a candidate pool spanning more than 5 weeks (free)", () => {
+			// 2099-06-01 .. 2099-07-06 inclusive = 36 days > 5 weeks.
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: ["2099-06-01", "2099-07-06"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("weeks");
+			}
+		});
+
+		it("should allow many days for a times event but not exceed maxDates", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				title: "Meeting",
+				timeZone: "UTC",
+				eventMode: "times",
+				// 15 individual days exceeds the free times cap of 14.
+				dates: Array.from(
+					{ length: 15 },
+					(_, i) => `2099-06-${String(i + 1).padStart(2, "0")}`,
+				),
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("14");
+			}
+		});
+
 		it("should still enforce end-after-start for times events", () => {
 			const result = schema.safeParse({
 				title: "Meeting",

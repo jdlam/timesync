@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
 import { getErrorMessage } from "@/lib/form-utils";
-import { TIER_LIMITS } from "@/lib/tier-config";
+import { getDateRangeSpanDays, TIER_LIMITS } from "@/lib/tier-config";
 import { editEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
@@ -45,7 +45,9 @@ export function EditEventDialog({
 	const updateEventMutation = useMutation(api.events.update);
 
 	const isDatesMode = event.eventMode === "dates";
-	const maxDates = TIER_LIMITS[event.isPremium ? "premium" : "free"].maxDates;
+	const tierLimits = TIER_LIMITS[event.isPremium ? "premium" : "free"];
+	const maxDateSpanDays = tierLimits.maxDateSpanDays;
+	const spanWeeks = Math.round(maxDateSpanDays / 7);
 	const [rangeFrom, setRangeFrom] = useState("");
 	const [rangeTo, setRangeTo] = useState("");
 
@@ -151,14 +153,20 @@ export function EditEventDialog({
 	// Handle calendar date selection
 	const handleDateSelect = (dates: Date[] | undefined) => {
 		if (!dates) return;
-		setSelectedDates(dates);
-
-		// Convert dates to YYYY-MM-DD strings and sort
 		const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd")).sort();
+
+		// Dates events are capped by calendar span (e.g. 5 weeks), not day count.
+		if (isDatesMode && getDateRangeSpanDays(dateStrings) > maxDateSpanDays) {
+			toast.error(`Dates can span at most ${spanWeeks} weeks on this plan`);
+			return;
+		}
+
+		setSelectedDates(dates);
 		form.setFieldValue("dates", dateStrings);
 	};
 
-	// Merge a set of dates into the candidate pool (dedupe, cap to tier).
+	// Merge a set of dates into the candidate pool (dedupe), trimming any days
+	// beyond the allowed calendar span from the earliest selected day.
 	const addDatesToSelection = (datesToAdd: Date[]) => {
 		const keys = new Set(selectedDates.map((d) => format(d, "yyyy-MM-dd")));
 		const merged = [...selectedDates];
@@ -171,9 +179,14 @@ export function EditEventDialog({
 		merged.sort((a, b) => a.getTime() - b.getTime());
 
 		let capped = merged;
-		if (merged.length > maxDates) {
-			capped = merged.slice(0, maxDates);
-			toast.error(`Only ${maxDates} dates allowed on this plan`);
+		if (merged.length > 0) {
+			const minTime = merged[0].getTime();
+			capped = merged.filter(
+				(d) => (d.getTime() - minTime) / 86_400_000 <= maxDateSpanDays - 1,
+			);
+			if (capped.length < merged.length) {
+				toast.error(`Dates can span at most ${spanWeeks} weeks on this plan`);
+			}
 		}
 		setSelectedDates(capped);
 		form.setFieldValue(

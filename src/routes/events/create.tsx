@@ -37,7 +37,7 @@ import {
 import { useAppForm } from "@/hooks/form";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getErrorMessage } from "@/lib/form-utils";
-import { TIER_LIMITS } from "@/lib/tier-config";
+import { getDateRangeSpanDays, TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone, isDateInPast } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 import { createEventSchemaForTier } from "@/lib/validation-schemas";
@@ -128,14 +128,24 @@ function CreateEvent() {
 		}
 	}, [form, isAuthenticated]);
 
+	const maxDateSpanDays = tierLimits.maxDateSpanDays;
+	const spanWeeks = Math.round(maxDateSpanDays / 7);
+
 	// Handle calendar date selection
 	const handleDateSelect = (dates: Date[] | undefined) => {
 		if (!dates) return;
-		setSelectedDates(dates);
-
-		// Convert dates to YYYY-MM-DD strings and sort
 		const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd")).sort();
 
+		// Dates events are capped by calendar span (e.g. 5 weeks), not day count.
+		if (
+			eventMode === "dates" &&
+			getDateRangeSpanDays(dateStrings) > maxDateSpanDays
+		) {
+			toast.error(`Dates can span at most ${spanWeeks} weeks on your plan`);
+			return;
+		}
+
+		setSelectedDates(dates);
 		form.setFieldValue("dates", dateStrings);
 	};
 
@@ -145,7 +155,8 @@ function CreateEvent() {
 		form.setFieldValue("eventMode", mode);
 	};
 
-	// Merge a set of dates into the selection (dedupe, skip past dates, cap to tier).
+	// Merge a set of dates into the pool (dedupe, skip past dates), trimming any
+	// days beyond the allowed calendar span from the earliest selected day.
 	const addDatesToSelection = (datesToAdd: Date[]) => {
 		const keys = new Set(selectedDates.map((d) => format(d, "yyyy-MM-dd")));
 		const merged = [...selectedDates];
@@ -158,9 +169,14 @@ function CreateEvent() {
 		merged.sort((a, b) => a.getTime() - b.getTime());
 
 		let capped = merged;
-		if (merged.length > tierLimits.maxDates) {
-			capped = merged.slice(0, tierLimits.maxDates);
-			toast.error(`Only ${tierLimits.maxDates} dates allowed on your plan`);
+		if (merged.length > 0) {
+			const minTime = merged[0].getTime();
+			capped = merged.filter(
+				(d) => (d.getTime() - minTime) / 86_400_000 <= maxDateSpanDays - 1,
+			);
+			if (capped.length < merged.length) {
+				toast.error(`Dates can span at most ${spanWeeks} weeks on your plan`);
+			}
 		}
 		setSelectedDates(capped);
 		form.setFieldValue(
@@ -211,7 +227,10 @@ function CreateEvent() {
 						<div>
 							<p className="text-teal-400 font-medium">Premium Event</p>
 							<p className="text-sm text-muted-foreground">
-								Up to {tierLimits.maxDates} dates, unlimited participants
+								{eventMode === "dates"
+									? `Span up to ${spanWeeks} weeks`
+									: `Up to ${tierLimits.maxDates} dates`}
+								, unlimited participants
 							</p>
 						</div>
 					</div>
@@ -221,8 +240,10 @@ function CreateEvent() {
 							<div>
 								<p className="text-foreground font-medium">Free Tier</p>
 								<p className="text-sm text-muted-foreground">
-									Up to {tierLimits.maxDates} dates,{" "}
-									{tierLimits.maxParticipants} participants
+									{eventMode === "dates"
+										? `Span up to ${spanWeeks} weeks`
+										: `Up to ${tierLimits.maxDates} dates`}
+									, {tierLimits.maxParticipants} participants
 								</p>
 							</div>
 							<Link to="/pricing" search={{ success: false, canceled: false }}>
@@ -347,7 +368,9 @@ function CreateEvent() {
 											: "Select Dates"}
 									</Label>
 									<span className="text-sm text-muted-foreground">
-										{selectedDates.length}/{tierLimits.maxDates} dates
+										{eventMode === "dates"
+											? `${selectedDates.length} days · up to ${spanWeeks} weeks`
+											: `${selectedDates.length}/${tierLimits.maxDates} dates`}
 									</span>
 								</div>
 								{eventMode === "dates" && (

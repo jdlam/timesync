@@ -32,6 +32,8 @@ rather than a time of day.
   *Dates*. Existing events default to *Times*.
 - **Candidate day pool** defined by the creator via **both** a continuous range
   (From → To fills the span) **and** individual add/remove days.
+- **Tier limit is span-based** (not day count): the pool may span at most **5
+  weeks** (35 days from the first day) on free, up to a year on premium.
 - **Respondents pick date ranges** on a calendar-like view: add a whole stretch
   at once, toggle individual days, plus Select-all / Clear. Only the event's
   candidate days are selectable. Name + optional comment work the same as
