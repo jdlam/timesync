@@ -14,6 +14,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { EditEventDialog } from "@/components/EditEventDialog";
 import { EventHeader } from "@/components/EventHeader";
+import { DateHeatmapCalendar } from "@/components/heatmap/DateHeatmapCalendar";
 import { HeatmapGrid } from "@/components/heatmap/HeatmapGrid";
 import { LinkCopy } from "@/components/LinkCopy";
 import { NotFound } from "@/components/NotFound";
@@ -308,13 +309,21 @@ function AdminDashboardContent({
 
 				{/* Heatmap Section */}
 				<div className="bg-card backdrop-blur-sm border border-border rounded-xl p-6 mb-6">
-					<HeatmapGrid
-						event={event}
-						responses={responses}
-						highlightedResponse={highlightedResponse}
-						onClearHighlight={() => setSelectedResponseId(null)}
-						onSelectResponse={(id) => setSelectedResponseId(id)}
-					/>
+					{event.eventMode === "dates" ? (
+						<DateHeatmapCalendar
+							event={event}
+							responses={responses}
+							highlightedResponse={highlightedResponse}
+						/>
+					) : (
+						<HeatmapGrid
+							event={event}
+							responses={responses}
+							highlightedResponse={highlightedResponse}
+							onClearHighlight={() => setSelectedResponseId(null)}
+							onSelectResponse={(id) => setSelectedResponseId(id)}
+						/>
+					)}
 				</div>
 
 				{/* Responses List */}

@@ -1043,4 +1043,57 @@ describe("responses", () => {
 			expect(result.responseId).toBeDefined();
 		});
 	});
+
+	describe("submit (dates mode)", () => {
+		// Insert a dates-only event with two candidate days (UTC midnight slots).
+		async function createDatesEvent(t: ReturnType<typeof convexTest>) {
+			return await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Trip",
+					timeZone: "UTC",
+					eventMode: "dates",
+					dates: ["2025-08-01", "2025-08-02"],
+					timeRangeStart: "00:00",
+					timeRangeEnd: "00:00",
+					slotDuration: 1440,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+		}
+
+		it("should accept per-day canonical slots for candidate days", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createDatesEvent(t);
+
+			const result = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Alice",
+				respondentComment: "Can do either day",
+				selectedSlots: [
+					"2025-08-01T00:00:00.000Z",
+					"2025-08-02T00:00:00.000Z",
+				],
+			});
+
+			expect(result.responseId).toBeDefined();
+		});
+
+		it("should reject a day outside the candidate pool", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createDatesEvent(t);
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "Bob",
+					selectedSlots: ["2025-08-05T00:00:00.000Z"],
+				}),
+			).rejects.toThrow(/must match the event's configured schedule/);
+		});
+	});
 });

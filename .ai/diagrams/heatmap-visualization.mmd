@@ -12,6 +12,7 @@ sequenceDiagram
     Page->>Convex: responses.getByEventId
     Convex->>DB: SELECT all responses
     Convex-->>Page: responses[]
+    Note over Page,Heatmap: Dates events render DateHeatmapCalendar\n(allSlots = generateDateSlots)
     Page->>Heatmap: Render with responses
     Heatmap->>Utils: calculateHeatmap(responses)
     Utils->>Utils: Count availability per slot
@@ -21,4 +22,8 @@ sequenceDiagram
     Utils-->>Heatmap: color values
     Heatmap->>Utils: getBestTimeSlots()
     Utils-->>Heatmap: top 3 slots
-    Heatmap->>Admin: Display colored grid
+    opt eventMode = "dates"
+        Heatmap->>Utils: getBestConsecutiveRun()
+        Utils-->>Heatmap: best day stretch
+    end
+    Heatmap->>Admin: Display colored grid / calendar

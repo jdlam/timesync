@@ -38,6 +38,34 @@ export function generateTimeSlots(
 }
 
 /**
+ * Generate canonical "date slots" for a dates-only event.
+ *
+ * Each candidate date maps to exactly one ISO timestamp: midnight in the
+ * event timezone, converted to UTC. This lets dates-only events reuse the
+ * entire time-slot aggregation stack (calculateHeatmap, getBestTimeSlots,
+ * the response mutations) which keys purely on matching strings.
+ *
+ * @param dates - Array of date strings in 'YYYY-MM-DD' format
+ * @param timeZone - IANA timezone string
+ * @returns Array of ISO timestamp strings (one per date), sorted ascending
+ */
+export function generateDateSlots(dates: string[], timeZone: string): string[] {
+	return dates
+		.map((dateStr) => parseTimeInZone(dateStr, "00:00", timeZone).toISOString())
+		.sort();
+}
+
+/**
+ * Format a canonical date slot (see generateDateSlots) for display.
+ * @param isoTimestamp - ISO 8601 timestamp of a date slot
+ * @param timeZone - IANA timezone string (the event timezone)
+ * @returns Formatted date string (e.g., "Mon, Jan 15")
+ */
+export function formatDateSlot(isoTimestamp: string, timeZone: string): string {
+	return formatDateDisplay(formatDate(isoTimestamp, timeZone));
+}
+
+/**
  * Parse a time string in a specific timezone
  * @param dateStr - Date string in 'YYYY-MM-DD' format
  * @param timeStr - Time string in 'HH:mm' format

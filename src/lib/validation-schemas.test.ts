@@ -782,4 +782,48 @@ describe("validation-schemas", () => {
 			}
 		});
 	});
+
+	describe("dates event mode", () => {
+		const schema = createEventSchemaForTier("free");
+
+		it("should accept a dates event with sentinel time fields", () => {
+			const result = schema.safeParse({
+				title: "Summer Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: ["2099-06-15", "2099-06-16"],
+				// Sentinels sent for dates events; time-range rule is skipped.
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should still require at least one date", () => {
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: [],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it("should still enforce end-after-start for times events", () => {
+			const result = schema.safeParse({
+				title: "Meeting",
+				timeZone: "UTC",
+				eventMode: "times",
+				dates: ["2099-06-15"],
+				timeRangeStart: "17:00",
+				timeRangeEnd: "09:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+		});
+	});
 });

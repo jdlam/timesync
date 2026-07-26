@@ -253,6 +253,11 @@ Key fields:
 - `events.adminToken` - Secret token for event admin access
 - `responses.editToken` - Secret token for editing responses
 - `events.isActive` - Soft delete flag
+- `events.eventMode` - `"times"` (default) or `"dates"`. Dates events align on
+  whole calendar days: each candidate date maps to one canonical
+  midnight-in-timezone slot (`generateDateSlots`), and the time range /
+  slot duration fields hold ignored sentinels. This lets the time-slot
+  aggregation stack (heatmap, responses, CSV) be reused unchanged.
 - `auditLogs.action` - Type of admin action (delete_event, toggle_event_status, etc.)
 
 ## Testing

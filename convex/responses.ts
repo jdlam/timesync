@@ -19,6 +19,7 @@ interface EventForSlotValidation {
 	timeRangeEnd: string;
 	slotDuration: number;
 	timeZone: string;
+	eventMode?: "times" | "dates";
 }
 
 function parseTimeInZone(
@@ -36,6 +37,15 @@ function parseTimeInZone(
 
 function generateAllowedSlots(event: EventForSlotValidation): Set<string> {
 	const allowed = new Set<string>();
+
+	// Dates-only events: each candidate date is a single canonical slot at
+	// midnight in the event timezone. Time-range/slotDuration are ignored.
+	if (event.eventMode === "dates") {
+		for (const dateStr of event.dates) {
+			allowed.add(parseTimeInZone(dateStr, "00:00", event.timeZone).toISOString());
+		}
+		return allowed;
+	}
 
 	for (const dateStr of event.dates) {
 		const start = parseTimeInZone(

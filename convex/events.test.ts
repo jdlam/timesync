@@ -2068,4 +2068,46 @@ describe("events", () => {
 			expect(event?.password).toBe(originalPassword);
 		});
 	});
+
+	describe("create (dates mode)", () => {
+		it("should persist eventMode and sentinel time fields for a dates event", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Summer Trip",
+				timeZone: "America/New_York",
+				eventMode: "dates",
+				dates: ["2025-08-01", "2025-08-02", "2025-08-03"],
+				// Sentinels — should be accepted without time-range validation.
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: 1440,
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => ctx.db.get(result.eventId));
+			expect(event?.eventMode).toBe("dates");
+			expect(event?.timeRangeStart).toBe("00:00");
+			expect(event?.timeRangeEnd).toBe("00:00");
+			expect(event?.slotDuration).toBe(1440);
+			expect(event?.dates).toHaveLength(3);
+		});
+
+		it("should default eventMode to times when omitted", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Regular Meeting",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => ctx.db.get(result.eventId));
+			expect(event?.eventMode).toBe("times");
+		});
+	});
 });

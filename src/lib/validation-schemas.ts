@@ -22,6 +22,9 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 
 			timeZone: z.string().min(1, "Timezone is required"),
 
+			// "times" (default) aligns on time slots; "dates" aligns on whole days.
+			eventMode: z.enum(["times", "dates"]).optional(),
+
 			dates: z
 				.array(z.string())
 				.min(1, "At least one date is required")
@@ -71,6 +74,8 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 		})
 		.refine(
 			(data) => {
+				// Time range only applies to "times" events.
+				if (data.eventMode === "dates") return true;
 				// Validate that end time is after start time
 				return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
 			},
@@ -126,6 +131,8 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 				.optional()
 				.nullable(),
 
+			eventMode: z.enum(["times", "dates"]).optional(),
+
 			dates: z
 				.array(z.string())
 				.min(1, "At least one date is required")
@@ -160,6 +167,7 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 		})
 		.refine(
 			(data) => {
+				if (data.eventMode === "dates") return true;
 				return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
 			},
 			{

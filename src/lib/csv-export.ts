@@ -1,9 +1,14 @@
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { generateTimeSlots } from "./time-utils";
+import {
+	formatDateSlot,
+	generateDateSlots,
+	generateTimeSlots,
+} from "./time-utils";
 
 interface EventData {
 	title: string;
+	eventMode?: "times" | "dates";
 	dates: string[];
 	timeRangeStart: string;
 	timeRangeEnd: string;
@@ -55,14 +60,19 @@ export function generateCsvContent(
 	event: EventData,
 	responses: ResponseData[],
 ): string {
-	// Generate all possible time slots for the event
-	const allSlots = generateTimeSlots(
-		event.dates,
-		event.timeRangeStart,
-		event.timeRangeEnd,
-		event.slotDuration,
-		event.timeZone,
-	);
+	const isDatesMode = event.eventMode === "dates";
+
+	// Generate all possible slots for the event. Dates events use one canonical
+	// slot per candidate day; times events expand into intra-day time slots.
+	const allSlots = isDatesMode
+		? generateDateSlots(event.dates, event.timeZone)
+		: generateTimeSlots(
+				event.dates,
+				event.timeRangeStart,
+				event.timeRangeEnd,
+				event.slotDuration,
+				event.timeZone,
+			);
 
 	// Build rows for CSV
 	const rows: CsvRow[] = [];
@@ -74,7 +84,9 @@ export function generateCsvContent(
 	}));
 
 	for (const slot of allSlots) {
-		const formattedSlot = formatTimeSlotForCsv(slot, event.timeZone);
+		const formattedSlot = isDatesMode
+			? formatDateSlot(slot, event.timeZone)
+			: formatTimeSlotForCsv(slot, event.timeZone);
 
 		for (const { response, selectedSlotsSet } of responsesWithSlotSets) {
 			const isAvailable = selectedSlotsSet.has(slot);
@@ -87,7 +99,9 @@ export function generateCsvContent(
 	}
 
 	// Build CSV string
-	const header = "Time Slot,Respondent Name,Available";
+	const header = isDatesMode
+		? "Date,Respondent Name,Available"
+		: "Time Slot,Respondent Name,Available";
 	const csvRows = rows.map(
 		(row) =>
 			`${escapeCsvField(row.timeSlot)},${escapeCsvField(row.respondentName)},${row.available}`,

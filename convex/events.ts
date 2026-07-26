@@ -290,6 +290,7 @@ export const create = mutation({
 		title: v.string(),
 		description: v.optional(v.string()),
 		timeZone: v.string(),
+		eventMode: v.optional(v.union(v.literal("times"), v.literal("dates"))),
 		dates: v.array(v.string()),
 		timeRangeStart: v.string(),
 		timeRangeEnd: v.string(),
@@ -319,6 +320,8 @@ export const create = mutation({
 			});
 		}
 
+		const isDatesMode = args.eventMode === "dates";
+
 		// Server-side input validation (format checks first)
 		if (!args.title || args.title.length > 255) {
 			throw new Error("Title must be between 1 and 255 characters");
@@ -326,16 +329,20 @@ export const create = mutation({
 		if (args.description && args.description.length > 1000) {
 			throw new Error("Description must be at most 1000 characters");
 		}
-		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
-			throw new Error("Time range must be in HH:mm format");
-		}
-		const [startH, startM] = args.timeRangeStart.split(":").map(Number);
-		const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
-		if (startH * 60 + startM >= endH * 60 + endM) {
-			throw new Error("End time must be after start time");
-		}
-		if (![15, 30, 60].includes(args.slotDuration)) {
-			throw new Error("Slot duration must be 15, 30, or 60 minutes");
+		// Time-range and slot-duration only apply to "times" events. Dates
+		// events store sentinel values (see insert below) and are ignored.
+		if (!isDatesMode) {
+			if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
+				throw new Error("Time range must be in HH:mm format");
+			}
+			const [startH, startM] = args.timeRangeStart.split(":").map(Number);
+			const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
+			if (startH * 60 + startM >= endH * 60 + endM) {
+				throw new Error("End time must be after start time");
+			}
+			if (![15, 30, 60].includes(args.slotDuration)) {
+				throw new Error("Slot duration must be 15, 30, or 60 minutes");
+			}
 		}
 
 		// Check if creator has premium subscription
@@ -407,10 +414,12 @@ export const create = mutation({
 			title: args.title,
 			description: args.description,
 			timeZone: args.timeZone,
+			eventMode: isDatesMode ? "dates" : "times",
 			dates: args.dates,
-			timeRangeStart: args.timeRangeStart,
-			timeRangeEnd: args.timeRangeEnd,
-			slotDuration: args.slotDuration,
+			// Dates events store sentinels; each date is one canonical midnight slot.
+			timeRangeStart: isDatesMode ? "00:00" : args.timeRangeStart,
+			timeRangeEnd: isDatesMode ? "00:00" : args.timeRangeEnd,
+			slotDuration: isDatesMode ? 1440 : args.slotDuration,
 			adminToken,
 			isPremium,
 			password: hashedPassword,

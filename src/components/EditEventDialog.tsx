@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { format, parse } from "date-fns";
+import { eachDayOfInterval, format, parse } from "date-fns";
 import {
 	AlertTriangle,
 	Bell,
@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
 import { getErrorMessage } from "@/lib/form-utils";
+import { TIER_LIMITS } from "@/lib/tier-config";
 import { editEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
@@ -43,6 +44,11 @@ export function EditEventDialog({
 }: EditEventDialogProps) {
 	const updateEventMutation = useMutation(api.events.update);
 
+	const isDatesMode = event.eventMode === "dates";
+	const maxDates = TIER_LIMITS[event.isPremium ? "premium" : "free"].maxDates;
+	const [rangeFrom, setRangeFrom] = useState("");
+	const [rangeTo, setRangeTo] = useState("");
+
 	// Get response count for warning (only when dialog is open)
 	const responseCountData = useQuery(
 		api.events.getResponseCount,
@@ -71,6 +77,7 @@ export function EditEventDialog({
 		defaultValues: {
 			title: event.title,
 			description: event.description ?? ("" as string | undefined | null),
+			eventMode: event.eventMode ?? ("times" as "times" | "dates"),
 			dates: event.dates,
 			timeRangeStart: event.timeRangeStart,
 			timeRangeEnd: event.timeRangeEnd,
@@ -98,8 +105,9 @@ export function EditEventDialog({
 					title: value.title,
 					description: value.description || null,
 					dates: value.dates,
-					timeRangeStart: value.timeRangeStart,
-					timeRangeEnd: value.timeRangeEnd,
+					// Dates events keep sentinel time fields — don't send them.
+					timeRangeStart: isDatesMode ? undefined : value.timeRangeStart,
+					timeRangeEnd: isDatesMode ? undefined : value.timeRangeEnd,
 					password: passwordValue,
 					notifyOnResponse: value.notifyOnResponse,
 				});
@@ -135,6 +143,8 @@ export function EditEventDialog({
 			);
 			setShowCalendar(false);
 			setShowPasswordInput(false);
+			setRangeFrom("");
+			setRangeTo("");
 		}
 	}, [open, event]);
 
@@ -146,6 +156,43 @@ export function EditEventDialog({
 		// Convert dates to YYYY-MM-DD strings and sort
 		const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd")).sort();
 		form.setFieldValue("dates", dateStrings);
+	};
+
+	// Merge a set of dates into the candidate pool (dedupe, cap to tier).
+	const addDatesToSelection = (datesToAdd: Date[]) => {
+		const keys = new Set(selectedDates.map((d) => format(d, "yyyy-MM-dd")));
+		const merged = [...selectedDates];
+		for (const d of datesToAdd) {
+			const key = format(d, "yyyy-MM-dd");
+			if (keys.has(key)) continue;
+			keys.add(key);
+			merged.push(d);
+		}
+		merged.sort((a, b) => a.getTime() - b.getTime());
+
+		let capped = merged;
+		if (merged.length > maxDates) {
+			capped = merged.slice(0, maxDates);
+			toast.error(`Only ${maxDates} dates allowed on this plan`);
+		}
+		setSelectedDates(capped);
+		form.setFieldValue(
+			"dates",
+			capped.map((d) => format(d, "yyyy-MM-dd")),
+		);
+	};
+
+	const handleAddRange = () => {
+		if (!rangeFrom || !rangeTo) return;
+		const start = parse(rangeFrom, "yyyy-MM-dd", new Date());
+		const end = parse(rangeTo, "yyyy-MM-dd", new Date());
+		if (end < start) {
+			toast.error("End date must be on or after start date");
+			return;
+		}
+		addDatesToSelection(eachDayOfInterval({ start, end }));
+		setRangeFrom("");
+		setRangeTo("");
 	};
 
 	// Format slot duration for display
@@ -234,9 +281,45 @@ export function EditEventDialog({
 						{(field) => (
 							<div className="space-y-2">
 								<Label className="text-xl font-bold text-foreground">
-									Select Dates
+									{isDatesMode ? "Select candidate days" : "Select Dates"}
 								</Label>
 								<div>
+									{isDatesMode && (
+										<div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+											<div className="flex-1 space-y-1">
+												<Label htmlFor="edit-range-from" className="text-sm">
+													From
+												</Label>
+												<Input
+													id="edit-range-from"
+													type="date"
+													value={rangeFrom}
+													onChange={(e) => setRangeFrom(e.target.value)}
+													className="bg-background border-border text-foreground"
+												/>
+											</div>
+											<div className="flex-1 space-y-1">
+												<Label htmlFor="edit-range-to" className="text-sm">
+													To
+												</Label>
+												<Input
+													id="edit-range-to"
+													type="date"
+													value={rangeTo}
+													onChange={(e) => setRangeTo(e.target.value)}
+													className="bg-background border-border text-foreground"
+												/>
+											</div>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={handleAddRange}
+												disabled={!rangeFrom || !rangeTo}
+											>
+												Add range
+											</Button>
+										</div>
+									)}
 									<Button
 										type="button"
 										variant="outline"
@@ -286,68 +369,72 @@ export function EditEventDialog({
 						)}
 					</form.AppField>
 
-					{/* Time Range */}
-					<div className="grid grid-cols-2 gap-4">
-						<form.AppField name="timeRangeStart">
-							{(field) => (
-								<div className="space-y-2">
-									<Label
-										htmlFor="edit-start-time"
-										className="text-xl font-bold text-foreground"
-									>
-										Start Time
-									</Label>
-									<Input
-										id="edit-start-time"
-										type="time"
-										value={field.state.value}
-										onChange={(e) => field.handleChange(e.target.value)}
-										className="bg-background border-border text-foreground"
-									/>
-								</div>
-							)}
-						</form.AppField>
-
-						<form.AppField name="timeRangeEnd">
-							{(field) => (
-								<div className="space-y-2">
-									<Label
-										htmlFor="edit-end-time"
-										className="text-xl font-bold text-foreground"
-									>
-										End Time
-									</Label>
-									<Input
-										id="edit-end-time"
-										type="time"
-										value={field.state.value}
-										onChange={(e) => field.handleChange(e.target.value)}
-										className="bg-background border-border text-foreground"
-									/>
-									{field.state.meta.errors.length > 0 && (
-										<p className="text-red-500 text-sm mt-1">
-											{getErrorMessage(field.state.meta.errors[0])}
-										</p>
+					{/* Time Range (times mode only) */}
+					{!isDatesMode && (
+						<>
+							<div className="grid grid-cols-2 gap-4">
+								<form.AppField name="timeRangeStart">
+									{(field) => (
+										<div className="space-y-2">
+											<Label
+												htmlFor="edit-start-time"
+												className="text-xl font-bold text-foreground"
+											>
+												Start Time
+											</Label>
+											<Input
+												id="edit-start-time"
+												type="time"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												className="bg-background border-border text-foreground"
+											/>
+										</div>
 									)}
-								</div>
-							)}
-						</form.AppField>
-					</div>
+								</form.AppField>
 
-					{/* Read-only: Slot Duration */}
-					<div className="space-y-2">
-						<Label className="text-xl font-bold text-foreground flex items-center gap-2">
-							<Clock className="h-4 w-4" />
-							Time Slot Duration
-						</Label>
-						<div className="bg-muted/50 border border-border rounded-md px-3 py-2 text-muted-foreground">
-							{formatSlotDuration(event.slotDuration)}
-						</div>
-						<p className="text-xs text-muted-foreground">
-							Slot duration cannot be changed as it would invalidate existing
-							responses.
-						</p>
-					</div>
+								<form.AppField name="timeRangeEnd">
+									{(field) => (
+										<div className="space-y-2">
+											<Label
+												htmlFor="edit-end-time"
+												className="text-xl font-bold text-foreground"
+											>
+												End Time
+											</Label>
+											<Input
+												id="edit-end-time"
+												type="time"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												className="bg-background border-border text-foreground"
+											/>
+											{field.state.meta.errors.length > 0 && (
+												<p className="text-red-500 text-sm mt-1">
+													{getErrorMessage(field.state.meta.errors[0])}
+												</p>
+											)}
+										</div>
+									)}
+								</form.AppField>
+							</div>
+
+							{/* Read-only: Slot Duration */}
+							<div className="space-y-2">
+								<Label className="text-xl font-bold text-foreground flex items-center gap-2">
+									<Clock className="h-4 w-4" />
+									Time Slot Duration
+								</Label>
+								<div className="bg-muted/50 border border-border rounded-md px-3 py-2 text-muted-foreground">
+									{formatSlotDuration(event.slotDuration)}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									Slot duration cannot be changed as it would invalidate
+									existing responses.
+								</p>
+							</div>
+						</>
+					)}
 
 					{/* Password Protection (Premium only) */}
 					{event.isPremium && (

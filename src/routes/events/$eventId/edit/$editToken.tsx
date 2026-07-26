@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
+import { DateAvailabilityCalendar } from "@/components/availability-grid/DateAvailabilityCalendar";
 import { EventHeader } from "@/components/EventHeader";
 import { NotFound } from "@/components/NotFound";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,11 @@ function EditResponseForm({
 		}
 
 		if (selectedSlots.length === 0) {
-			setError("Please select at least one time slot");
+			setError(
+				event.eventMode === "dates"
+					? "Please select at least one day"
+					: "Please select at least one time slot",
+			);
 			return;
 		}
 
@@ -140,12 +145,21 @@ function EditResponseForm({
 						Make changes to your availability and click Update to save.
 					</p>
 
-					<AvailabilityGrid
-						event={event}
-						initialSelections={selectedSlots}
-						onChange={setSelectedSlots}
-						mode="select"
-					/>
+					{event.eventMode === "dates" ? (
+						<DateAvailabilityCalendar
+							event={event}
+							initialSelections={selectedSlots}
+							onChange={setSelectedSlots}
+							mode="select"
+						/>
+					) : (
+						<AvailabilityGrid
+							event={event}
+							initialSelections={selectedSlots}
+							onChange={setSelectedSlots}
+							mode="select"
+						/>
+					)}
 
 					<form onSubmit={handleSubmit} className="mt-8 space-y-6">
 						<div className="space-y-2">

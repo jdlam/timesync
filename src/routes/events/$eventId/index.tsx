@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
+import { DateAvailabilityCalendar } from "@/components/availability-grid/DateAvailabilityCalendar";
 import { EventHeader } from "@/components/EventHeader";
 import { LinkCopy } from "@/components/LinkCopy";
 import { NotFound } from "@/components/NotFound";
@@ -117,7 +118,11 @@ function EventResponseContent({
 		}
 
 		if (selectedSlots.length === 0) {
-			setError("Please select at least one time slot");
+			setError(
+				event.eventMode === "dates"
+					? "Please select at least one day"
+					: "Please select at least one time slot",
+			);
 			return;
 		}
 
@@ -172,15 +177,26 @@ function EventResponseContent({
 						Select Your Availability
 					</h2>
 					<p className="text-muted-foreground mb-6">
-						Click or drag to select the times when you're available.
+						{event.eventMode === "dates"
+							? "Select the days when you're available."
+							: "Click or drag to select the times when you're available."}
 					</p>
 
-					<AvailabilityGrid
-						event={event}
-						initialSelections={[]}
-						onChange={setSelectedSlots}
-						mode="select"
-					/>
+					{event.eventMode === "dates" ? (
+						<DateAvailabilityCalendar
+							event={event}
+							initialSelections={[]}
+							onChange={setSelectedSlots}
+							mode="select"
+						/>
+					) : (
+						<AvailabilityGrid
+							event={event}
+							initialSelections={[]}
+							onChange={setSelectedSlots}
+							mode="select"
+						/>
+					)}
 
 					<form onSubmit={handleSubmit} className="mt-8 space-y-6">
 						<div className="space-y-2">

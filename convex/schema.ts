@@ -41,7 +41,15 @@ export default defineSchema({
 		description: v.optional(v.string()),
 		timeZone: v.string(),
 
-		// Time slot configuration
+		// Selection mode: "times" (align on time slots, the default) or
+		// "dates" (align on whole calendar days). Undefined = "times" for
+		// backward compatibility with events created before this field existed.
+		eventMode: v.optional(v.union(v.literal("times"), v.literal("dates"))),
+
+		// Time slot configuration.
+		// For "dates" events these hold sentinel values ("00:00"/"00:00"/1440)
+		// and are ignored — each candidate date maps to a single canonical
+		// midnight-in-timezone slot instead. See generateDateSlots.
 		slotDuration: v.number(), // in minutes (15, 30, 60, or custom for premium)
 		dates: v.array(v.string()), // Array of date strings ['2023-10-27', '2023-10-28']
 		timeRangeStart: v.string(), // e.g., '09:00'

@@ -7,18 +7,42 @@ This document lists all features currently implemented in TimeSync.
 ## Event Creation
 
 - **Create Event Form** at `/events/create`
+  - **Event mode chooser**: align on **Times** or **Dates** (see below)
   - Event title (required, validated)
   - Optional description/notes
   - Timezone selection with searchable dropdown (all IANA timezones)
   - Multi-date calendar picker (up to 14 dates for free tier)
   - Date chips sorted chronologically (oldest to newest)
-  - Time range selection (start and end times)
-  - Slot duration options (15, 30, or 60 minutes)
+  - Time range selection (start and end times) — *Times mode only*
+  - Slot duration options (15, 30, or 60 minutes) — *Times mode only*
   - Form validation with clear error messages
   - Success dialog with public link and admin link
   - One-click copy for both links
   - Signed-in users: events linked to account (viewable in My Events)
   - Guest users: events accessible via admin link only
+
+---
+
+## Date-Only Events (Align on Days)
+
+For coordinating on **which calendar days** work (e.g. planning a vacation)
+rather than a time of day.
+
+- **Event mode** chosen at creation: *Times* (the classic time-slot flow) or
+  *Dates*. Existing events default to *Times*.
+- **Candidate day pool** defined by the creator via **both** a continuous range
+  (From → To fills the span) **and** individual add/remove days.
+- **Respondents pick date ranges** on a calendar-like view: add a whole stretch
+  at once, toggle individual days, plus Select-all / Clear. Only the event's
+  candidate days are selectable. Name + optional comment work the same as
+  time-slot events.
+- **Admin results**: a calendar-style heatmap coloring each candidate day by
+  overlap, with respondent popovers, a **Best Days** recommendation panel, and a
+  **best consecutive stretch** ("N days in a row everyone is free").
+- **CSV export** emits one row per candidate day.
+- **Implementation**: each candidate date maps to one canonical midnight-in-
+  timezone slot, so the existing heatmap/response/aggregation stack is reused
+  unchanged. Stored via `events.eventMode` (`"times" | "dates"`).
 
 ---
 

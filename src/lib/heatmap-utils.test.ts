@@ -2,11 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
 	calculateHeatmap,
 	calculateHeatmapStats,
+	type DayAvailability,
+	getBestConsecutiveRun,
 	getBestTimeSlots,
 	getHeatmapColor,
 	getHeatmapOpacity,
 	type HeatmapSlotData,
 } from "./heatmap-utils";
+
+// Build a DayAvailability entry from a date and available count.
+function day(date: string, count: number, total = count): DayAvailability {
+	return {
+		date,
+		data: {
+			count,
+			percentage: total === 0 ? 0 : (count / total) * 100,
+			respondents: [],
+		},
+	};
+}
 
 // Mock response type matching what calculateHeatmap expects
 interface MockResponse {
@@ -216,6 +230,68 @@ describe("heatmap-utils", () => {
 			expect(stats.maxAvailability).toBe(100);
 			expect(stats.minAvailability).toBe(0);
 			expect(stats.averageAvailability).toBeCloseTo(44.33, 1);
+		});
+	});
+
+	describe("getBestConsecutiveRun", () => {
+		it("should return null when there are no days", () => {
+			expect(getBestConsecutiveRun([])).toBeNull();
+		});
+
+		it("should return a single day as a length-1 run", () => {
+			const run = getBestConsecutiveRun([day("2025-08-01", 3)]);
+			expect(run).toMatchObject({
+				startDate: "2025-08-01",
+				endDate: "2025-08-01",
+				length: 1,
+				minCount: 3,
+			});
+		});
+
+		it("should pick the longest run when overlap is uniform", () => {
+			const run = getBestConsecutiveRun([
+				day("2025-08-01", 4),
+				day("2025-08-02", 4),
+				day("2025-08-03", 4),
+				day("2025-08-04", 4),
+				day("2025-08-05", 4),
+			]);
+			expect(run).toMatchObject({
+				startDate: "2025-08-01",
+				endDate: "2025-08-05",
+				length: 5,
+				minCount: 4,
+			});
+		});
+
+		it("should prefer higher shared overlap over a longer weaker run", () => {
+			// Day 1 has only 2 free; days 2-3 have 5 free each.
+			const run = getBestConsecutiveRun([
+				day("2025-08-01", 2, 5),
+				day("2025-08-02", 5, 5),
+				day("2025-08-03", 5, 5),
+			]);
+			expect(run).toMatchObject({
+				startDate: "2025-08-02",
+				endDate: "2025-08-03",
+				length: 2,
+				minCount: 5,
+			});
+		});
+
+		it("should not extend a run across a calendar gap", () => {
+			// 08-03 is missing, so 08-01..08-02 and 08-04 are separate runs.
+			const run = getBestConsecutiveRun([
+				day("2025-08-01", 3),
+				day("2025-08-02", 3),
+				day("2025-08-04", 5),
+			]);
+			// The isolated 08-04 has the highest shared overlap (5).
+			expect(run).toMatchObject({
+				startDate: "2025-08-04",
+				endDate: "2025-08-04",
+				minCount: 5,
+			});
 		});
 	});
 });
