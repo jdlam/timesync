@@ -2129,6 +2129,48 @@ describe("events", () => {
 			).rejects.toThrow(/span at most 8 weeks/);
 		});
 
+		it("should persist a grouped weekends pattern", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Weekend trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				datePattern: "weekends",
+				patternWeekdays: [0, 6],
+				// 2025-08-02 Sat, 2025-08-03 Sun, 2025-08-09 Sat, 2025-08-10 Sun.
+				dates: ["2025-08-02", "2025-08-03", "2025-08-09", "2025-08-10"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: 1440,
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => ctx.db.get(result.eventId));
+			expect(event?.datePattern).toBe("weekends");
+			expect(event?.patternWeekdays).toEqual([0, 6]);
+		});
+
+		it("should reject candidate days that don't match the pattern weekdays", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Weekend trip",
+					timeZone: "UTC",
+					eventMode: "dates",
+					datePattern: "weekends",
+					patternWeekdays: [0, 6],
+					// 2025-08-04 is a Monday — not a weekend.
+					dates: ["2025-08-04"],
+					timeRangeStart: "00:00",
+					timeRangeEnd: "00:00",
+					slotDuration: 1440,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow(/match the selected day pattern/);
+		});
+
 		it("should default eventMode to times when omitted", async () => {
 			const t = convexTest(schema, modules);
 

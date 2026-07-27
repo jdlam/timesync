@@ -258,6 +258,13 @@ Key fields:
   midnight-in-timezone slot (`generateDateSlots`), and the time range /
   slot duration fields hold ignored sentinels. This lets the time-slot
   aggregation stack (heatmap, responses, CSV) be reused unchanged.
+- `events.datePattern` - for dates events: `"individual"` (default; flat
+  hand-picked days) or a grouped pattern `"weekends"`/`"weekdays"`/`"custom"`
+  (with `events.patternWeekdays`, the weekday indices). Grouped events split
+  candidate days into **blocks** = contiguous runs of `dates` (`getDateBlocks`
+  in `src/lib/date-blocks.ts`); responders pick whole blocks
+  (`DateBlockSelector`) and the admin ranks `getBestBlocks`. Blocks are derived,
+  not stored — `dates` + `patternWeekdays` are the source of truth.
 - `auditLogs.action` - Type of admin action (delete_event, toggle_event_status, etc.)
 
 ## Testing

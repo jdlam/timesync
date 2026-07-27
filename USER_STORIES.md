@@ -116,6 +116,12 @@
       days) so "every weekend across a range" is one action, not many taps
 - [x] Creator and responder share one calendar picker (DayPoolPicker) with a
       range popover + individual-day tapping
+- [x] Creator picks a selection **pattern** (Individual / Weekends / Weekdays /
+      Custom); grouped patterns split candidate days into **blocks** the creator
+      can exclude, responders toggle whole blocks, and the admin ranks best
+      blocks. Blocks derive from contiguous runs of `dates` (`getDateBlocks`);
+      components `PatternRangePicker` + `DateBlockSelector`; `getBestBlocks`
+      ranks them.
 - [x] Admin sees a calendar heatmap of per-day overlap with respondent details
 - [x] Admin sees Best Days + best consecutive stretch recommendations
 - [x] CSV export lists candidate days

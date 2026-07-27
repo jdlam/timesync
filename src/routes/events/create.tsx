@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DayPoolPicker } from "@/components/availability-grid/DayPoolPicker";
+import { PatternRangePicker } from "@/components/availability-grid/PatternRangePicker";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
@@ -37,12 +38,35 @@ import {
 } from "@/components/ui/select";
 import { useAppForm } from "@/hooks/form";
 import { useSubscription } from "@/hooks/useSubscription";
+import {
+	type DatePattern,
+	getDateBlocks,
+	patternLabel,
+	weekdaysForPattern,
+} from "@/lib/date-blocks";
 import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone, isDateInPast } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 import { createEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../../convex/_generated/api";
+
+const PATTERN_OPTIONS: { value: DatePattern; label: string }[] = [
+	{ value: "individual", label: "Individual" },
+	{ value: "weekends", label: "Weekends" },
+	{ value: "weekdays", label: "Weekdays" },
+	{ value: "custom", label: "Custom" },
+];
+
+const WEEKDAY_CHIPS = [
+	{ index: 0, label: "Su" },
+	{ index: 1, label: "Mo" },
+	{ index: 2, label: "Tu" },
+	{ index: 3, label: "We" },
+	{ index: 4, label: "Th" },
+	{ index: 5, label: "Fr" },
+	{ index: 6, label: "Sa" },
+];
 
 export const Route = createFileRoute("/events/create")({
 	component: CreateEvent,
@@ -62,6 +86,9 @@ function CreateEvent() {
 
 	// "times" = align on time slots (default), "dates" = align on whole days.
 	const [eventMode, setEventMode] = useState<"times" | "dates">("times");
+	// For dates events: how candidate days are shaped.
+	const [datePattern, setDatePattern] = useState<DatePattern>("individual");
+	const [customWeekdays, setCustomWeekdays] = useState<number[]>([]);
 
 	const tierLimits = isPremium ? TIER_LIMITS.premium : TIER_LIMITS.free;
 	const eventSchema = useMemo(() => createEventSchemaForTier(tier), [tier]);
@@ -74,6 +101,8 @@ function CreateEvent() {
 			description: "" as string | undefined,
 			timeZone: getBrowserTimezone(),
 			eventMode: "times" as "times" | "dates",
+			datePattern: "individual" as DatePattern,
+			patternWeekdays: [] as number[],
 			dates: [] as string[],
 			timeRangeStart: "09:00",
 			timeRangeEnd: "17:00",
@@ -87,11 +116,14 @@ function CreateEvent() {
 		onSubmit: async ({ value }) => {
 			try {
 				const isDates = value.eventMode === "dates";
+				const grouped = isDates && value.datePattern !== "individual";
 				const result = await createEventMutation({
 					title: value.title,
 					description: value.description || undefined,
 					timeZone: value.timeZone,
 					eventMode: value.eventMode,
+					datePattern: isDates ? value.datePattern : undefined,
+					patternWeekdays: grouped ? value.patternWeekdays : undefined,
 					dates: value.dates,
 					// Dates events ignore these; send sentinels the server also enforces.
 					timeRangeStart: isDates ? "00:00" : value.timeRangeStart,
@@ -142,6 +174,29 @@ function CreateEvent() {
 	const handleModeChange = (mode: "times" | "dates") => {
 		setEventMode(mode);
 		form.setFieldValue("eventMode", mode);
+	};
+
+	// Switch the dates-event day pattern. Clears the current day selection since
+	// candidate days must match the new pattern's weekdays.
+	const handlePatternChange = (pattern: DatePattern) => {
+		setDatePattern(pattern);
+		form.setFieldValue("datePattern", pattern);
+		form.setFieldValue(
+			"patternWeekdays",
+			weekdaysForPattern(pattern, customWeekdays),
+		);
+		form.setFieldValue("dates", []);
+		setSelectedDates([]);
+	};
+
+	// Toggle a weekday for the custom pattern (also clears the selection).
+	const toggleCustomWeekday = (index: number) => {
+		const next = customWeekdays.includes(index)
+			? customWeekdays.filter((d) => d !== index)
+			: [...customWeekdays, index].sort((a, b) => a - b);
+		setCustomWeekdays(next);
+		form.setFieldValue("patternWeekdays", next);
+		form.setFieldValue("dates", []);
 	};
 
 	// Generate URLs for success dialog
@@ -314,23 +369,92 @@ function CreateEvent() {
 									</Label>
 									<span className="text-sm text-muted-foreground">
 										{eventMode === "dates"
-											? `${field.state.value.length} days · up to ${spanWeeks} weeks`
+											? datePattern === "individual"
+												? `${field.state.value.length} days · up to ${spanWeeks} weeks`
+												: `${getDateBlocks(field.state.value).length} groups · up to ${spanWeeks} weeks`
 											: `${selectedDates.length}/${tierLimits.maxDates} dates`}
 									</span>
 								</div>
 								{eventMode === "dates" ? (
 									<>
+										{/* Pattern chooser */}
 										<p className="text-sm text-muted-foreground">
-											Pick the days people can choose from. Add a whole range —
-											or just weekends — then fine-tune individual days.
+											How should people choose days?
 										</p>
-										<DayPoolPicker
-											selected={field.state.value}
-											onSelectedChange={(next) => field.handleChange(next)}
-											disablePast
-											maxSpanDays={maxDateSpanDays}
-											spanWeeks={spanWeeks}
-										/>
+										<div className="flex flex-wrap gap-2">
+											{PATTERN_OPTIONS.map((opt) => (
+												<button
+													key={opt.value}
+													type="button"
+													onClick={() => handlePatternChange(opt.value)}
+													aria-pressed={datePattern === opt.value}
+													className={cn(
+														"rounded-md border px-3 py-2 text-sm font-medium transition-colors min-h-[44px]",
+														datePattern === opt.value
+															? "border-teal-500 bg-teal-500/10 text-foreground"
+															: "border-border bg-background text-muted-foreground hover:bg-muted/50",
+													)}
+												>
+													{opt.label}
+												</button>
+											))}
+										</div>
+										{datePattern === "custom" && (
+											<div className="flex flex-wrap gap-1">
+												{WEEKDAY_CHIPS.map((wd) => (
+													<button
+														key={wd.index}
+														type="button"
+														onClick={() => toggleCustomWeekday(wd.index)}
+														aria-pressed={customWeekdays.includes(wd.index)}
+														className={cn(
+															"h-9 w-9 rounded-md border text-sm font-medium transition-colors",
+															customWeekdays.includes(wd.index)
+																? "border-teal-500 bg-teal-500/15 text-teal-600 dark:text-teal-400"
+																: "border-border bg-background text-muted-foreground hover:bg-muted/50",
+														)}
+													>
+														{wd.label}
+													</button>
+												))}
+											</div>
+										)}
+
+										{datePattern === "individual" ? (
+											<>
+												<p className="text-sm text-muted-foreground">
+													Pick the days people can choose from. Add a whole
+													range — or just weekends — then fine-tune individual
+													days.
+												</p>
+												<DayPoolPicker
+													selected={field.state.value}
+													onSelectedChange={(next) => field.handleChange(next)}
+													disablePast
+													maxSpanDays={maxDateSpanDays}
+													spanWeeks={spanWeeks}
+												/>
+											</>
+										) : (
+											<>
+												<p className="text-sm text-muted-foreground">
+													{patternLabel(datePattern, customWeekdays)} — add a
+													date range and each occurrence becomes a group people
+													pick from.
+												</p>
+												<PatternRangePicker
+													weekdays={weekdaysForPattern(
+														datePattern,
+														customWeekdays,
+													)}
+													selected={field.state.value}
+													onSelectedChange={(next) => field.handleChange(next)}
+													disablePast
+													maxSpanDays={maxDateSpanDays}
+													spanWeeks={spanWeeks}
+												/>
+											</>
+										)}
 									</>
 								) : (
 									<div>

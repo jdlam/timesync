@@ -3,6 +3,7 @@ import {
 	calculateHeatmap,
 	calculateHeatmapStats,
 	type DayAvailability,
+	getBestBlocks,
 	getBestConsecutiveRun,
 	getBestTimeSlots,
 	getHeatmapColor,
@@ -292,6 +293,39 @@ describe("heatmap-utils", () => {
 				endDate: "2025-08-04",
 				minCount: 5,
 			});
+		});
+	});
+
+	describe("getBestBlocks", () => {
+		const blocks = [
+			["2025-08-02", "2025-08-03"],
+			["2025-08-09", "2025-08-10"],
+		];
+
+		it("counts only respondents available for the WHOLE block", () => {
+			const respondents = [
+				new Set(["2025-08-02", "2025-08-03", "2025-08-09", "2025-08-10"]), // both
+				new Set(["2025-08-02", "2025-08-03"]), // first only
+				new Set(["2025-08-09"]), // partial second — does not count
+			];
+			const result = getBestBlocks(blocks, respondents, 3);
+			expect(result).toHaveLength(2);
+			expect(result[0]).toMatchObject({
+				block: ["2025-08-02", "2025-08-03"],
+				count: 2,
+			});
+			expect(result[1]).toMatchObject({
+				block: ["2025-08-09", "2025-08-10"],
+				count: 1,
+			});
+			expect(result[0].percentage).toBeCloseTo((2 / 3) * 100, 5);
+		});
+
+		it("returns zero counts when there are no responses", () => {
+			const result = getBestBlocks(blocks, [], 3);
+			expect(result.every((b) => b.count === 0 && b.percentage === 0)).toBe(
+				true,
+			);
 		});
 	});
 });

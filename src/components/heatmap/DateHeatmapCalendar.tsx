@@ -14,8 +14,14 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+	formatBlockLabel,
+	getDateBlocks,
+	isGroupedPattern,
+} from "@/lib/date-blocks";
+import {
 	calculateHeatmap,
 	type DayAvailability,
+	getBestBlocks,
 	getBestConsecutiveRun,
 	getBestTimeSlots,
 	getHeatmapColor,
@@ -23,6 +29,7 @@ import {
 } from "@/lib/heatmap-utils";
 import { useTheme } from "@/lib/theme";
 import {
+	formatDate,
 	formatDateDisplay,
 	generateDateSlots,
 	parseTimeInZone,
@@ -98,6 +105,17 @@ export function DateHeatmapCalendar({
 		return getBestConsecutiveRun(days);
 	}, [candidateDates, heatmapData, slotForDate]);
 
+	// Grouped events: rank whole blocks (each weekend / work-week) instead of days.
+	const grouped = isGroupedPattern(event.datePattern);
+	const bestBlocks = useMemo(() => {
+		if (!grouped) return [];
+		const blocks = getDateBlocks(candidateDates);
+		const respondentDaySets = responses.map(
+			(r) => new Set(r.selectedSlots.map((s) => formatDate(s, event.timeZone))),
+		);
+		return getBestBlocks(blocks, respondentDaySets, 3);
+	}, [grouped, candidateDates, responses, event.timeZone]);
+
 	// Group candidate dates into calendar months for rendering.
 	const months = useMemo(() => {
 		const candidateSet = new Set(candidateDates);
@@ -132,8 +150,43 @@ export function DateHeatmapCalendar({
 
 	return (
 		<div className="space-y-6">
-			{/* Recommendations */}
-			{totalRespondents > 0 && bestDays.length > 0 && (
+			{/* Grouped recommendations: best blocks */}
+			{grouped && totalRespondents > 0 && bestBlocks.length > 0 && (
+				<div className="rounded-lg border border-teal-700 bg-gradient-to-r from-teal-900/20 to-emerald-900/20 p-6">
+					<div className="mb-4 flex items-center gap-2">
+						<TrendingUp className="h-5 w-5 text-teal-400" />
+						<h3 className="text-xl font-bold text-foreground">Best options</h3>
+					</div>
+					<div className="space-y-2">
+						{bestBlocks.map((b, index) => (
+							<div
+								key={b.block[0]}
+								className="flex items-center justify-between rounded-lg bg-card/50 p-3"
+							>
+								<div>
+									<span className="text-sm text-muted-foreground">
+										#{index + 1}
+									</span>
+									<span className="ml-3 font-semibold text-foreground">
+										{formatBlockLabel(b.block)}
+									</span>
+								</div>
+								<div className="text-right">
+									<div className="font-bold text-teal-400">
+										{b.count} / {totalRespondents}
+									</div>
+									<div className="text-xs text-muted-foreground">
+										{Math.round(b.percentage)}% free all days
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* Individual recommendations: best days + best stretch */}
+			{!grouped && totalRespondents > 0 && bestDays.length > 0 && (
 				<div className="rounded-lg border border-teal-700 bg-gradient-to-r from-teal-900/20 to-emerald-900/20 p-6">
 					<div className="mb-4 flex items-center gap-2">
 						<TrendingUp className="h-5 w-5 text-teal-400" />

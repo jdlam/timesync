@@ -212,6 +212,23 @@ export const update = mutation({
 					);
 				}
 			}
+			// Grouped events keep their pattern fixed on edit: new candidate days
+			// must still fall on the event's pattern weekdays.
+			if (
+				event.datePattern &&
+				event.datePattern !== "individual" &&
+				event.patternWeekdays &&
+				event.patternWeekdays.length > 0
+			) {
+				const allowedWeekdays = new Set(event.patternWeekdays);
+				for (const d of args.dates) {
+					if (!allowedWeekdays.has(new Date(`${d}T00:00:00Z`).getUTCDay())) {
+						throw new Error(
+							"Candidate days must match the selected day pattern",
+						);
+					}
+				}
+			}
 		}
 		if (args.password !== undefined && args.password !== null) {
 			if (!event.isPremium) {
@@ -308,6 +325,15 @@ export const create = mutation({
 		description: v.optional(v.string()),
 		timeZone: v.string(),
 		eventMode: v.optional(v.union(v.literal("times"), v.literal("dates"))),
+		datePattern: v.optional(
+			v.union(
+				v.literal("individual"),
+				v.literal("weekends"),
+				v.literal("weekdays"),
+				v.literal("custom"),
+			),
+		),
+		patternWeekdays: v.optional(v.array(v.number())),
 		dates: v.array(v.string()),
 		timeRangeStart: v.string(),
 		timeRangeEnd: v.string(),
@@ -413,6 +439,23 @@ export const create = mutation({
 				);
 			}
 		}
+		// Grouped date patterns: every candidate day must fall on a pattern weekday.
+		const isGroupedPattern =
+			isDatesMode &&
+			args.datePattern !== undefined &&
+			args.datePattern !== "individual";
+		if (isGroupedPattern) {
+			if (!args.patternWeekdays || args.patternWeekdays.length === 0) {
+				throw new Error("A grouped date pattern requires at least one weekday");
+			}
+			const allowedWeekdays = new Set(args.patternWeekdays);
+			for (const d of args.dates) {
+				const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
+				if (!allowedWeekdays.has(weekday)) {
+					throw new Error("Candidate days must match the selected day pattern");
+				}
+			}
+		}
 		if (args.password !== undefined) {
 			if (!isPremium) {
 				throw new Error("Password protection is a premium feature");
@@ -445,6 +488,8 @@ export const create = mutation({
 			description: args.description,
 			timeZone: args.timeZone,
 			eventMode: isDatesMode ? "dates" : "times",
+			datePattern: isDatesMode ? (args.datePattern ?? "individual") : undefined,
+			patternWeekdays: isGroupedPattern ? args.patternWeekdays : undefined,
 			dates: args.dates,
 			// Dates events store sentinels; each date is one canonical midnight slot.
 			timeRangeStart: isDatesMode ? "00:00" : args.timeRangeStart,

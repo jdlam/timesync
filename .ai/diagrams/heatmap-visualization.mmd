@@ -22,8 +22,12 @@ sequenceDiagram
     Utils-->>Heatmap: color values
     Heatmap->>Utils: getBestTimeSlots()
     Utils-->>Heatmap: top 3 slots
-    opt eventMode = "dates"
+    opt eventMode = "dates" (individual)
         Heatmap->>Utils: getBestConsecutiveRun()
         Utils-->>Heatmap: best day stretch
+    end
+    opt eventMode = "dates" (grouped)
+        Heatmap->>Utils: getBestBlocks()
+        Utils-->>Heatmap: best whole-block options
     end
     Heatmap->>Admin: Display colored grid / calendar

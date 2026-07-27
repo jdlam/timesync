@@ -1,7 +1,9 @@
 import { parse } from "date-fns";
 import { useMemo, useState } from "react";
+import { isGroupedPattern } from "@/lib/date-blocks";
 import { formatDate, parseTimeInZone } from "@/lib/time-utils";
 import type { PublicEvent } from "../../../convex/shared_types";
+import { DateBlockSelector } from "./DateBlockSelector";
 import { DayPoolPicker } from "./DayPoolPicker";
 
 interface DateAvailabilityCalendarProps {
@@ -11,12 +13,35 @@ interface DateAvailabilityCalendarProps {
 }
 
 /**
- * Availability selector for dates-only events. A thin wrapper over the shared
- * DayPoolPicker that maps between the event's candidate day strings and the
- * canonical slot timestamps stored on responses. Responders may only pick the
- * event's candidate days (enforced via the isSelectable predicate).
+ * Availability selector for dates-only events. Grouped events (weekends /
+ * weekdays / custom) render a block selector; individual events render the
+ * shared DayPoolPicker, mapping between candidate day strings and the canonical
+ * slot timestamps stored on responses.
  */
 export function DateAvailabilityCalendar({
+	event,
+	initialSelections = [],
+	onChange,
+}: DateAvailabilityCalendarProps) {
+	if (isGroupedPattern(event.datePattern)) {
+		return (
+			<DateBlockSelector
+				event={event}
+				initialSelections={initialSelections}
+				onChange={onChange}
+			/>
+		);
+	}
+	return (
+		<IndividualDateCalendar
+			event={event}
+			initialSelections={initialSelections}
+			onChange={onChange}
+		/>
+	);
+}
+
+function IndividualDateCalendar({
 	event,
 	initialSelections = [],
 	onChange,

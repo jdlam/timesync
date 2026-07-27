@@ -844,6 +844,39 @@ describe("validation-schemas", () => {
 			}
 		});
 
+		it("should accept a weekends pattern", () => {
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				datePattern: "weekends",
+				patternWeekdays: [0, 6],
+				dates: ["2099-06-06", "2099-06-07"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject a custom pattern with no weekdays", () => {
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				datePattern: "custom",
+				patternWeekdays: [],
+				dates: ["2099-06-15"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("weekday");
+			}
+		});
+
 		it("should allow many days for a times event but not exceed maxDates", () => {
 			const result = createEventSchemaForTier("free").safeParse({
 				title: "Meeting",

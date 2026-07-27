@@ -12,7 +12,11 @@ sequenceDiagram
     alt eventMode = "dates"
         Page->>Grid: Render DateAvailabilityCalendar
         Grid->>Grid: generateDateSlots()
-        Guest->>Grid: Pick date ranges (days)
+        alt grouped pattern
+            Grid->>Guest: DateBlockSelector (toggle whole blocks)
+        else individual
+            Guest->>Grid: Pick individual days / ranges
+        end
     else eventMode = "times"
         Page->>Grid: Render AvailabilityGrid
         Grid->>Grid: generateTimeSlots()

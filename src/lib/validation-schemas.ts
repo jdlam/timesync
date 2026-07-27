@@ -27,6 +27,13 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 			// "times" (default) aligns on time slots; "dates" aligns on whole days.
 			eventMode: z.enum(["times", "dates"]).optional(),
 
+			// Dates-event day pattern; custom requires patternWeekdays (checked
+			// in superRefine below).
+			datePattern: z
+				.enum(["individual", "weekends", "weekdays", "custom"])
+				.optional(),
+			patternWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+
 			// Count vs span cap is enforced per event mode in superRefine below.
 			dates: z
 				.array(z.string())
@@ -85,7 +92,28 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 		)
 		.superRefine((data, ctx) => {
 			refineDatesLimit(tier, data.eventMode, data.dates, ctx);
+			refineDatePattern(data.datePattern, data.patternWeekdays, ctx);
 		});
+}
+
+/**
+ * A custom day pattern must name at least one weekday.
+ */
+function refineDatePattern(
+	datePattern: string | undefined,
+	patternWeekdays: number[] | undefined,
+	ctx: z.RefinementCtx,
+) {
+	if (
+		datePattern === "custom" &&
+		!(patternWeekdays && patternWeekdays.length > 0)
+	) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["patternWeekdays"],
+			message: "Pick at least one weekday for a custom pattern",
+		});
+	}
 }
 
 /**
@@ -165,6 +193,10 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 				.nullable(),
 
 			eventMode: z.enum(["times", "dates"]).optional(),
+			datePattern: z
+				.enum(["individual", "weekends", "weekdays", "custom"])
+				.optional(),
+			patternWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
 
 			// Count vs span cap is enforced per event mode in superRefine below.
 			dates: z.array(z.string()).min(1, "At least one date is required"),
@@ -205,6 +237,7 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 		)
 		.superRefine((data, ctx) => {
 			refineDatesLimit(tier, data.eventMode, data.dates, ctx);
+			refineDatePattern(data.datePattern, data.patternWeekdays, ctx);
 		});
 }
 

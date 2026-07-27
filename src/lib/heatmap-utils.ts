@@ -230,6 +230,51 @@ export function getBestConsecutiveRun(
 }
 
 /**
+ * A candidate block (contiguous run of day strings) with its aggregated
+ * availability across responses.
+ */
+export interface BestBlock {
+	block: string[]; // YYYY-MM-DD days, ascending
+	count: number; // respondents available for the WHOLE block
+	percentage: number; // 0–100 of total respondents
+}
+
+/**
+ * Rank grouped-event blocks by how many respondents are available for the
+ * entire block (every day selected). A respondent counts toward a block only
+ * if their selected days are a superset of the block's days — partial
+ * availability does not count. Sorted by count desc, then earliest block.
+ *
+ * @param blocks - Candidate blocks (e.g. from getDateBlocks), ascending
+ * @param respondentDaySets - Each respondent's selected day strings
+ * @param topN - How many to return (default 3)
+ */
+export function getBestBlocks(
+	blocks: string[][],
+	respondentDaySets: Set<string>[],
+	topN = 3,
+): BestBlock[] {
+	const total = respondentDaySets.length;
+	const ranked = blocks.map((block) => {
+		const count = respondentDaySets.filter((set) =>
+			block.every((day) => set.has(day)),
+		).length;
+		return {
+			block,
+			count,
+			percentage: total === 0 ? 0 : (count / total) * 100,
+		};
+	});
+
+	ranked.sort((a, b) => {
+		if (b.count !== a.count) return b.count - a.count;
+		return a.block[0] < b.block[0] ? -1 : 1;
+	});
+
+	return ranked.slice(0, topN);
+}
+
+/**
  * Calculate overall response statistics
  * @param heatmapData - Map of slot timestamp to heatmap data
  * @returns Statistics object

@@ -11,12 +11,18 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
+import {
+	isGroupedPattern,
+	patternLabel,
+	weekdaysForPattern,
+} from "@/lib/date-blocks";
 import { getErrorMessage } from "@/lib/form-utils";
 import { TIER_LIMITS } from "@/lib/tier-config";
 import { editEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { DayPoolPicker } from "./availability-grid/DayPoolPicker";
+import { PatternRangePicker } from "./availability-grid/PatternRangePicker";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Checkbox } from "./ui/checkbox";
@@ -46,6 +52,7 @@ export function EditEventDialog({
 	const updateEventMutation = useMutation(api.events.update);
 
 	const isDatesMode = event.eventMode === "dates";
+	const isGrouped = isGroupedPattern(event.datePattern);
 	const tierLimits = TIER_LIMITS[event.isPremium ? "premium" : "free"];
 	const maxDateSpanDays = tierLimits.maxDateSpanDays;
 	const spanWeeks = Math.round(maxDateSpanDays / 7);
@@ -244,7 +251,24 @@ export function EditEventDialog({
 								<Label className="text-xl font-bold text-foreground">
 									{isDatesMode ? "Select candidate days" : "Select Dates"}
 								</Label>
-								{isDatesMode ? (
+								{isDatesMode && isGrouped ? (
+									<>
+										<p className="text-sm text-muted-foreground">
+											{patternLabel(event.datePattern, event.patternWeekdays)} —
+											add or remove date ranges below.
+										</p>
+										<PatternRangePicker
+											weekdays={weekdaysForPattern(
+												event.datePattern,
+												event.patternWeekdays,
+											)}
+											selected={field.state.value}
+											onSelectedChange={(next) => field.handleChange(next)}
+											maxSpanDays={maxDateSpanDays}
+											spanWeeks={spanWeeks}
+										/>
+									</>
+								) : isDatesMode ? (
 									<DayPoolPicker
 										selected={field.state.value}
 										onSelectedChange={(next) => field.handleChange(next)}
