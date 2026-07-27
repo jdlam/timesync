@@ -78,6 +78,18 @@ export function formatBlockLabel(block: string[]): string {
 	return `${first} – ${formatDateDisplay(block[block.length - 1])}`;
 }
 
+/** Singular noun for a block of a given pattern ("weekend", "work week", …). */
+export function blockNoun(pattern: DatePattern | undefined): string {
+	switch (pattern) {
+		case "weekends":
+			return "weekend";
+		case "weekdays":
+			return "work week";
+		default:
+			return "group";
+	}
+}
+
 /** Human label for a pattern (e.g. "Every weekend", "Every Mon, Tue, Wed"). */
 export function patternLabel(
 	pattern: DatePattern | undefined,
