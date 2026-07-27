@@ -73,12 +73,15 @@ export function EventHeader({
 						</div>
 					)}
 
-					<div className="flex items-center gap-2">
-						<Calendar className="w-4 h-4" />
-						<span>
-							{event.dates.length} {event.dates.length === 1 ? "day" : "days"}
-						</span>
-					</div>
+					{/* Grouped events are measured in blocks only, not raw days. */}
+					{!grouped && (
+						<div className="flex items-center gap-2">
+							<Calendar className="w-4 h-4" />
+							<span>
+								{event.dates.length} {event.dates.length === 1 ? "day" : "days"}
+							</span>
+						</div>
+					)}
 
 					<div
 						className={`flex items-center gap-2 ${isLocalMode ? "text-amber-400" : ""}`}

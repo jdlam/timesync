@@ -36,6 +36,8 @@ describe("EventHeader", () => {
 		);
 		expect(screen.queryByText(/minute slots/)).toBeNull();
 		expect(screen.getByText("2 weekends")).toBeTruthy();
+		// Grouped events show only the block count, not the raw day count.
+		expect(screen.queryByText(/\bdays\b/)).toBeNull();
 	});
 
 	it("hides minute slots for individual dates events", () => {
