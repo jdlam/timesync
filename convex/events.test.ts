@@ -2093,15 +2093,15 @@ describe("events", () => {
 			expect(event?.dates).toHaveLength(3);
 		});
 
-		it("should accept a candidate pool spanning exactly 5 weeks (free)", async () => {
+		it("should accept a candidate pool spanning exactly 8 weeks (free)", async () => {
 			const t = convexTest(schema, modules);
 
 			const result = await t.mutation(api.events.create, {
 				title: "Trip",
 				timeZone: "UTC",
 				eventMode: "dates",
-				// 2025-08-01 .. 2025-09-04 inclusive = 35 days = 5 weeks.
-				dates: ["2025-08-01", "2025-09-04"],
+				// 2025-08-01 .. 2025-09-25 inclusive = 56 days = 8 weeks.
+				dates: ["2025-08-01", "2025-09-25"],
 				timeRangeStart: "00:00",
 				timeRangeEnd: "00:00",
 				slotDuration: 1440,
@@ -2111,7 +2111,7 @@ describe("events", () => {
 			expect(result.eventId).toBeDefined();
 		});
 
-		it("should reject a dates pool spanning more than 5 weeks (free)", async () => {
+		it("should reject a dates pool spanning more than 8 weeks (free)", async () => {
 			const t = convexTest(schema, modules);
 
 			await expect(
@@ -2119,14 +2119,14 @@ describe("events", () => {
 					title: "Trip",
 					timeZone: "UTC",
 					eventMode: "dates",
-					// 2025-08-01 .. 2025-09-05 inclusive = 36 days > 5 weeks.
-					dates: ["2025-08-01", "2025-09-05"],
+					// 2025-08-01 .. 2025-09-26 inclusive = 57 days > 8 weeks.
+					dates: ["2025-08-01", "2025-09-26"],
 					timeRangeStart: "00:00",
 					timeRangeEnd: "00:00",
 					slotDuration: 1440,
 					maxRespondents: 5,
 				}),
-			).rejects.toThrow(/span at most 5 weeks/);
+			).rejects.toThrow(/span at most 8 weeks/);
 		});
 
 		it("should default eventMode to times when omitted", async () => {

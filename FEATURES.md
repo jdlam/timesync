@@ -39,8 +39,8 @@ rather than a time of day.
 - **Candidate day pool** (creator) defined via the range popover and/or
   individual days. **Responders** are limited to the candidate days and get a
   Select-all shortcut. Name + optional comment work the same as time-slot events.
-- **Tier limit is span-based** (not day count): the pool may span at most **5
-  weeks** (35 days from the first day) on free, up to a year on premium.
+- **Tier limit is span-based** (not day count): the pool may span at most **8
+  weeks** (56 days from the first day) on free, up to a year on premium.
 - **Admin results**: a calendar-style heatmap coloring each candidate day by
   overlap, with respondent popovers, a **Best Days** recommendation panel, and a
   **best consecutive stretch** ("N days in a row everyone is free").

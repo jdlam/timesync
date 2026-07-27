@@ -7,8 +7,8 @@ export const TIER_LIMITS = {
 		maxParticipants: 5,
 		maxDates: 14,
 		// Dates events are limited by calendar span, not day count: the candidate
-		// pool may span at most 5 weeks (35 days) measured from the first day.
-		maxDateSpanDays: 35,
+		// pool may span at most 8 weeks (56 days) measured from the first day.
+		maxDateSpanDays: 56,
 		slotDurations: [15, 30, 60] as const,
 		features: {
 			passwordProtection: false,

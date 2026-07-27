@@ -6,8 +6,8 @@ export const TIER_LIMITS = {
 	free: {
 		maxParticipants: 5,
 		maxDates: 14,
-		// Dates events are capped by calendar span (5 weeks), not day count.
-		maxDateSpanDays: 35,
+		// Dates events are capped by calendar span (8 weeks), not day count.
+		maxDateSpanDays: 56,
 	},
 	premium: {
 		maxParticipants: -1, // Unlimited

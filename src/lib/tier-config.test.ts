@@ -63,8 +63,8 @@ describe("tier-config", () => {
 	});
 
 	describe("maxDateSpanDays", () => {
-		it("should cap free dates events at 5 weeks (35 days)", () => {
-			expect(TIER_LIMITS.free.maxDateSpanDays).toBe(35);
+		it("should cap free dates events at 8 weeks (56 days)", () => {
+			expect(TIER_LIMITS.free.maxDateSpanDays).toBe(56);
 		});
 
 		it("should allow premium dates events up to a full year", () => {

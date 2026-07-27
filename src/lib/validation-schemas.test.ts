@@ -813,13 +813,13 @@ describe("validation-schemas", () => {
 			expect(result.success).toBe(false);
 		});
 
-		it("should accept a candidate pool spanning exactly 5 weeks (free)", () => {
-			// 2099-06-01 .. 2099-07-05 inclusive = 35 days = 5 weeks.
+		it("should accept a candidate pool spanning exactly 8 weeks (free)", () => {
+			// 2099-06-01 .. 2099-07-26 inclusive = 56 days = 8 weeks.
 			const result = schema.safeParse({
 				title: "Trip",
 				timeZone: "UTC",
 				eventMode: "dates",
-				dates: ["2099-06-01", "2099-07-05"],
+				dates: ["2099-06-01", "2099-07-26"],
 				timeRangeStart: "00:00",
 				timeRangeEnd: "00:00",
 				slotDuration: "30",
@@ -827,13 +827,13 @@ describe("validation-schemas", () => {
 			expect(result.success).toBe(true);
 		});
 
-		it("should reject a candidate pool spanning more than 5 weeks (free)", () => {
-			// 2099-06-01 .. 2099-07-06 inclusive = 36 days > 5 weeks.
+		it("should reject a candidate pool spanning more than 8 weeks (free)", () => {
+			// 2099-06-01 .. 2099-07-27 inclusive = 57 days > 8 weeks.
 			const result = schema.safeParse({
 				title: "Trip",
 				timeZone: "UTC",
 				eventMode: "dates",
-				dates: ["2099-06-01", "2099-07-06"],
+				dates: ["2099-06-01", "2099-07-27"],
 				timeRangeStart: "00:00",
 				timeRangeEnd: "00:00",
 				slotDuration: "30",
