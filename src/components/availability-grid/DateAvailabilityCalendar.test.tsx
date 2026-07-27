@@ -11,27 +11,8 @@ const event = {
 	dates: ["2025-08-01", "2025-08-02", "2025-08-03"],
 } as unknown as PublicEvent;
 
-function setDateInput(id: string, value: string) {
-	const input = document.getElementById(id) as HTMLInputElement;
-	fireEvent.change(input, { target: { value } });
-}
-
 describe("DateAvailabilityCalendar", () => {
 	afterEach(() => cleanup());
-
-	it("emits canonical slots for a contiguous range added via inputs", () => {
-		const onChange = vi.fn();
-		render(<DateAvailabilityCalendar event={event} onChange={onChange} />);
-
-		setDateInput("avail-from", "2025-08-01");
-		setDateInput("avail-to", "2025-08-02");
-		fireEvent.click(screen.getByRole("button", { name: "Add range" }));
-
-		expect(onChange).toHaveBeenLastCalledWith([
-			"2025-08-01T00:00:00.000Z",
-			"2025-08-02T00:00:00.000Z",
-		]);
-	});
 
 	it("selects and clears all candidate days", () => {
 		const onChange = vi.fn();
@@ -48,7 +29,7 @@ describe("DateAvailabilityCalendar", () => {
 		expect(onChange).toHaveBeenLastCalledWith([]);
 	});
 
-	it("initializes selection from existing slots (edit flow)", () => {
+	it("initializes from existing slots and does not fire onChange on mount", () => {
 		const onChange = vi.fn();
 		render(
 			<DateAvailabilityCalendar
@@ -58,20 +39,22 @@ describe("DateAvailabilityCalendar", () => {
 			/>,
 		);
 
-		// Summary reflects the single pre-selected day, with a chip for it.
-		expect(screen.getByText("1 day selected")).toBeTruthy();
+		// Chip for the pre-selected day is shown; no spurious onChange on mount.
 		expect(screen.getByText("Sat, Aug 2")).toBeTruthy();
+		expect(onChange).not.toHaveBeenCalled();
 	});
 
-	it("does not fire onChange on initial mount", () => {
+	it("removes a day when its chip is clicked", () => {
 		const onChange = vi.fn();
 		render(
 			<DateAvailabilityCalendar
 				event={event}
-				initialSelections={["2025-08-01T00:00:00.000Z"]}
+				initialSelections={["2025-08-02T00:00:00.000Z"]}
 				onChange={onChange}
 			/>,
 		);
-		expect(onChange).not.toHaveBeenCalled();
+
+		fireEvent.click(screen.getByRole("button", { name: "Remove Sat, Aug 2" }));
+		expect(onChange).toHaveBeenLastCalledWith([]);
 	});
 });

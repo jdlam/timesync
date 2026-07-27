@@ -112,6 +112,10 @@
       first day), not day count; premium allows up to a year
 - [x] Respondents pick the date ranges they're available on a calendar view
       (constrained to candidate days), plus optional name/comment
+- [x] Range selection can be filtered by weekday (Weekends / Weekdays / specific
+      days) so "every weekend across a range" is one action, not many taps
+- [x] Creator and responder share one calendar picker (DayPoolPicker) with a
+      range popover + individual-day tapping
 - [x] Admin sees a calendar heatmap of per-day overlap with respondent details
 - [x] Admin sees Best Days + best consecutive stretch recommendations
 - [x] CSV export lists candidate days

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { eachDayOfInterval, format, parse } from "date-fns";
+import { format, parse } from "date-fns";
 import {
 	AlertTriangle,
 	Bell,
@@ -12,10 +12,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
 import { getErrorMessage } from "@/lib/form-utils";
-import { getDateRangeSpanDays, TIER_LIMITS } from "@/lib/tier-config";
+import { TIER_LIMITS } from "@/lib/tier-config";
 import { editEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
+import { DayPoolPicker } from "./availability-grid/DayPoolPicker";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Checkbox } from "./ui/checkbox";
@@ -48,8 +49,6 @@ export function EditEventDialog({
 	const tierLimits = TIER_LIMITS[event.isPremium ? "premium" : "free"];
 	const maxDateSpanDays = tierLimits.maxDateSpanDays;
 	const spanWeeks = Math.round(maxDateSpanDays / 7);
-	const [rangeFrom, setRangeFrom] = useState("");
-	const [rangeTo, setRangeTo] = useState("");
 
 	// Get response count for warning (only when dialog is open)
 	const responseCountData = useQuery(
@@ -145,67 +144,16 @@ export function EditEventDialog({
 			);
 			setShowCalendar(false);
 			setShowPasswordInput(false);
-			setRangeFrom("");
-			setRangeTo("");
 		}
 	}, [open, event]);
 
 	// Handle calendar date selection
+	// Multi-select calendar for time-slot events (dates events use DayPoolPicker).
 	const handleDateSelect = (dates: Date[] | undefined) => {
 		if (!dates) return;
 		const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd")).sort();
-
-		// Dates events are capped by calendar span (e.g. 5 weeks), not day count.
-		if (isDatesMode && getDateRangeSpanDays(dateStrings) > maxDateSpanDays) {
-			toast.error(`Dates can span at most ${spanWeeks} weeks on this plan`);
-			return;
-		}
-
 		setSelectedDates(dates);
 		form.setFieldValue("dates", dateStrings);
-	};
-
-	// Merge a set of dates into the candidate pool (dedupe), trimming any days
-	// beyond the allowed calendar span from the earliest selected day.
-	const addDatesToSelection = (datesToAdd: Date[]) => {
-		const keys = new Set(selectedDates.map((d) => format(d, "yyyy-MM-dd")));
-		const merged = [...selectedDates];
-		for (const d of datesToAdd) {
-			const key = format(d, "yyyy-MM-dd");
-			if (keys.has(key)) continue;
-			keys.add(key);
-			merged.push(d);
-		}
-		merged.sort((a, b) => a.getTime() - b.getTime());
-
-		let capped = merged;
-		if (merged.length > 0) {
-			const minTime = merged[0].getTime();
-			capped = merged.filter(
-				(d) => (d.getTime() - minTime) / 86_400_000 <= maxDateSpanDays - 1,
-			);
-			if (capped.length < merged.length) {
-				toast.error(`Dates can span at most ${spanWeeks} weeks on this plan`);
-			}
-		}
-		setSelectedDates(capped);
-		form.setFieldValue(
-			"dates",
-			capped.map((d) => format(d, "yyyy-MM-dd")),
-		);
-	};
-
-	const handleAddRange = () => {
-		if (!rangeFrom || !rangeTo) return;
-		const start = parse(rangeFrom, "yyyy-MM-dd", new Date());
-		const end = parse(rangeTo, "yyyy-MM-dd", new Date());
-		if (end < start) {
-			toast.error("End date must be on or after start date");
-			return;
-		}
-		addDatesToSelection(eachDayOfInterval({ start, end }));
-		setRangeFrom("");
-		setRangeTo("");
 	};
 
 	// Format slot duration for display
@@ -296,88 +244,61 @@ export function EditEventDialog({
 								<Label className="text-xl font-bold text-foreground">
 									{isDatesMode ? "Select candidate days" : "Select Dates"}
 								</Label>
-								<div>
-									{isDatesMode && (
-										<div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end">
-											<div className="flex-1 space-y-1">
-												<Label htmlFor="edit-range-from" className="text-sm">
-													From
-												</Label>
-												<Input
-													id="edit-range-from"
-													type="date"
-													value={rangeFrom}
-													onChange={(e) => setRangeFrom(e.target.value)}
-													className="bg-background border-border text-foreground"
+								{isDatesMode ? (
+									<DayPoolPicker
+										selected={field.state.value}
+										onSelectedChange={(next) => field.handleChange(next)}
+										maxSpanDays={maxDateSpanDays}
+										spanWeeks={spanWeeks}
+									/>
+								) : (
+									<div>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => setShowCalendar(!showCalendar)}
+											className="w-full justify-start text-left font-normal"
+										>
+											<CalendarIcon className="mr-2 h-4 w-4" />
+											{selectedDates.length > 0
+												? `${selectedDates.length} date(s) selected`
+												: "Pick dates"}
+										</Button>
+										{showCalendar && (
+											<div className="mt-2 bg-card border border-border rounded-lg p-4">
+												<Calendar
+													mode="multiple"
+													selected={selectedDates}
+													onSelect={handleDateSelect}
+													className="rounded-md"
 												/>
+												<p className="text-xs text-muted-foreground mt-2">
+													Past dates are allowed when editing to preserve
+													existing data.
+												</p>
 											</div>
-											<div className="flex-1 space-y-1">
-												<Label htmlFor="edit-range-to" className="text-sm">
-													To
-												</Label>
-												<Input
-													id="edit-range-to"
-													type="date"
-													value={rangeTo}
-													onChange={(e) => setRangeTo(e.target.value)}
-													className="bg-background border-border text-foreground"
-												/>
+										)}
+										{selectedDates.length > 0 && (
+											<div className="mt-2 flex flex-wrap gap-2">
+												{[...selectedDates]
+													.sort((a, b) => a.getTime() - b.getTime())
+													.map((date) => (
+														<div
+															key={date.toISOString()}
+															className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
+														>
+															{format(date, "MMM d, yyyy")}
+														</div>
+													))}
 											</div>
-											<Button
-												type="button"
-												variant="outline"
-												onClick={handleAddRange}
-												disabled={!rangeFrom || !rangeTo}
-											>
-												Add range
-											</Button>
-										</div>
-									)}
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => setShowCalendar(!showCalendar)}
-										className="w-full justify-start text-left font-normal"
-									>
-										<CalendarIcon className="mr-2 h-4 w-4" />
-										{selectedDates.length > 0
-											? `${selectedDates.length} date(s) selected`
-											: "Pick dates"}
-									</Button>
-									{showCalendar && (
-										<div className="mt-2 bg-card border border-border rounded-lg p-4">
-											<Calendar
-												mode="multiple"
-												selected={selectedDates}
-												onSelect={handleDateSelect}
-												className="rounded-md"
-											/>
-											<p className="text-xs text-muted-foreground mt-2">
-												Past dates are allowed when editing to preserve existing
-												data.
-											</p>
-										</div>
-									)}
-									{selectedDates.length > 0 && (
-										<div className="mt-2 flex flex-wrap gap-2">
-											{[...selectedDates]
-												.sort((a, b) => a.getTime() - b.getTime())
-												.map((date) => (
-													<div
-														key={date.toISOString()}
-														className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
-													>
-														{format(date, "MMM d, yyyy")}
-													</div>
-												))}
-										</div>
-									)}
-									{field.state.meta.errors.length > 0 && (
-										<p className="text-red-500 text-sm mt-1">
-											{getErrorMessage(field.state.meta.errors[0])}
-										</p>
-									)}
-								</div>
+										)}
+									</div>
+								)}
+								{field.state.meta.errors.length > 0 && (
+									<p className="text-red-500 text-sm mt-1">
+										{getErrorMessage(field.state.meta.errors[0])}
+									</p>
+								)}
 							</div>
 						)}
 					</form.AppField>

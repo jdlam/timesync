@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { eachDayOfInterval, format, parse } from "date-fns";
+import { format } from "date-fns";
 import {
 	Bell,
 	CalendarDays,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { DayPoolPicker } from "@/components/availability-grid/DayPoolPicker";
 import { LinkCopy } from "@/components/LinkCopy";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ import {
 import { useAppForm } from "@/hooks/form";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getErrorMessage } from "@/lib/form-utils";
-import { getDateRangeSpanDays, TIER_LIMITS } from "@/lib/tier-config";
+import { TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone, isDateInPast } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 import { createEventSchemaForTier } from "@/lib/validation-schemas";
@@ -61,9 +62,6 @@ function CreateEvent() {
 
 	// "times" = align on time slots (default), "dates" = align on whole days.
 	const [eventMode, setEventMode] = useState<"times" | "dates">("times");
-	// Quick "add a range" inputs for the dates-mode candidate pool.
-	const [rangeFrom, setRangeFrom] = useState("");
-	const [rangeTo, setRangeTo] = useState("");
 
 	const tierLimits = isPremium ? TIER_LIMITS.premium : TIER_LIMITS.free;
 	const eventSchema = useMemo(() => createEventSchemaForTier(tier), [tier]);
@@ -131,20 +129,11 @@ function CreateEvent() {
 	const maxDateSpanDays = tierLimits.maxDateSpanDays;
 	const spanWeeks = Math.round(maxDateSpanDays / 7);
 
-	// Handle calendar date selection
+	// Handle multi-select calendar for time-slot events (dates events use the
+	// shared DayPoolPicker, which manages its own selection).
 	const handleDateSelect = (dates: Date[] | undefined) => {
 		if (!dates) return;
 		const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd")).sort();
-
-		// Dates events are capped by calendar span (e.g. 5 weeks), not day count.
-		if (
-			eventMode === "dates" &&
-			getDateRangeSpanDays(dateStrings) > maxDateSpanDays
-		) {
-			toast.error(`Dates can span at most ${spanWeeks} weeks on your plan`);
-			return;
-		}
-
 		setSelectedDates(dates);
 		form.setFieldValue("dates", dateStrings);
 	};
@@ -153,50 +142,6 @@ function CreateEvent() {
 	const handleModeChange = (mode: "times" | "dates") => {
 		setEventMode(mode);
 		form.setFieldValue("eventMode", mode);
-	};
-
-	// Merge a set of dates into the pool (dedupe, skip past dates), trimming any
-	// days beyond the allowed calendar span from the earliest selected day.
-	const addDatesToSelection = (datesToAdd: Date[]) => {
-		const keys = new Set(selectedDates.map((d) => format(d, "yyyy-MM-dd")));
-		const merged = [...selectedDates];
-		for (const d of datesToAdd) {
-			const key = format(d, "yyyy-MM-dd");
-			if (isDateInPast(key) || keys.has(key)) continue;
-			keys.add(key);
-			merged.push(d);
-		}
-		merged.sort((a, b) => a.getTime() - b.getTime());
-
-		let capped = merged;
-		if (merged.length > 0) {
-			const minTime = merged[0].getTime();
-			capped = merged.filter(
-				(d) => (d.getTime() - minTime) / 86_400_000 <= maxDateSpanDays - 1,
-			);
-			if (capped.length < merged.length) {
-				toast.error(`Dates can span at most ${spanWeeks} weeks on your plan`);
-			}
-		}
-		setSelectedDates(capped);
-		form.setFieldValue(
-			"dates",
-			capped.map((d) => format(d, "yyyy-MM-dd")),
-		);
-	};
-
-	// Bulk-add every day in the [rangeFrom, rangeTo] span to the candidate pool.
-	const handleAddRange = () => {
-		if (!rangeFrom || !rangeTo) return;
-		const start = parse(rangeFrom, "yyyy-MM-dd", new Date());
-		const end = parse(rangeTo, "yyyy-MM-dd", new Date());
-		if (end < start) {
-			toast.error("End date must be on or after start date");
-			return;
-		}
-		addDatesToSelection(eachDayOfInterval({ start, end }));
-		setRangeFrom("");
-		setRangeTo("");
 	};
 
 	// Generate URLs for success dialog
@@ -369,99 +314,71 @@ function CreateEvent() {
 									</Label>
 									<span className="text-sm text-muted-foreground">
 										{eventMode === "dates"
-											? `${selectedDates.length} days · up to ${spanWeeks} weeks`
+											? `${field.state.value.length} days · up to ${spanWeeks} weeks`
 											: `${selectedDates.length}/${tierLimits.maxDates} dates`}
 									</span>
 								</div>
-								{eventMode === "dates" && (
-									<p className="text-sm text-muted-foreground">
-										Pick the days people can choose from. Add a whole range at
-										once, then fine-tune individual days.
+								{eventMode === "dates" ? (
+									<>
+										<p className="text-sm text-muted-foreground">
+											Pick the days people can choose from. Add a whole range —
+											or just weekends — then fine-tune individual days.
+										</p>
+										<DayPoolPicker
+											selected={field.state.value}
+											onSelectedChange={(next) => field.handleChange(next)}
+											disablePast
+											maxSpanDays={maxDateSpanDays}
+											spanWeeks={spanWeeks}
+										/>
+									</>
+								) : (
+									<div>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => setShowCalendar(!showCalendar)}
+											className="w-full justify-start text-left font-normal"
+										>
+											<CalendarIcon className="mr-2 h-4 w-4" />
+											{selectedDates.length > 0
+												? `${selectedDates.length} date(s) selected`
+												: "Pick dates"}
+										</Button>
+										{showCalendar && (
+											<div className="mt-2 bg-card border border-border rounded-lg p-4">
+												<Calendar
+													mode="multiple"
+													selected={selectedDates}
+													onSelect={handleDateSelect}
+													disabled={(date) =>
+														isDateInPast(format(date, "yyyy-MM-dd"))
+													}
+													className="rounded-md"
+												/>
+											</div>
+										)}
+										{selectedDates.length > 0 && (
+											<div className="mt-2 flex flex-wrap gap-2">
+												{[...selectedDates]
+													.sort((a, b) => a.getTime() - b.getTime())
+													.map((date) => (
+														<div
+															key={date.toISOString()}
+															className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
+														>
+															{format(date, "MMM d, yyyy")}
+														</div>
+													))}
+											</div>
+										)}
+									</div>
+								)}
+								{field.state.meta.errors.length > 0 && (
+									<p className="text-red-500 text-sm mt-1">
+										{getErrorMessage(field.state.meta.errors[0])}
 									</p>
 								)}
-								<div>
-									{eventMode === "dates" && (
-										<div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end">
-											<div className="flex-1 space-y-1">
-												<Label htmlFor="range-from" className="text-sm">
-													From
-												</Label>
-												<Input
-													id="range-from"
-													type="date"
-													value={rangeFrom}
-													onChange={(e) => setRangeFrom(e.target.value)}
-													className="bg-background border-border text-foreground"
-												/>
-											</div>
-											<div className="flex-1 space-y-1">
-												<Label htmlFor="range-to" className="text-sm">
-													To
-												</Label>
-												<Input
-													id="range-to"
-													type="date"
-													value={rangeTo}
-													onChange={(e) => setRangeTo(e.target.value)}
-													className="bg-background border-border text-foreground"
-												/>
-											</div>
-											<Button
-												type="button"
-												variant="outline"
-												onClick={handleAddRange}
-												disabled={!rangeFrom || !rangeTo}
-											>
-												Add range
-											</Button>
-										</div>
-									)}
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => setShowCalendar(!showCalendar)}
-										className="w-full justify-start text-left font-normal"
-									>
-										<CalendarIcon className="mr-2 h-4 w-4" />
-										{selectedDates.length > 0
-											? `${selectedDates.length} date(s) selected`
-											: eventMode === "dates"
-												? "Add or remove individual days"
-												: "Pick dates"}
-									</Button>
-									{showCalendar && (
-										<div className="mt-2 bg-card border border-border rounded-lg p-4">
-											<Calendar
-												mode="multiple"
-												selected={selectedDates}
-												onSelect={handleDateSelect}
-												disabled={(date) =>
-													isDateInPast(format(date, "yyyy-MM-dd"))
-												}
-												className="rounded-md"
-											/>
-										</div>
-									)}
-									{selectedDates.length > 0 && (
-										<div className="mt-2 flex flex-wrap gap-2">
-											{[...selectedDates]
-												.sort((a, b) => a.getTime() - b.getTime())
-												.map((date) => (
-													<div
-														key={date.toISOString()}
-														className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
-													>
-														{format(date, "MMM d, yyyy")}
-													</div>
-												))}
-										</div>
-									)}
-									{field.state.meta.errors.length > 0 && (
-										<p className="text-red-500 text-sm mt-1">
-											{getErrorMessage(field.state.meta.errors[0])}
-										</p>
-									)}
-								</div>
 							</div>
 						)}
 					</form.AppField>

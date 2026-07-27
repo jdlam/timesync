@@ -30,14 +30,17 @@ rather than a time of day.
 
 - **Event mode** chosen at creation: *Times* (the classic time-slot flow) or
   *Dates*. Existing events default to *Times*.
-- **Candidate day pool** defined by the creator via **both** a continuous range
-  (From → To fills the span) **and** individual add/remove days.
+- **Shared calendar picker** (`DayPoolPicker`) used by the creator and
+  responders alike: an "Add multiple days" popover picks a range on the calendar
+  and filters it by weekday — one-tap **Weekends** / **Weekdays** / **All**, or
+  individual weekday chips (e.g. every Friday) — plus an always-visible calendar
+  to tap individual days. This makes bulk-add vs fine-tune clearly complementary
+  rather than either/or.
+- **Candidate day pool** (creator) defined via the range popover and/or
+  individual days. **Responders** are limited to the candidate days and get a
+  Select-all shortcut. Name + optional comment work the same as time-slot events.
 - **Tier limit is span-based** (not day count): the pool may span at most **5
   weeks** (35 days from the first day) on free, up to a year on premium.
-- **Respondents pick date ranges** on a calendar-like view: add a whole stretch
-  at once, toggle individual days, plus Select-all / Clear. Only the event's
-  candidate days are selectable. Name + optional comment work the same as
-  time-slot events.
 - **Admin results**: a calendar-style heatmap coloring each candidate day by
   overlap, with respondent popovers, a **Best Days** recommendation panel, and a
   **best consecutive stretch** ("N days in a row everyone is free").

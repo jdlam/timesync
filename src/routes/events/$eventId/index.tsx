@@ -187,7 +187,6 @@ function EventResponseContent({
 							event={event}
 							initialSelections={[]}
 							onChange={setSelectedSlots}
-							mode="select"
 						/>
 					) : (
 						<AvailabilityGrid

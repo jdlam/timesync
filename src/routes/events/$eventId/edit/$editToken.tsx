@@ -150,7 +150,6 @@ function EditResponseForm({
 							event={event}
 							initialSelections={selectedSlots}
 							onChange={setSelectedSlots}
-							mode="select"
 						/>
 					) : (
 						<AvailabilityGrid
