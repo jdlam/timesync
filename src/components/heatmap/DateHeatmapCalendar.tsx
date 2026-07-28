@@ -248,9 +248,9 @@ export function DateHeatmapCalendar({
 				<h3 className="mb-4 text-xl font-bold text-foreground">
 					Availability Calendar
 				</h3>
-				<div className="space-y-6">
+				<div className="flex flex-wrap gap-x-8 gap-y-6">
 					{months.map((month) => (
-						<div key={month.key}>
+						<div key={month.key} className="w-full sm:w-80">
 							<h4 className="mb-2 font-semibold text-foreground">
 								{month.label}
 							</h4>
