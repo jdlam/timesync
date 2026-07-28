@@ -67,8 +67,8 @@ describe("tier-config", () => {
 			expect(TIER_LIMITS.free.maxDateSpanDays).toBe(56);
 		});
 
-		it("should allow premium dates events up to a full year", () => {
-			expect(TIER_LIMITS.premium.maxDateSpanDays).toBe(366);
+		it("should allow premium dates events up to 52 weeks", () => {
+			expect(TIER_LIMITS.premium.maxDateSpanDays).toBe(364);
 		});
 	});
 

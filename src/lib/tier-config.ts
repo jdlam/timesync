@@ -18,7 +18,8 @@ export const TIER_LIMITS = {
 	premium: {
 		maxParticipants: -1, // Unlimited
 		maxDates: 365,
-		maxDateSpanDays: 366, // Up to a full (leap) year
+		// Whole number of weeks so the "up to N weeks" copy is always exact.
+		maxDateSpanDays: 364, // 52 weeks (~a year)
 		slotDurations: [15, 30, 60] as const, // Can add custom durations later
 		features: {
 			passwordProtection: true,

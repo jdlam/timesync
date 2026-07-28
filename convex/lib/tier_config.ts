@@ -12,7 +12,7 @@ export const TIER_LIMITS = {
 	premium: {
 		maxParticipants: -1, // Unlimited
 		maxDates: 365,
-		maxDateSpanDays: 366, // Up to a full (leap) year
+		maxDateSpanDays: 364, // 52 weeks (~a year); whole weeks for exact copy
 	},
 } as const;
 
