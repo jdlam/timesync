@@ -11,6 +11,7 @@
  */
 
 const RELOAD_FLAG = "ts:chunk-reloaded";
+const RELOAD_PARAM = "__chunk_reload";
 
 const CHUNK_ERROR_PATTERNS = [
 	/importing a module script failed/i,
@@ -35,31 +36,66 @@ export function isChunkLoadError(error: unknown): boolean {
 }
 
 /**
- * Reload once to pick up the latest deployment. Guarded by sessionStorage so a
- * genuinely unrecoverable chunk can't cause an infinite reload loop. Returns
- * true if a reload was triggered.
+ * Whether we've already tried a recovery reload. Checks sessionStorage first,
+ * then a URL query param that survives the reload even when storage APIs are
+ * unavailable (e.g. Safari private mode) — without this fallback a truly
+ * unrecoverable chunk could loop-reload forever.
+ */
+export function hasAttemptedChunkReload(): boolean {
+	if (typeof window === "undefined") return false;
+	try {
+		if (window.sessionStorage.getItem(RELOAD_FLAG) === "1") return true;
+	} catch {
+		// storage unavailable — fall through to the URL guard
+	}
+	try {
+		return new URLSearchParams(window.location.search).has(RELOAD_PARAM);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Reload once to pick up the latest deployment. Guarded against infinite reload
+ * loops by both sessionStorage and a URL query param. Returns true if a reload
+ * was triggered.
  */
 export function reloadForChunkError(): boolean {
 	if (typeof window === "undefined") return false;
+	if (hasAttemptedChunkReload()) return false;
 	try {
-		if (window.sessionStorage.getItem(RELOAD_FLAG) === "1") return false;
 		window.sessionStorage.setItem(RELOAD_FLAG, "1");
 	} catch {
-		// sessionStorage may be unavailable (e.g. private mode) — reloading once
-		// without the guard is still acceptable.
+		// storage unavailable — the URL param below is the storage-independent guard
 	}
-	window.location.reload();
+	try {
+		const url = new URL(window.location.href);
+		url.searchParams.set(RELOAD_PARAM, "1");
+		window.location.replace(url.toString());
+	} catch {
+		window.location.reload();
+	}
 	return true;
 }
 
 /**
  * Clear the reload guard once the app has loaded successfully, so a later
- * deployment in the same session can auto-recover again.
+ * deployment in the same session can auto-recover again. Also strips the
+ * recovery query param from the URL.
  */
 export function clearChunkReloadGuard(): void {
 	if (typeof window === "undefined") return;
 	try {
 		window.sessionStorage.removeItem(RELOAD_FLAG);
+	} catch {
+		// ignore
+	}
+	try {
+		const url = new URL(window.location.href);
+		if (url.searchParams.has(RELOAD_PARAM)) {
+			url.searchParams.delete(RELOAD_PARAM);
+			window.history.replaceState(window.history.state, "", url.toString());
+		}
 	} catch {
 		// ignore
 	}

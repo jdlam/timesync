@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { isChunkLoadError } from "./chunk-reload";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { hasAttemptedChunkReload, isChunkLoadError } from "./chunk-reload";
 
 describe("isChunkLoadError", () => {
 	it("matches the browser 'Importing a module script failed' message", () => {
@@ -39,5 +39,41 @@ describe("isChunkLoadError", () => {
 		).toBe(false);
 		expect(isChunkLoadError(undefined)).toBe(false);
 		expect(isChunkLoadError(null)).toBe(false);
+	});
+});
+
+describe("hasAttemptedChunkReload", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		try {
+			window.sessionStorage.clear();
+		} catch {
+			// ignore
+		}
+		window.history.replaceState(window.history.state, "", "/");
+	});
+
+	it("is false with no guard set", () => {
+		expect(hasAttemptedChunkReload()).toBe(false);
+	});
+
+	it("is true when the sessionStorage flag is set", () => {
+		window.sessionStorage.setItem("ts:chunk-reloaded", "1");
+		expect(hasAttemptedChunkReload()).toBe(true);
+	});
+
+	it("is true when the URL guard param is present", () => {
+		window.history.replaceState(window.history.state, "", "/?__chunk_reload=1");
+		expect(hasAttemptedChunkReload()).toBe(true);
+	});
+
+	it("falls back to the URL param when sessionStorage throws", () => {
+		vi.spyOn(window.sessionStorage, "getItem").mockImplementation(() => {
+			throw new Error("storage disabled");
+		});
+		// No URL param → still safe (false), not a crash.
+		expect(hasAttemptedChunkReload()).toBe(false);
+		window.history.replaceState(window.history.state, "", "/?__chunk_reload=1");
+		expect(hasAttemptedChunkReload()).toBe(true);
 	});
 });
