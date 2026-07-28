@@ -782,4 +782,132 @@ describe("validation-schemas", () => {
 			}
 		});
 	});
+
+	describe("dates event mode", () => {
+		const schema = createEventSchemaForTier("free");
+
+		it("should accept a dates event with sentinel time fields", () => {
+			const result = schema.safeParse({
+				title: "Summer Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: ["2099-06-15", "2099-06-16"],
+				// Sentinels sent for dates events; time-range rule is skipped.
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should still require at least one date", () => {
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: [],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it("should accept a candidate pool spanning exactly 8 weeks (free)", () => {
+			// 2099-06-01 .. 2099-07-26 inclusive = 56 days = 8 weeks.
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: ["2099-06-01", "2099-07-26"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject a candidate pool spanning more than 8 weeks (free)", () => {
+			// 2099-06-01 .. 2099-07-27 inclusive = 57 days > 8 weeks.
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				dates: ["2099-06-01", "2099-07-27"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("weeks");
+			}
+		});
+
+		it("should accept a weekends pattern", () => {
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				datePattern: "weekends",
+				patternWeekdays: [0, 6],
+				dates: ["2099-06-06", "2099-06-07"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject a custom pattern with no weekdays", () => {
+			const result = schema.safeParse({
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				datePattern: "custom",
+				patternWeekdays: [],
+				dates: ["2099-06-15"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("weekday");
+			}
+		});
+
+		it("should allow many days for a times event but not exceed maxDates", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				title: "Meeting",
+				timeZone: "UTC",
+				eventMode: "times",
+				// 15 individual days exceeds the free times cap of 14.
+				dates: Array.from(
+					{ length: 15 },
+					(_, i) => `2099-06-${String(i + 1).padStart(2, "0")}`,
+				),
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain("14");
+			}
+		});
+
+		it("should still enforce end-after-start for times events", () => {
+			const result = schema.safeParse({
+				title: "Meeting",
+				timeZone: "UTC",
+				eventMode: "times",
+				dates: ["2099-06-15"],
+				timeRangeStart: "17:00",
+				timeRangeEnd: "09:00",
+				slotDuration: "30",
+			});
+			expect(result.success).toBe(false);
+		});
+	});
 });

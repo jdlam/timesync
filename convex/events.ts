@@ -3,7 +3,11 @@ import { mutation, query } from "./_generated/server";
 import { isSuperAdmin } from "./lib/auth";
 import { hashPassword, verifyPassword } from "./lib/password";
 import { enforceRateLimit } from "./lib/rate_limit";
-import { TIER_LIMITS, isValidDateString } from "./lib/tier_config";
+import {
+	getDateRangeSpanDays,
+	isValidDateString,
+	TIER_LIMITS,
+} from "./lib/tier_config";
 
 // Query: Get event by ID (public — strips sensitive fields, respects password gate)
 export const getById = query({
@@ -183,16 +187,46 @@ export const update = mutation({
 
 		// Tier-aware validation
 		const tier = event.isPremium ? "premium" : "free";
-		const maxDates = TIER_LIMITS[tier].maxDates;
 		if (args.dates !== undefined) {
-			if (args.dates.length === 0 || args.dates.length > maxDates) {
-				throw new Error(`Must have between 1 and ${maxDates} dates`);
+			if (args.dates.length === 0) {
+				throw new Error("At least one date is required");
+			}
+			if (event.eventMode === "dates") {
+				// Dates events are capped by calendar span, not day count.
+				const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
+				if (getDateRangeSpanDays(args.dates) > maxSpan) {
+					throw new Error(
+						`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
+					);
+				}
+			} else {
+				const maxDates = TIER_LIMITS[tier].maxDates;
+				if (args.dates.length > maxDates) {
+					throw new Error(`Must have between 1 and ${maxDates} dates`);
+				}
 			}
 			for (const d of args.dates) {
 				if (!isValidDateString(d)) {
 					throw new Error(
 						"Each date must be a valid calendar date in YYYY-MM-DD format",
 					);
+				}
+			}
+			// Grouped events keep their pattern fixed on edit: new candidate days
+			// must still fall on the event's pattern weekdays.
+			if (
+				event.datePattern &&
+				event.datePattern !== "individual" &&
+				event.patternWeekdays &&
+				event.patternWeekdays.length > 0
+			) {
+				const allowedWeekdays = new Set(event.patternWeekdays);
+				for (const d of args.dates) {
+					if (!allowedWeekdays.has(new Date(`${d}T00:00:00Z`).getUTCDay())) {
+						throw new Error(
+							"Candidate days must match the selected day pattern",
+						);
+					}
 				}
 			}
 		}
@@ -290,6 +324,16 @@ export const create = mutation({
 		title: v.string(),
 		description: v.optional(v.string()),
 		timeZone: v.string(),
+		eventMode: v.optional(v.union(v.literal("times"), v.literal("dates"))),
+		datePattern: v.optional(
+			v.union(
+				v.literal("individual"),
+				v.literal("weekends"),
+				v.literal("weekdays"),
+				v.literal("custom"),
+			),
+		),
+		patternWeekdays: v.optional(v.array(v.number())),
 		dates: v.array(v.string()),
 		timeRangeStart: v.string(),
 		timeRangeEnd: v.string(),
@@ -319,6 +363,8 @@ export const create = mutation({
 			});
 		}
 
+		const isDatesMode = args.eventMode === "dates";
+
 		// Server-side input validation (format checks first)
 		if (!args.title || args.title.length > 255) {
 			throw new Error("Title must be between 1 and 255 characters");
@@ -326,16 +372,20 @@ export const create = mutation({
 		if (args.description && args.description.length > 1000) {
 			throw new Error("Description must be at most 1000 characters");
 		}
-		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
-			throw new Error("Time range must be in HH:mm format");
-		}
-		const [startH, startM] = args.timeRangeStart.split(":").map(Number);
-		const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
-		if (startH * 60 + startM >= endH * 60 + endM) {
-			throw new Error("End time must be after start time");
-		}
-		if (![15, 30, 60].includes(args.slotDuration)) {
-			throw new Error("Slot duration must be 15, 30, or 60 minutes");
+		// Time-range and slot-duration only apply to "times" events. Dates
+		// events store sentinel values (see insert below) and are ignored.
+		if (!isDatesMode) {
+			if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
+				throw new Error("Time range must be in HH:mm format");
+			}
+			const [startH, startM] = args.timeRangeStart.split(":").map(Number);
+			const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
+			if (startH * 60 + startM >= endH * 60 + endM) {
+				throw new Error("End time must be after start time");
+			}
+			if (![15, 30, 60].includes(args.slotDuration)) {
+				throw new Error("Slot duration must be 15, 30, or 60 minutes");
+			}
 		}
 
 		// Check if creator has premium subscription
@@ -365,15 +415,45 @@ export const create = mutation({
 
 		// Tier-aware validation
 		const tier = isPremium ? "premium" : "free";
-		const maxDates = TIER_LIMITS[tier].maxDates;
-		if (args.dates.length === 0 || args.dates.length > maxDates) {
-			throw new Error(`Must have between 1 and ${maxDates} dates`);
+		if (args.dates.length === 0) {
+			throw new Error("At least one date is required");
+		}
+		if (isDatesMode) {
+			// Dates events are capped by calendar span, not day count.
+			const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
+			if (getDateRangeSpanDays(args.dates) > maxSpan) {
+				throw new Error(
+					`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
+				);
+			}
+		} else {
+			const maxDates = TIER_LIMITS[tier].maxDates;
+			if (args.dates.length > maxDates) {
+				throw new Error(`Must have between 1 and ${maxDates} dates`);
+			}
 		}
 		for (const d of args.dates) {
 			if (!isValidDateString(d)) {
 				throw new Error(
 					"Each date must be a valid calendar date in YYYY-MM-DD format",
 				);
+			}
+		}
+		// Grouped date patterns: every candidate day must fall on a pattern weekday.
+		const isGroupedPattern =
+			isDatesMode &&
+			args.datePattern !== undefined &&
+			args.datePattern !== "individual";
+		if (isGroupedPattern) {
+			if (!args.patternWeekdays || args.patternWeekdays.length === 0) {
+				throw new Error("A grouped date pattern requires at least one weekday");
+			}
+			const allowedWeekdays = new Set(args.patternWeekdays);
+			for (const d of args.dates) {
+				const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
+				if (!allowedWeekdays.has(weekday)) {
+					throw new Error("Candidate days must match the selected day pattern");
+				}
 			}
 		}
 		if (args.password !== undefined) {
@@ -407,10 +487,14 @@ export const create = mutation({
 			title: args.title,
 			description: args.description,
 			timeZone: args.timeZone,
+			eventMode: isDatesMode ? "dates" : "times",
+			datePattern: isDatesMode ? (args.datePattern ?? "individual") : undefined,
+			patternWeekdays: isGroupedPattern ? args.patternWeekdays : undefined,
 			dates: args.dates,
-			timeRangeStart: args.timeRangeStart,
-			timeRangeEnd: args.timeRangeEnd,
-			slotDuration: args.slotDuration,
+			// Dates events store sentinels; each date is one canonical midnight slot.
+			timeRangeStart: isDatesMode ? "00:00" : args.timeRangeStart,
+			timeRangeEnd: isDatesMode ? "00:00" : args.timeRangeEnd,
+			slotDuration: isDatesMode ? 1440 : args.slotDuration,
 			adminToken,
 			isPremium,
 			password: hashedPassword,

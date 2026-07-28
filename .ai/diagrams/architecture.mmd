@@ -57,21 +57,23 @@ flowchart TB
 
     subgraph "Database Tables"
         DB_users[("users\n- clerkId\n- email\n- subscriptionTier\n- stripeCustomerId")]
-        DB_events[("events\n- adminToken\n- title, dates\n- timeRange, slotDuration\n- maxRespondents\n- creatorId, isActive")]
+        DB_events[("events\n- adminToken\n- title, dates\n- eventMode (times/dates)\n- timeRange, slotDuration\n- maxRespondents\n- creatorId, isActive")]
         DB_responses[("responses\n- eventId\n- respondentName\n- selectedSlots\n- editToken")]
         DB_audit[("auditLogs\n- userId, action\n- targetType, targetId")]
     end
 
     subgraph "Key Components"
         AvailGrid["AvailabilityGrid\n(slot selection)"]
+        DateAvailCal["DateAvailabilityCalendar\n(dates mode selection)"]
         HeatmapGrid["HeatmapGrid\n(visualization)"]
+        DateHeatmap["DateHeatmapCalendar\n(dates mode heatmap)"]
         ResponsesList["ResponsesList"]
         EventForm["EventForm"]
     end
 
     subgraph "Utilities"
-        TimeUtils["time-utils\n- generateTimeSlots\n- formatTimeSlot"]
-        HeatmapUtils["heatmap-utils\n- calculateHeatmap\n- getHeatmapColor\n- getBestTimeSlots"]
+        TimeUtils["time-utils\n- generateTimeSlots\n- generateDateSlots\n- formatTimeSlot"]
+        HeatmapUtils["heatmap-utils\n- calculateHeatmap\n- getHeatmapColor\n- getBestTimeSlots\n- getBestConsecutiveRun"]
         TokenUtils["token-utils\n- generateAdminToken\n- generateEditToken"]
     end
 
@@ -93,8 +95,10 @@ flowchart TB
     %% Public Event Flow
     PublicEvent --> Q_getByIdWithCount
     Q_getByIdWithCount --> DB_events
-    PublicEvent --> AvailGrid
+    PublicEvent -->|"times mode"| AvailGrid
+    PublicEvent -->|"dates mode"| DateAvailCal
     AvailGrid --> TimeUtils
+    DateAvailCal --> TimeUtils
     PublicEvent -->|"Submit"| M_submitResponse
     M_submitResponse -->|"Check limit"| DB_events
     M_submitResponse --> DB_responses
@@ -112,9 +116,12 @@ flowchart TB
     Q_getByAdminToken --> DB_events
     AdminEvent --> Q_getResponsesByEvent
     Q_getResponsesByEvent --> DB_responses
-    AdminEvent --> HeatmapGrid
+    AdminEvent -->|"times mode"| HeatmapGrid
+    AdminEvent -->|"dates mode"| DateHeatmap
     HeatmapGrid --> HeatmapUtils
     HeatmapGrid --> TimeUtils
+    DateHeatmap --> HeatmapUtils
+    DateHeatmap --> TimeUtils
     AdminEvent --> ResponsesList
     AdminEvent -->|"Delete"| M_removeResponse
     M_removeResponse --> DB_responses

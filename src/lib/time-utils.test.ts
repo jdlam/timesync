@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	formatDate,
 	formatDateDisplay,
+	formatDateSlot,
 	formatTimeSlot,
 	formatTimeSlotWithDayOffset,
 	formatTimezoneOffset,
+	generateDateSlots,
 	generateTimeSlots,
 	getBrowserTimezone,
 	getDateColumnLabel,
@@ -384,6 +386,49 @@ describe("time-utils", () => {
 
 		it("should handle zero offset", () => {
 			expect(formatTimezoneOffset(0)).toBe("+0 hours");
+		});
+	});
+
+	describe("generateDateSlots", () => {
+		it("should produce one canonical midnight slot per date", () => {
+			const slots = generateDateSlots(
+				["2025-01-20", "2025-01-21"],
+				"America/New_York",
+			);
+			// Midnight EST (UTC-5 in January) => 05:00 UTC
+			expect(slots).toEqual([
+				"2025-01-20T05:00:00.000Z",
+				"2025-01-21T05:00:00.000Z",
+			]);
+		});
+
+		it("should return slots sorted ascending regardless of input order", () => {
+			const slots = generateDateSlots(
+				["2025-01-22", "2025-01-20", "2025-01-21"],
+				"UTC",
+			);
+			expect(slots).toEqual([
+				"2025-01-20T00:00:00.000Z",
+				"2025-01-21T00:00:00.000Z",
+				"2025-01-22T00:00:00.000Z",
+			]);
+		});
+
+		it("should round-trip through formatDate back to the date string", () => {
+			const [slot] = generateDateSlots(["2025-07-04"], "America/Los_Angeles");
+			expect(formatDate(slot, "America/Los_Angeles")).toBe("2025-07-04");
+		});
+
+		it("should return an empty array for no dates", () => {
+			expect(generateDateSlots([], "UTC")).toEqual([]);
+		});
+	});
+
+	describe("formatDateSlot", () => {
+		it("should format a canonical date slot as a weekday date", () => {
+			const [slot] = generateDateSlots(["2025-01-20"], "America/New_York");
+			// 2025-01-20 is a Monday
+			expect(formatDateSlot(slot, "America/New_York")).toBe("Mon, Jan 20");
 		});
 	});
 });

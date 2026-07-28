@@ -6,12 +6,28 @@ export const TIER_LIMITS = {
 	free: {
 		maxParticipants: 5,
 		maxDates: 14,
+		// Dates events are capped by calendar span (8 weeks), not day count.
+		maxDateSpanDays: 56,
 	},
 	premium: {
 		maxParticipants: -1, // Unlimited
 		maxDates: 365,
+		maxDateSpanDays: 364, // 52 weeks (~a year); whole weeks for exact copy
 	},
 } as const;
+
+/**
+ * Inclusive number of calendar days spanned by a set of date strings
+ * (YYYY-MM-DD), from earliest to latest. Treats the first day as day 1, so a
+ * 5-week window is exactly 35 days. Keep in sync with src/lib/tier-config.ts.
+ */
+export function getDateRangeSpanDays(dates: string[]): number {
+	if (dates.length === 0) return 0;
+	const times = dates.map((d) => Date.parse(`${d}T00:00:00Z`));
+	const min = Math.min(...times);
+	const max = Math.max(...times);
+	return Math.round((max - min) / 86_400_000) + 1;
+}
 
 export function isValidDateString(value: string): boolean {
 	if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value)) {

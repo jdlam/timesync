@@ -1,9 +1,22 @@
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { generateTimeSlots } from "./time-utils";
+import {
+	type DatePattern,
+	formatBlockLabel,
+	getDateBlocks,
+	isGroupedPattern,
+} from "./date-blocks";
+import {
+	formatDate,
+	formatDateSlot,
+	generateDateSlots,
+	generateTimeSlots,
+} from "./time-utils";
 
 interface EventData {
 	title: string;
+	eventMode?: "times" | "dates";
+	datePattern?: DatePattern;
 	dates: string[];
 	timeRangeStart: string;
 	timeRangeEnd: string;
@@ -17,6 +30,7 @@ interface ResponseData {
 }
 
 interface CsvRow {
+	group?: string;
 	timeSlot: string;
 	respondentName: string;
 	available: "Yes" | "No";
@@ -55,14 +69,29 @@ export function generateCsvContent(
 	event: EventData,
 	responses: ResponseData[],
 ): string {
-	// Generate all possible time slots for the event
-	const allSlots = generateTimeSlots(
-		event.dates,
-		event.timeRangeStart,
-		event.timeRangeEnd,
-		event.slotDuration,
-		event.timeZone,
-	);
+	const isDatesMode = event.eventMode === "dates";
+	const grouped = isDatesMode && isGroupedPattern(event.datePattern);
+
+	// Generate all possible slots for the event. Dates events use one canonical
+	// slot per candidate day; times events expand into intra-day time slots.
+	const allSlots = isDatesMode
+		? generateDateSlots(event.dates, event.timeZone)
+		: generateTimeSlots(
+				event.dates,
+				event.timeRangeStart,
+				event.timeRangeEnd,
+				event.slotDuration,
+				event.timeZone,
+			);
+
+	// For grouped events, label each candidate day with its block.
+	const blockLabelByDay = new Map<string, string>();
+	if (grouped) {
+		for (const block of getDateBlocks(event.dates)) {
+			const label = formatBlockLabel(block);
+			for (const day of block) blockLabelByDay.set(day, label);
+		}
+	}
 
 	// Build rows for CSV
 	const rows: CsvRow[] = [];
@@ -74,11 +103,17 @@ export function generateCsvContent(
 	}));
 
 	for (const slot of allSlots) {
-		const formattedSlot = formatTimeSlotForCsv(slot, event.timeZone);
+		const formattedSlot = isDatesMode
+			? formatDateSlot(slot, event.timeZone)
+			: formatTimeSlotForCsv(slot, event.timeZone);
+		const group = grouped
+			? blockLabelByDay.get(formatDate(slot, event.timeZone))
+			: undefined;
 
 		for (const { response, selectedSlotsSet } of responsesWithSlotSets) {
 			const isAvailable = selectedSlotsSet.has(slot);
 			rows.push({
+				group,
 				timeSlot: formattedSlot,
 				respondentName: response.respondentName,
 				available: isAvailable ? "Yes" : "No",
@@ -87,11 +122,17 @@ export function generateCsvContent(
 	}
 
 	// Build CSV string
-	const header = "Time Slot,Respondent Name,Available";
-	const csvRows = rows.map(
-		(row) =>
-			`${escapeCsvField(row.timeSlot)},${escapeCsvField(row.respondentName)},${row.available}`,
-	);
+	const header = grouped
+		? "Group,Date,Respondent Name,Available"
+		: isDatesMode
+			? "Date,Respondent Name,Available"
+			: "Time Slot,Respondent Name,Available";
+	const csvRows = rows.map((row) => {
+		const cells = grouped
+			? [row.group ?? "", row.timeSlot, row.respondentName]
+			: [row.timeSlot, row.respondentName];
+		return `${cells.map(escapeCsvField).join(",")},${row.available}`;
+	});
 
 	return [header, ...csvRows].join("\n");
 }

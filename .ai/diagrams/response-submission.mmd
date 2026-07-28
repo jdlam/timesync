@@ -9,9 +9,19 @@ sequenceDiagram
     Page->>Convex: events.getByIdWithResponseCount
     Convex->>DB: SELECT event + count
     Convex-->>Page: event data
-    Page->>Grid: Render with event config
-    Grid->>Grid: generateTimeSlots()
-    Guest->>Grid: Select availability slots
+    alt eventMode = "dates"
+        Page->>Grid: Render DateAvailabilityCalendar
+        Grid->>Grid: generateDateSlots()
+        alt grouped pattern
+            Grid->>Guest: DateBlockSelector (toggle whole blocks)
+        else individual
+            Guest->>Grid: Pick individual days / ranges
+        end
+    else eventMode = "times"
+        Page->>Grid: Render AvailabilityGrid
+        Grid->>Grid: generateTimeSlots()
+        Guest->>Grid: Select availability slots
+    end
     Guest->>Page: Enter name, submit
     Page->>Page: generateEditToken()
     Page->>Convex: responses.submit

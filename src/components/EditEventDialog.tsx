@@ -11,10 +11,18 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/form";
+import {
+	isGroupedPattern,
+	patternLabel,
+	weekdaysForPattern,
+} from "@/lib/date-blocks";
 import { getErrorMessage } from "@/lib/form-utils";
+import { TIER_LIMITS } from "@/lib/tier-config";
 import { editEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
+import { DayPoolPicker } from "./availability-grid/DayPoolPicker";
+import { PatternRangePicker } from "./availability-grid/PatternRangePicker";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Checkbox } from "./ui/checkbox";
@@ -42,6 +50,12 @@ export function EditEventDialog({
 	onOpenChange,
 }: EditEventDialogProps) {
 	const updateEventMutation = useMutation(api.events.update);
+
+	const isDatesMode = event.eventMode === "dates";
+	const isGrouped = isGroupedPattern(event.datePattern);
+	const tierLimits = TIER_LIMITS[event.isPremium ? "premium" : "free"];
+	const maxDateSpanDays = tierLimits.maxDateSpanDays;
+	const spanWeeks = Math.round(maxDateSpanDays / 7);
 
 	// Get response count for warning (only when dialog is open)
 	const responseCountData = useQuery(
@@ -71,6 +85,7 @@ export function EditEventDialog({
 		defaultValues: {
 			title: event.title,
 			description: event.description ?? ("" as string | undefined | null),
+			eventMode: event.eventMode ?? ("times" as "times" | "dates"),
 			dates: event.dates,
 			timeRangeStart: event.timeRangeStart,
 			timeRangeEnd: event.timeRangeEnd,
@@ -98,8 +113,9 @@ export function EditEventDialog({
 					title: value.title,
 					description: value.description || null,
 					dates: value.dates,
-					timeRangeStart: value.timeRangeStart,
-					timeRangeEnd: value.timeRangeEnd,
+					// Dates events keep sentinel time fields — don't send them.
+					timeRangeStart: isDatesMode ? undefined : value.timeRangeStart,
+					timeRangeEnd: isDatesMode ? undefined : value.timeRangeEnd,
 					password: passwordValue,
 					notifyOnResponse: value.notifyOnResponse,
 				});
@@ -139,12 +155,11 @@ export function EditEventDialog({
 	}, [open, event]);
 
 	// Handle calendar date selection
+	// Multi-select calendar for time-slot events (dates events use DayPoolPicker).
 	const handleDateSelect = (dates: Date[] | undefined) => {
 		if (!dates) return;
-		setSelectedDates(dates);
-
-		// Convert dates to YYYY-MM-DD strings and sort
 		const dateStrings = dates.map((d) => format(d, "yyyy-MM-dd")).sort();
+		setSelectedDates(dates);
 		form.setFieldValue("dates", dateStrings);
 	};
 
@@ -234,120 +249,150 @@ export function EditEventDialog({
 						{(field) => (
 							<div className="space-y-2">
 								<Label className="text-xl font-bold text-foreground">
-									Select Dates
+									{isDatesMode ? "Select candidate days" : "Select Dates"}
 								</Label>
-								<div>
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => setShowCalendar(!showCalendar)}
-										className="w-full justify-start text-left font-normal"
-									>
-										<CalendarIcon className="mr-2 h-4 w-4" />
-										{selectedDates.length > 0
-											? `${selectedDates.length} date(s) selected`
-											: "Pick dates"}
-									</Button>
-									{showCalendar && (
-										<div className="mt-2 bg-card border border-border rounded-lg p-4">
-											<Calendar
-												mode="multiple"
-												selected={selectedDates}
-												onSelect={handleDateSelect}
-												className="rounded-md"
-											/>
-											<p className="text-xs text-muted-foreground mt-2">
-												Past dates are allowed when editing to preserve existing
-												data.
-											</p>
-										</div>
-									)}
-									{selectedDates.length > 0 && (
-										<div className="mt-2 flex flex-wrap gap-2">
-											{[...selectedDates]
-												.sort((a, b) => a.getTime() - b.getTime())
-												.map((date) => (
-													<div
-														key={date.toISOString()}
-														className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
-													>
-														{format(date, "MMM d, yyyy")}
-													</div>
-												))}
-										</div>
-									)}
-									{field.state.meta.errors.length > 0 && (
-										<p className="text-red-500 text-sm mt-1">
-											{getErrorMessage(field.state.meta.errors[0])}
+								{isDatesMode && isGrouped ? (
+									<>
+										<p className="text-sm text-muted-foreground">
+											{patternLabel(event.datePattern, event.patternWeekdays)} —
+											add or remove date ranges below.
 										</p>
-									)}
-								</div>
+										<PatternRangePicker
+											weekdays={weekdaysForPattern(
+												event.datePattern,
+												event.patternWeekdays,
+											)}
+											selected={field.state.value}
+											onSelectedChange={(next) => field.handleChange(next)}
+											maxSpanDays={maxDateSpanDays}
+											spanWeeks={spanWeeks}
+										/>
+									</>
+								) : isDatesMode ? (
+									<DayPoolPicker
+										selected={field.state.value}
+										onSelectedChange={(next) => field.handleChange(next)}
+										maxSpanDays={maxDateSpanDays}
+										spanWeeks={spanWeeks}
+									/>
+								) : (
+									<div>
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => setShowCalendar(!showCalendar)}
+											className="w-full justify-start text-left font-normal"
+										>
+											<CalendarIcon className="mr-2 h-4 w-4" />
+											{selectedDates.length > 0
+												? `${selectedDates.length} date(s) selected`
+												: "Pick dates"}
+										</Button>
+										{showCalendar && (
+											<div className="mt-2 bg-card border border-border rounded-lg p-4">
+												<Calendar
+													mode="multiple"
+													selected={selectedDates}
+													onSelect={handleDateSelect}
+													className="rounded-md"
+												/>
+												<p className="text-xs text-muted-foreground mt-2">
+													Past dates are allowed when editing to preserve
+													existing data.
+												</p>
+											</div>
+										)}
+										{selectedDates.length > 0 && (
+											<div className="mt-2 flex flex-wrap gap-2">
+												{[...selectedDates]
+													.sort((a, b) => a.getTime() - b.getTime())
+													.map((date) => (
+														<div
+															key={date.toISOString()}
+															className="bg-teal-600/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded text-sm"
+														>
+															{format(date, "MMM d, yyyy")}
+														</div>
+													))}
+											</div>
+										)}
+									</div>
+								)}
+								{field.state.meta.errors.length > 0 && (
+									<p className="text-red-500 text-sm mt-1">
+										{getErrorMessage(field.state.meta.errors[0])}
+									</p>
+								)}
 							</div>
 						)}
 					</form.AppField>
 
-					{/* Time Range */}
-					<div className="grid grid-cols-2 gap-4">
-						<form.AppField name="timeRangeStart">
-							{(field) => (
-								<div className="space-y-2">
-									<Label
-										htmlFor="edit-start-time"
-										className="text-xl font-bold text-foreground"
-									>
-										Start Time
-									</Label>
-									<Input
-										id="edit-start-time"
-										type="time"
-										value={field.state.value}
-										onChange={(e) => field.handleChange(e.target.value)}
-										className="bg-background border-border text-foreground"
-									/>
-								</div>
-							)}
-						</form.AppField>
-
-						<form.AppField name="timeRangeEnd">
-							{(field) => (
-								<div className="space-y-2">
-									<Label
-										htmlFor="edit-end-time"
-										className="text-xl font-bold text-foreground"
-									>
-										End Time
-									</Label>
-									<Input
-										id="edit-end-time"
-										type="time"
-										value={field.state.value}
-										onChange={(e) => field.handleChange(e.target.value)}
-										className="bg-background border-border text-foreground"
-									/>
-									{field.state.meta.errors.length > 0 && (
-										<p className="text-red-500 text-sm mt-1">
-											{getErrorMessage(field.state.meta.errors[0])}
-										</p>
+					{/* Time Range (times mode only) */}
+					{!isDatesMode && (
+						<>
+							<div className="grid grid-cols-2 gap-4">
+								<form.AppField name="timeRangeStart">
+									{(field) => (
+										<div className="space-y-2">
+											<Label
+												htmlFor="edit-start-time"
+												className="text-xl font-bold text-foreground"
+											>
+												Start Time
+											</Label>
+											<Input
+												id="edit-start-time"
+												type="time"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												className="bg-background border-border text-foreground"
+											/>
+										</div>
 									)}
-								</div>
-							)}
-						</form.AppField>
-					</div>
+								</form.AppField>
 
-					{/* Read-only: Slot Duration */}
-					<div className="space-y-2">
-						<Label className="text-xl font-bold text-foreground flex items-center gap-2">
-							<Clock className="h-4 w-4" />
-							Time Slot Duration
-						</Label>
-						<div className="bg-muted/50 border border-border rounded-md px-3 py-2 text-muted-foreground">
-							{formatSlotDuration(event.slotDuration)}
-						</div>
-						<p className="text-xs text-muted-foreground">
-							Slot duration cannot be changed as it would invalidate existing
-							responses.
-						</p>
-					</div>
+								<form.AppField name="timeRangeEnd">
+									{(field) => (
+										<div className="space-y-2">
+											<Label
+												htmlFor="edit-end-time"
+												className="text-xl font-bold text-foreground"
+											>
+												End Time
+											</Label>
+											<Input
+												id="edit-end-time"
+												type="time"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												className="bg-background border-border text-foreground"
+											/>
+											{field.state.meta.errors.length > 0 && (
+												<p className="text-red-500 text-sm mt-1">
+													{getErrorMessage(field.state.meta.errors[0])}
+												</p>
+											)}
+										</div>
+									)}
+								</form.AppField>
+							</div>
+
+							{/* Read-only: Slot Duration */}
+							<div className="space-y-2">
+								<Label className="text-xl font-bold text-foreground flex items-center gap-2">
+									<Clock className="h-4 w-4" />
+									Time Slot Duration
+								</Label>
+								<div className="bg-muted/50 border border-border rounded-md px-3 py-2 text-muted-foreground">
+									{formatSlotDuration(event.slotDuration)}
+								</div>
+								<p className="text-xs text-muted-foreground">
+									Slot duration cannot be changed as it would invalidate
+									existing responses.
+								</p>
+							</div>
+						</>
+					)}
 
 					{/* Password Protection (Premium only) */}
 					{event.isPremium && (

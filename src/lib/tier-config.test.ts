@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	getDateRangeSpanDays,
 	getTierLimits,
 	hasUnlimitedParticipants,
 	TIER_LIMITS,
@@ -58,6 +59,37 @@ describe("tier-config", () => {
 
 		it("should return true for premium tier", () => {
 			expect(hasUnlimitedParticipants("premium")).toBe(true);
+		});
+	});
+
+	describe("maxDateSpanDays", () => {
+		it("should cap free dates events at 8 weeks (56 days)", () => {
+			expect(TIER_LIMITS.free.maxDateSpanDays).toBe(56);
+		});
+
+		it("should allow premium dates events up to 52 weeks", () => {
+			expect(TIER_LIMITS.premium.maxDateSpanDays).toBe(364);
+		});
+	});
+
+	describe("getDateRangeSpanDays", () => {
+		it("should return 0 for an empty list", () => {
+			expect(getDateRangeSpanDays([])).toBe(0);
+		});
+
+		it("should count a single day as span 1", () => {
+			expect(getDateRangeSpanDays(["2025-08-01"])).toBe(1);
+		});
+
+		it("should count inclusive days from earliest to latest", () => {
+			// 2025-08-01 .. 2025-09-04 inclusive = 35 days.
+			expect(getDateRangeSpanDays(["2025-08-01", "2025-09-04"])).toBe(35);
+		});
+
+		it("should ignore ordering and interior gaps (span is min..max)", () => {
+			expect(
+				getDateRangeSpanDays(["2025-08-10", "2025-08-01", "2025-08-05"]),
+			).toBe(10);
 		});
 	});
 });

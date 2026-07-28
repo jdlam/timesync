@@ -1,4 +1,13 @@
-import { Calendar, Clock, Globe, Lock, MapPin, Users } from "lucide-react";
+import {
+	Calendar,
+	CalendarRange,
+	Clock,
+	Globe,
+	Lock,
+	MapPin,
+	Users,
+} from "lucide-react";
+import { blockNoun, getDateBlocks, isGroupedPattern } from "@/lib/date-blocks";
 import { useTimezoneDisplaySafe } from "@/lib/timezone-display";
 import type { PublicEvent } from "../../convex/shared_types";
 import { TimezoneBanner } from "./TimezoneBanner";
@@ -24,6 +33,12 @@ export function EventHeader({
 	const isLocalMode = timezoneContext?.displayMode === "local";
 	const displayTimezone = timezoneContext?.displayTimezone ?? event.timeZone;
 
+	// Dates events don't have time slots; grouped ones are measured in blocks.
+	const isDates = event.eventMode === "dates";
+	const grouped = isGroupedPattern(event.datePattern);
+	const blockCount = grouped ? getDateBlocks(event.dates).length : 0;
+	const noun = blockNoun(event.datePattern);
+
 	return (
 		<>
 			<TimezoneBanner />
@@ -39,17 +54,34 @@ export function EventHeader({
 				)}
 
 				<div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-					<div className="flex items-center gap-2">
-						<Clock className="w-4 h-4" />
-						<span>{event.slotDuration} minute slots</span>
-					</div>
+					{/* Time slots only apply to time-based events. */}
+					{!isDates && (
+						<div className="flex items-center gap-2">
+							<Clock className="w-4 h-4" />
+							<span>{event.slotDuration} minute slots</span>
+						</div>
+					)}
 
-					<div className="flex items-center gap-2">
-						<Calendar className="w-4 h-4" />
-						<span>
-							{event.dates.length} {event.dates.length === 1 ? "day" : "days"}
-						</span>
-					</div>
+					{/* Grouped dates events are counted in blocks (weekends, …). */}
+					{grouped && (
+						<div className="flex items-center gap-2">
+							<CalendarRange className="w-4 h-4" />
+							<span>
+								{blockCount} {noun}
+								{blockCount === 1 ? "" : "s"}
+							</span>
+						</div>
+					)}
+
+					{/* Grouped events are measured in blocks only, not raw days. */}
+					{!grouped && (
+						<div className="flex items-center gap-2">
+							<Calendar className="w-4 h-4" />
+							<span>
+								{event.dates.length} {event.dates.length === 1 ? "day" : "days"}
+							</span>
+						</div>
+					)}
 
 					<div
 						className={`flex items-center gap-2 ${isLocalMode ? "text-amber-400" : ""}`}

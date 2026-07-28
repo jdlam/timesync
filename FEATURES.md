@@ -7,18 +7,53 @@ This document lists all features currently implemented in TimeSync.
 ## Event Creation
 
 - **Create Event Form** at `/events/create`
+  - **Event mode chooser**: align on **Times** or **Dates** (see below)
   - Event title (required, validated)
   - Optional description/notes
   - Timezone selection with searchable dropdown (all IANA timezones)
   - Multi-date calendar picker (up to 14 dates for free tier)
   - Date chips sorted chronologically (oldest to newest)
-  - Time range selection (start and end times)
-  - Slot duration options (15, 30, or 60 minutes)
+  - Time range selection (start and end times) — *Times mode only*
+  - Slot duration options (15, 30, or 60 minutes) — *Times mode only*
   - Form validation with clear error messages
   - Success dialog with public link and admin link
   - One-click copy for both links
   - Signed-in users: events linked to account (viewable in My Events)
   - Guest users: events accessible via admin link only
+
+---
+
+## Date-Only Events (Align on Days)
+
+For coordinating on **which calendar days** work (e.g. planning a vacation)
+rather than a time of day.
+
+- **Event mode** chosen at creation: *Times* (the classic time-slot flow) or
+  *Dates*. Existing events default to *Times*.
+- **Selection pattern** chosen at creation: **Individual**, **Weekends**,
+  **Weekdays**, or **Custom** (pick weekdays). Grouped patterns (anything but
+  Individual) apply a recurring weekday shape across a range and split the
+  candidate days into **blocks** (each weekend, each work-week, each Mon–Wed
+  run). The creator can exclude specific blocks; responders toggle **whole
+  blocks** instead of individual days; the admin ranks **best blocks**. Blocks
+  are derived from contiguous runs of `dates` — nothing extra is stored.
+  Components: `PatternRangePicker` (creator), `DateBlockSelector` (responder).
+- **Individual pattern** uses the shared calendar picker (`DayPoolPicker`): an
+  "Add multiple days" popover picks a range and filters it by weekday — one-tap
+  **Weekends** / **Weekdays** / **All**, or individual weekday chips — plus an
+  always-visible calendar to tap individual days.
+- **Candidate day pool** (creator) defined via the range popover and/or
+  individual days. **Responders** are limited to the candidate days and get a
+  Select-all shortcut. Name + optional comment work the same as time-slot events.
+- **Tier limit is span-based** (not day count): the pool may span at most **8
+  weeks** (56 days from the first day) on free, up to a year on premium.
+- **Admin results**: a calendar-style heatmap coloring each candidate day by
+  overlap, with respondent popovers, a **Best Days** recommendation panel, and a
+  **best consecutive stretch** ("N days in a row everyone is free").
+- **CSV export** emits one row per candidate day.
+- **Implementation**: each candidate date maps to one canonical midnight-in-
+  timezone slot, so the existing heatmap/response/aggregation stack is reused
+  unchanged. Stored via `events.eventMode` (`"times" | "dates"`).
 
 ---
 

@@ -2068,4 +2068,124 @@ describe("events", () => {
 			expect(event?.password).toBe(originalPassword);
 		});
 	});
+
+	describe("create (dates mode)", () => {
+		it("should persist eventMode and sentinel time fields for a dates event", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Summer Trip",
+				timeZone: "America/New_York",
+				eventMode: "dates",
+				dates: ["2025-08-01", "2025-08-02", "2025-08-03"],
+				// Sentinels — should be accepted without time-range validation.
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: 1440,
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => ctx.db.get(result.eventId));
+			expect(event?.eventMode).toBe("dates");
+			expect(event?.timeRangeStart).toBe("00:00");
+			expect(event?.timeRangeEnd).toBe("00:00");
+			expect(event?.slotDuration).toBe(1440);
+			expect(event?.dates).toHaveLength(3);
+		});
+
+		it("should accept a candidate pool spanning exactly 8 weeks (free)", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				// 2025-08-01 .. 2025-09-25 inclusive = 56 days = 8 weeks.
+				dates: ["2025-08-01", "2025-09-25"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: 1440,
+				maxRespondents: 5,
+			});
+
+			expect(result.eventId).toBeDefined();
+		});
+
+		it("should reject a dates pool spanning more than 8 weeks (free)", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Trip",
+					timeZone: "UTC",
+					eventMode: "dates",
+					// 2025-08-01 .. 2025-09-26 inclusive = 57 days > 8 weeks.
+					dates: ["2025-08-01", "2025-09-26"],
+					timeRangeStart: "00:00",
+					timeRangeEnd: "00:00",
+					slotDuration: 1440,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow(/span at most 8 weeks/);
+		});
+
+		it("should persist a grouped weekends pattern", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Weekend trip",
+				timeZone: "UTC",
+				eventMode: "dates",
+				datePattern: "weekends",
+				patternWeekdays: [0, 6],
+				// 2025-08-02 Sat, 2025-08-03 Sun, 2025-08-09 Sat, 2025-08-10 Sun.
+				dates: ["2025-08-02", "2025-08-03", "2025-08-09", "2025-08-10"],
+				timeRangeStart: "00:00",
+				timeRangeEnd: "00:00",
+				slotDuration: 1440,
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => ctx.db.get(result.eventId));
+			expect(event?.datePattern).toBe("weekends");
+			expect(event?.patternWeekdays).toEqual([0, 6]);
+		});
+
+		it("should reject candidate days that don't match the pattern weekdays", async () => {
+			const t = convexTest(schema, modules);
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Weekend trip",
+					timeZone: "UTC",
+					eventMode: "dates",
+					datePattern: "weekends",
+					patternWeekdays: [0, 6],
+					// 2025-08-04 is a Monday — not a weekend.
+					dates: ["2025-08-04"],
+					timeRangeStart: "00:00",
+					timeRangeEnd: "00:00",
+					slotDuration: 1440,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow(/match the selected day pattern/);
+		});
+
+		it("should default eventMode to times when omitted", async () => {
+			const t = convexTest(schema, modules);
+
+			const result = await t.mutation(api.events.create, {
+				title: "Regular Meeting",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			const event = await t.run(async (ctx) => ctx.db.get(result.eventId));
+			expect(event?.eventMode).toBe("times");
+		});
+	});
 });

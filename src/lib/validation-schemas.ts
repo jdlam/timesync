@@ -1,13 +1,15 @@
 import { z } from "zod";
-import { TIER_LIMITS, type TierType } from "./tier-config";
+import {
+	getDateRangeSpanDays,
+	TIER_LIMITS,
+	type TierType,
+} from "./tier-config";
 import { isDateInPast, validateTimeRange } from "./time-utils";
 
 /**
  * Factory function to create event schema based on tier
  */
 export function createEventSchemaForTier(tier: TierType = "free") {
-	const limits = TIER_LIMITS[tier];
-
 	return z
 		.object({
 			title: z
@@ -22,13 +24,20 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 
 			timeZone: z.string().min(1, "Timezone is required"),
 
+			// "times" (default) aligns on time slots; "dates" aligns on whole days.
+			eventMode: z.enum(["times", "dates"]).optional(),
+
+			// Dates-event day pattern; custom requires patternWeekdays (checked
+			// in superRefine below).
+			datePattern: z
+				.enum(["individual", "weekends", "weekdays", "custom"])
+				.optional(),
+			patternWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+
+			// Count vs span cap is enforced per event mode in superRefine below.
 			dates: z
 				.array(z.string())
 				.min(1, "At least one date is required")
-				.max(
-					limits.maxDates,
-					`Maximum ${limits.maxDates} dates allowed for ${tier} tier`,
-				)
 				.refine(
 					(dates) => {
 						// Check if any dates are in the past
@@ -71,6 +80,8 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 		})
 		.refine(
 			(data) => {
+				// Time range only applies to "times" events.
+				if (data.eventMode === "dates") return true;
 				// Validate that end time is after start time
 				return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
 			},
@@ -78,7 +89,64 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 				message: "End time must be after start time",
 				path: ["timeRangeEnd"],
 			},
-		);
+		)
+		.superRefine((data, ctx) => {
+			refineDatesLimit(tier, data.eventMode, data.dates, ctx);
+			refineDatePattern(data.datePattern, data.patternWeekdays, ctx);
+		});
+}
+
+/**
+ * A custom day pattern must name at least one weekday.
+ */
+function refineDatePattern(
+	datePattern: string | undefined,
+	patternWeekdays: number[] | undefined,
+	ctx: z.RefinementCtx,
+) {
+	if (
+		datePattern === "custom" &&
+		!(patternWeekdays && patternWeekdays.length > 0)
+	) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["patternWeekdays"],
+			message: "Pick at least one weekday for a custom pattern",
+		});
+	}
+}
+
+/**
+ * Enforce the candidate-date limit for both event modes:
+ * - "times": at most `maxDates` individual days
+ * - "dates": the candidate pool may span at most `maxDateSpanDays` calendar days
+ */
+function refineDatesLimit(
+	tier: TierType,
+	eventMode: "times" | "dates" | undefined,
+	dates: string[],
+	ctx: z.RefinementCtx,
+) {
+	const limits = TIER_LIMITS[tier];
+	if (eventMode === "dates") {
+		const span = getDateRangeSpanDays(dates);
+		if (span > limits.maxDateSpanDays) {
+			const weeks = Math.round(limits.maxDateSpanDays / 7);
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["dates"],
+				message: `Dates can span at most ${weeks} weeks for ${tier} tier`,
+			});
+		}
+		return;
+	}
+	if (dates.length > limits.maxDates) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ["dates"],
+			message: `Maximum ${limits.maxDates} dates allowed for ${tier} tier`,
+		});
+	}
 }
 
 /**
@@ -111,8 +179,6 @@ export const submitResponseSchema = z.object({
  * Note: Slot duration and timezone are not editable
  */
 export function editEventSchemaForTier(tier: TierType = "free") {
-	const limits = TIER_LIMITS[tier];
-
 	return z
 		.object({
 			title: z
@@ -126,13 +192,14 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 				.optional()
 				.nullable(),
 
-			dates: z
-				.array(z.string())
-				.min(1, "At least one date is required")
-				.max(
-					limits.maxDates,
-					`Maximum ${limits.maxDates} dates allowed for ${tier} tier`,
-				),
+			eventMode: z.enum(["times", "dates"]).optional(),
+			datePattern: z
+				.enum(["individual", "weekends", "weekdays", "custom"])
+				.optional(),
+			patternWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+
+			// Count vs span cap is enforced per event mode in superRefine below.
+			dates: z.array(z.string()).min(1, "At least one date is required"),
 
 			timeRangeStart: z
 				.string()
@@ -160,13 +227,18 @@ export function editEventSchemaForTier(tier: TierType = "free") {
 		})
 		.refine(
 			(data) => {
+				if (data.eventMode === "dates") return true;
 				return validateTimeRange(data.timeRangeStart, data.timeRangeEnd);
 			},
 			{
 				message: "End time must be after start time",
 				path: ["timeRangeEnd"],
 			},
-		);
+		)
+		.superRefine((data, ctx) => {
+			refineDatesLimit(tier, data.eventMode, data.dates, ctx);
+			refineDatePattern(data.datePattern, data.patternWeekdays, ctx);
+		});
 }
 
 /**

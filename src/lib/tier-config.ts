@@ -6,6 +6,9 @@ export const TIER_LIMITS = {
 	free: {
 		maxParticipants: 5,
 		maxDates: 14,
+		// Dates events are limited by calendar span, not day count: the candidate
+		// pool may span at most 8 weeks (56 days) measured from the first day.
+		maxDateSpanDays: 56,
 		slotDurations: [15, 30, 60] as const,
 		features: {
 			passwordProtection: false,
@@ -15,6 +18,8 @@ export const TIER_LIMITS = {
 	premium: {
 		maxParticipants: -1, // Unlimited
 		maxDates: 365,
+		// Whole number of weeks so the "up to N weeks" copy is always exact.
+		maxDateSpanDays: 364, // 52 weeks (~a year)
 		slotDurations: [15, 30, 60] as const, // Can add custom durations later
 		features: {
 			passwordProtection: true,
@@ -24,6 +29,20 @@ export const TIER_LIMITS = {
 } as const;
 
 export type TierType = keyof typeof TIER_LIMITS;
+
+/**
+ * Inclusive number of calendar days spanned by a set of date strings
+ * (YYYY-MM-DD): the count of days from the earliest to the latest, inclusive.
+ * Used to cap dates-only events by span rather than by day count. Treats the
+ * first day as day 1, so a 5-week window is exactly 35 days.
+ */
+export function getDateRangeSpanDays(dates: string[]): number {
+	if (dates.length === 0) return 0;
+	const times = dates.map((d) => Date.parse(`${d}T00:00:00Z`));
+	const min = Math.min(...times);
+	const max = Math.max(...times);
+	return Math.round((max - min) / 86_400_000) + 1;
+}
 
 /**
  * Get the current tier limits (defaults to free)

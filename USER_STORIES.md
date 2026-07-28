@@ -97,6 +97,47 @@
 
 ---
 
+### Story 1.4 - Create Date-Only Event (Align on Days) [P1] ✅
+**As a** user coordinating a multi-day plan (e.g. a vacation)
+**I want to** align on which calendar days work, not a time of day
+**So that** the group can find the days everyone is free
+
+**Acceptance Criteria:**
+- [x] Creation form asks whether to align on **Times** or **Dates**
+- [x] Times mode is the unchanged classic flow
+- [x] Dates mode hides time range + slot duration
+- [x] Creator defines the candidate day pool via a range (From → To) and/or
+      individual days
+- [x] Free tier limits the pool by calendar **span** (8 weeks / 56 days from the
+      first day), not day count; premium allows up to a year
+- [x] Respondents pick the date ranges they're available on a calendar view
+      (constrained to candidate days), plus optional name/comment
+- [x] Range selection can be filtered by weekday (Weekends / Weekdays / specific
+      days) so "every weekend across a range" is one action, not many taps
+- [x] Creator and responder share one calendar picker (DayPoolPicker) with a
+      range popover + individual-day tapping
+- [x] Creator picks a selection **pattern** (Individual / Weekends / Weekdays /
+      Custom); grouped patterns split candidate days into **blocks** the creator
+      can exclude, responders toggle whole blocks, and the admin ranks best
+      blocks. Blocks derive from contiguous runs of `dates` (`getDateBlocks`);
+      components `PatternRangePicker` + `DateBlockSelector`; `getBestBlocks`
+      ranks them.
+- [x] Admin sees a calendar heatmap of per-day overlap with respondent details
+- [x] Admin sees Best Days + best consecutive stretch recommendations
+- [x] CSV export lists candidate days
+- [x] Existing time-slot events are unaffected
+
+**Technical Notes:**
+- `events.eventMode: "times" | "dates"` (optional; undefined = "times")
+- Dates events store sentinel time fields; each candidate date maps to one
+  canonical midnight-in-timezone slot (`generateDateSlots`), reusing the
+  existing heatmap/response aggregation stack
+- Components: `DateAvailabilityCalendar`, `DateHeatmapCalendar`
+- Recommendation helper: `getBestConsecutiveRun` in `heatmap-utils.ts`
+- Span cap via `TIER_LIMITS.maxDateSpanDays` + `getDateRangeSpanDays`
+
+---
+
 ## Epic 2: Respondent Experience (Invitee Flow)
 
 ### Story 2.1 - View Event and Submit Availability [P0] ✅
