@@ -10,6 +10,7 @@ import {
 	Eye,
 	EyeOff,
 	Lock,
+	Mail,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -109,6 +110,7 @@ function CreateEvent() {
 			slotDuration: "30" as "15" | "30" | "60",
 			password: "" as string | undefined,
 			notifyOnResponse: isAuthenticated ? true : undefined,
+			creatorEmail: "" as string | undefined,
 		},
 		validators: {
 			onSubmit: eventSchema as never,
@@ -134,6 +136,10 @@ function CreateEvent() {
 					maxRespondents: tierLimits.maxParticipants,
 					password: value.password || undefined,
 					notifyOnResponse: value.notifyOnResponse || undefined,
+					// Only guests supply an email; signed-in users use their account email.
+					creatorEmail: isAuthenticated
+						? undefined
+						: value.creatorEmail || undefined,
 				});
 				setCreatedEvent({
 					eventId: result.eventId,
@@ -655,7 +661,7 @@ function CreateEvent() {
 						</div>
 					)}
 
-					{/* Email Notifications */}
+					{/* Email Notifications (signed-in creators) */}
 					{isAuthenticated && (
 						<form.AppField name="notifyOnResponse">
 							{(field) => (
@@ -674,6 +680,48 @@ function CreateEvent() {
 										<Bell className="h-4 w-4 text-muted-foreground" />
 										Email me when someone responds
 									</label>
+								</div>
+							)}
+						</form.AppField>
+					)}
+
+					{/* Email the links to the creator */}
+					{isAuthenticated ? (
+						<p className="flex items-center gap-2 text-sm text-muted-foreground">
+							<Mail className="h-4 w-4" />
+							We'll email your event links to your account.
+						</p>
+					) : (
+						<form.AppField name="creatorEmail">
+							{(field) => (
+								<div className="space-y-2">
+									<Label
+										htmlFor="creator-email"
+										className="flex items-center gap-2 text-sm text-foreground"
+									>
+										<Mail className="h-4 w-4 text-muted-foreground" />
+										Email me the event links (optional)
+									</Label>
+									<Input
+										id="creator-email"
+										type="email"
+										inputMode="email"
+										autoComplete="email"
+										placeholder="you@example.com"
+										value={field.state.value ?? ""}
+										onChange={(e) => field.handleChange(e.target.value)}
+										onBlur={field.handleBlur}
+									/>
+									<p className="text-xs text-muted-foreground">
+										We'll send the public and admin links here so you don't lose
+										them. No account required, and we won't use it for anything
+										else.
+									</p>
+									{field.state.meta.errors.length > 0 && (
+										<p className="text-red-500 text-sm mt-1">
+											{getErrorMessage(field.state.meta.errors[0])}
+										</p>
+									)}
 								</div>
 							)}
 						</form.AppField>

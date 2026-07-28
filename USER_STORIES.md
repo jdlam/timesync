@@ -517,6 +517,31 @@
 
 ---
 
+### Story 6.4 - Event Links Emailed on Creation [P2] ✅
+**As an** event creator
+**I want to** receive my event's public and admin links by email
+**So that** I don't lose the admin link after creating an event
+
+**Acceptance Criteria:**
+- [x] Signed-in creators are emailed the links at their account email
+- [x] Guests can enter an optional email on the create form to receive the links
+- [x] Email includes both the public (share) and admin (private) links
+- [x] Invalid guest emails are rejected on both client and server
+- [x] Event creation still succeeds when email is unconfigured (silent skip)
+
+**Technical Notes:**
+- `events.create` accepts an optional `creatorEmail` arg (guests); the account
+  email always wins for signed-in users. Stored as `events.creatorEmail`.
+- New `sendEventCreatedEmail` internal action (`convex/email_actions.ts`) sends
+  the links; scheduled via `ctx.scheduler.runAfter(0, ...)` from `create` when a
+  recipient email is resolvable.
+- Requires `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, and `APP_URL` (for the
+  links) in the Convex Dashboard; a no-op if any are missing.
+- Recipient resolution (`resolveRecipientEmail`) is shared with the new-response
+  notification: users-table email first, then `event.creatorEmail`.
+
+---
+
 ### Story 6.3 - Share Event on Social Media [P2] ❌
 **As an** event creator
 **I want to** share the public link on social media

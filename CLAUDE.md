@@ -252,6 +252,10 @@ The Convex schema (`convex/schema.ts`) defines four tables:
 Key fields:
 - `events.adminToken` - Secret token for event admin access
 - `responses.editToken` - Secret token for editing responses
+- `events.creatorEmail` - Recipient for transactional email. Set from the
+  authenticated account email, or a guest-supplied email on the create form.
+  On creation, `sendEventCreatedEmail` (scheduled from `events.create`) emails
+  the public + admin links here when SendGrid + `APP_URL` are configured.
 - `events.isActive` - Soft delete flag
 - `events.eventMode` - `"times"` (default) or `"dates"`. Dates events align on
   whole calendar days: each candidate date maps to one canonical

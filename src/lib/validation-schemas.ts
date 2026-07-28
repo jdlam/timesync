@@ -77,6 +77,12 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 							}),
 
 			notifyOnResponse: z.boolean().optional(),
+
+			// Optional guest email so the creator can be sent their event links.
+			// Empty string is allowed (field left blank); otherwise must be valid.
+			creatorEmail: z
+				.union([z.literal(""), z.string().email("Enter a valid email address")])
+				.optional(),
 		})
 		.refine(
 			(data) => {

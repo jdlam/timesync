@@ -5,6 +5,31 @@ import schema from "./schema";
 import { modules } from "./test.setup";
 import { USER_NOT_FOUND_ERROR } from "./users";
 
+// `events.create` schedules an internal action (the "here are your links"
+// email) whenever it can resolve a creator email. convex-test runs scheduled
+// functions on a real timer, so any that outlive a test surface as unhandled
+// rejections. Instances created via makeConvexTest() are drained after each test.
+const activeInstances: Array<ReturnType<typeof convexTest>> = [];
+function makeConvexTest() {
+	const t = convexTest(schema, modules);
+	activeInstances.push(t);
+	return t;
+}
+
+afterEach(async () => {
+	for (const t of activeInstances) {
+		try {
+			// Let any runAfter(0) timer fire, then wait for it to finish inside the
+			// still-live instance so it can't write after teardown.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await t.finishInProgressScheduledFunctions();
+		} catch {
+			// Best-effort drain; the scheduled email is a no-op without SendGrid.
+		}
+	}
+	activeInstances.length = 0;
+});
+
 describe("users", () => {
 	describe("getOrCreateUser", () => {
 		it("should throw error when not authenticated", async () => {
@@ -507,7 +532,7 @@ describe("users", () => {
 
 describe("events with subscription tier", () => {
 	it("should create premium event for premium user", async () => {
-		const t = convexTest(schema, modules);
+		const t = makeConvexTest();
 
 		// Create premium user
 		await t.run(async (ctx) => {
@@ -547,7 +572,7 @@ describe("events with subscription tier", () => {
 	});
 
 	it("should create free event for user without subscription", async () => {
-		const t = convexTest(schema, modules);
+		const t = makeConvexTest();
 
 		const result = await t
 			.withIdentity({
@@ -573,7 +598,7 @@ describe("events with subscription tier", () => {
 	});
 
 	it("should create free event for guest user", async () => {
-		const t = convexTest(schema, modules);
+		const t = makeConvexTest();
 
 		const result = await t.mutation(api.events.create, {
 			title: "Guest Event",
@@ -594,7 +619,7 @@ describe("events with subscription tier", () => {
 	});
 
 	it("should create free event for premium user with expired subscription", async () => {
-		const t = convexTest(schema, modules);
+		const t = makeConvexTest();
 
 		// Create user with expired premium subscription
 		await t.run(async (ctx) => {
@@ -652,7 +677,7 @@ describe("events with subscription tier", () => {
 		});
 
 		it("should create premium event for super admin without subscription", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t
 				.withIdentity({

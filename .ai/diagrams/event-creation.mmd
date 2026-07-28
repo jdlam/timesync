@@ -4,6 +4,7 @@ sequenceDiagram
     participant Clerk
     participant Convex
     participant DB as Database
+    participant Email as SendGrid
 
     User->>Form: Choose mode (Times or Dates)
     Note over Form: Dates mode hides time range/slot duration.\nPattern: Individual (day pool) or grouped\n(Weekends/Weekdays/Custom → blocks over a range)
@@ -13,10 +14,17 @@ sequenceDiagram
         Clerk->>Convex: getOrCreateUser
         Convex->>DB: Upsert user record
     end
+    opt Guest creator
+        User->>Form: Enter optional email (for links)
+    end
     Form->>Form: generateAdminToken()
     User->>Form: Submit
     Form->>Convex: events.create
     Convex->>DB: Check subscription tier
-    Convex->>DB: INSERT event
+    Convex->>DB: INSERT event (creatorEmail = account or guest email)
+    opt Recipient email resolvable
+        Convex->>Convex: schedule sendEventCreatedEmail
+        Convex->>Email: Send public + admin links
+    end
     Convex-->>Form: eventId + adminToken
     Form->>User: Show success + URLs
