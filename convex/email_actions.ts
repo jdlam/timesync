@@ -1,7 +1,7 @@
 "use node";
 
-import sgMail from "@sendgrid/mail";
 import { v } from "convex/values";
+import { Resend } from "resend";
 import { internal } from "./_generated/api";
 import { type ActionCtx, internalAction } from "./_generated/server";
 
@@ -12,6 +12,24 @@ function escapeHtml(str: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;")
 		.replace(/'/g, "&#39;");
+}
+
+/**
+ * Send one transactional email via Resend. Resend surfaces API failures on the
+ * returned `error` field (it doesn't throw), so normalize both that and any
+ * network throw into a single result the callers can log.
+ */
+async function sendEmail(
+	apiKey: string,
+	params: { from: string; to: string; subject: string; html: string },
+): Promise<{ ok: boolean; error?: unknown }> {
+	try {
+		const resend = new Resend(apiKey);
+		const { error } = await resend.emails.send(params);
+		return error ? { ok: false, error } : { ok: true };
+	} catch (error) {
+		return { ok: false, error };
+	}
 }
 
 /**
@@ -35,22 +53,22 @@ async function resolveRecipientEmail(
 /**
  * Internal action to email the creator their public + admin links right after
  * an event is created. Sent to the account email (signed-in) or a guest-supplied
- * email; a no-op when neither SendGrid nor a recipient/APP_URL is configured.
+ * email; a no-op when neither Resend nor a recipient/APP_URL is configured.
  *
- * Runs in the Node.js runtime because SendGrid SDK requires Node APIs.
+ * Runs in the Node.js runtime for parity with the other email action.
  */
 export const sendEventCreatedEmail = internalAction({
 	args: {
 		eventId: v.id("events"),
 	},
 	handler: async (ctx, args) => {
-		const apiKey = process.env.SENDGRID_API_KEY;
-		const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+		const apiKey = process.env.RESEND_API_KEY;
+		const fromEmail = process.env.RESEND_FROM_EMAIL;
 		const appUrl = process.env.APP_URL;
 
 		if (!apiKey || !fromEmail) {
 			console.warn(
-				"[Email] SendGrid not configured (SENDGRID_API_KEY or SENDGRID_FROM_EMAIL missing). Skipping event-created email.",
+				"[Email] Resend not configured (RESEND_API_KEY or RESEND_FROM_EMAIL missing). Skipping event-created email.",
 			);
 			return;
 		}
@@ -117,19 +135,17 @@ export const sendEventCreatedEmail = internalAction({
 			</div>
 		`;
 
-		sgMail.setApiKey(apiKey);
-
-		try {
-			await sgMail.send({
-				to: recipientEmail,
-				from: fromEmail,
-				subject,
-				html,
-			});
+		const { ok, error } = await sendEmail(apiKey, {
+			from: fromEmail,
+			to: recipientEmail,
+			subject,
+			html,
+		});
+		if (ok) {
 			console.log(
 				`[Email] Event-created email sent to ${recipientEmail} for event ${args.eventId}`,
 			);
-		} catch (error) {
+		} else {
 			console.error(
 				`[Email] Failed to send event-created email for event ${args.eventId}:`,
 				error,
@@ -142,7 +158,7 @@ export const sendEventCreatedEmail = internalAction({
  * Internal action to send an email notification when someone
  * submits a new response to an event.
  *
- * Runs in the Node.js runtime because SendGrid SDK requires Node APIs.
+ * Runs in the Node.js runtime for parity with the other email action.
  */
 export const sendResponseNotification = internalAction({
 	args: {
@@ -151,13 +167,13 @@ export const sendResponseNotification = internalAction({
 		responseCount: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const apiKey = process.env.SENDGRID_API_KEY;
-		const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+		const apiKey = process.env.RESEND_API_KEY;
+		const fromEmail = process.env.RESEND_FROM_EMAIL;
 		const appUrl = process.env.APP_URL;
 
 		if (!apiKey || !fromEmail) {
 			console.warn(
-				"[Email] SendGrid not configured (SENDGRID_API_KEY or SENDGRID_FROM_EMAIL missing). Skipping notification.",
+				"[Email] Resend not configured (RESEND_API_KEY or RESEND_FROM_EMAIL missing). Skipping notification.",
 			);
 			return;
 		}
@@ -213,19 +229,17 @@ export const sendResponseNotification = internalAction({
 			</div>
 		`;
 
-		sgMail.setApiKey(apiKey);
-
-		try {
-			await sgMail.send({
-				to: recipientEmail,
-				from: fromEmail,
-				subject,
-				html,
-			});
+		const { ok, error } = await sendEmail(apiKey, {
+			from: fromEmail,
+			to: recipientEmail,
+			subject,
+			html,
+		});
+		if (ok) {
 			console.log(
 				`[Email] Notification sent to ${recipientEmail} for event ${args.eventId}`,
 			);
-		} catch (error) {
+		} else {
 			console.error(
 				`[Email] Failed to send notification for event ${args.eventId}:`,
 				error,

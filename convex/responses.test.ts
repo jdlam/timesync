@@ -869,11 +869,11 @@ describe("responses", () => {
 
 				expect(result.responseId).toBeDefined();
 
-				// Drain scheduled functions (the action may fail without SendGrid, that's OK)
+				// Drain scheduled functions (the action may fail without Resend, that's OK)
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
 				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+					String(call[0]).includes("Resend not configured"),
 				);
 				expect(sendGridWarningLogged).toBe(true);
 			} finally {
@@ -902,7 +902,7 @@ describe("responses", () => {
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
 				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+					String(call[0]).includes("Resend not configured"),
 				);
 				expect(sendGridWarningLogged).toBe(false);
 			} finally {
@@ -928,7 +928,7 @@ describe("responses", () => {
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
 				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+					String(call[0]).includes("Resend not configured"),
 				);
 				expect(sendGridWarningLogged).toBe(false);
 			} finally {
@@ -956,7 +956,7 @@ describe("responses", () => {
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
 				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+					String(call[0]).includes("Resend not configured"),
 				);
 				expect(sendGridWarningLogged).toBe(false);
 			} finally {

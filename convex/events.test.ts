@@ -23,7 +23,7 @@ afterEach(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 0));
 			await t.finishInProgressScheduledFunctions();
 		} catch {
-			// Best-effort drain; the scheduled email is a no-op without SendGrid.
+			// Best-effort drain; the scheduled email is a no-op without Resend.
 		}
 	}
 	activeInstances.length = 0;

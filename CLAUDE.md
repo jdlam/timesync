@@ -255,7 +255,7 @@ Key fields:
 - `events.creatorEmail` - Recipient for transactional email. Set from the
   authenticated account email, or a guest-supplied email on the create form.
   On creation, `sendEventCreatedEmail` (scheduled from `events.create`) emails
-  the public + admin links here when SendGrid + `APP_URL` are configured.
+  the public + admin links here when Resend + `APP_URL` are configured.
 - `events.isActive` - Soft delete flag
 - `events.eventMode` - `"times"` (default) or `"dates"`. Dates events align on
   whole calendar days: each candidate date maps to one canonical
@@ -400,8 +400,8 @@ APP_URL=https://timesync.example.com
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_PRICE_ID=price_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-SENDGRID_API_KEY=SG....
-SENDGRID_FROM_EMAIL=notifications@yourdomain.com
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=notifications@yourdomain.com
 ```
 
 ## What's Not Implemented Yet
