@@ -509,7 +509,7 @@
 
 **Technical Notes:**
 - Requires creator email (only for registered users)
-- Uses Resend transactional email service
+- Uses lame-mail, a self-hosted transactional email service
 - `notifyOnResponse` field on events table; only honored for authenticated users
 - Email action runs in Node.js runtime (`convex/email_actions.ts`) via `ctx.scheduler.runAfter`
 - Unsubscribe via Convex HTTP route (`/unsubscribe`) with GET confirmation page and POST mutation
@@ -535,7 +535,7 @@
 - New `sendEventCreatedEmail` internal action (`convex/email_actions.ts`) sends
   the links; scheduled via `ctx.scheduler.runAfter(0, ...)` from `create` when a
   recipient email is resolvable.
-- Requires `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `APP_URL` (for the
+- Requires `LAME_MAIL_URL`, `LAME_MAIL_API_KEY`, and `APP_URL` (for the
   links) in the Convex Dashboard; a no-op if any are missing.
 - Recipient resolution (`resolveRecipientEmail`) is shared with the new-response
   notification: users-table email first, then `event.creatorEmail`.
@@ -704,8 +704,8 @@
 - `STRIPE_SECRET_KEY` - Stripe API key
 - `STRIPE_PRICE_ID` - Stripe price ID for premium subscription
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
-- `RESEND_API_KEY` - Resend API key for transactional email notifications
-- `RESEND_FROM_EMAIL` - Verified sender email for notification emails
+- `LAME_MAIL_URL` - Base URL of the lame-mail API (self-hosted email service)
+- `LAME_MAIL_API_KEY` - lame-mail API key (scoped to the `timesync` project)
 
 ---
 

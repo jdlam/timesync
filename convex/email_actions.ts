@@ -1,36 +1,9 @@
-"use node";
-
 import { v } from "convex/values";
-import { Resend } from "resend";
 import { internal } from "./_generated/api";
 import { type ActionCtx, internalAction } from "./_generated/server";
 
-function escapeHtml(str: string): string {
-	return str
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
-}
-
-/**
- * Send one transactional email via Resend. Resend surfaces API failures on the
- * returned `error` field (it doesn't throw), so normalize both that and any
- * network throw into a single result the callers can log.
- */
-async function sendEmail(
-	apiKey: string,
-	params: { from: string; to: string; subject: string; html: string },
-): Promise<{ ok: boolean; error?: unknown }> {
-	try {
-		const resend = new Resend(apiKey);
-		const { error } = await resend.emails.send(params);
-		return error ? { ok: false, error } : { ok: true };
-	} catch (error) {
-		return { ok: false, error };
-	}
-}
+// Our registered project id in lame-mail (see its src/config/projects.ts).
+const LAME_MAIL_PROJECT = "timesync";
 
 /**
  * Resolve the creator's email for an event: the canonical users-table address
@@ -51,24 +24,58 @@ async function resolveRecipientEmail(
 }
 
 /**
+ * Send one transactional email through lame-mail (self-hosted HTTP email
+ * service). We only ever use the "notification" template: lame-mail renders the
+ * branded layout and HTML-escapes all `data` values, so callers pass plain-text
+ * `subject` + `body` — never HTML. Returns a normalized result to log.
+ */
+async function sendViaLameMail(
+	baseUrl: string,
+	apiKey: string,
+	payload: { to: string; idempotencyKey?: string; subject: string; body: string },
+): Promise<{ ok: boolean; status?: number; error?: unknown }> {
+	try {
+		const response = await fetch(`${baseUrl}/send`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-api-key": apiKey,
+			},
+			body: JSON.stringify({
+				project: LAME_MAIL_PROJECT,
+				template: "notification",
+				to: payload.to,
+				idempotencyKey: payload.idempotencyKey,
+				data: { subject: payload.subject, body: payload.body },
+			}),
+		});
+		if (!response.ok) {
+			const detail = await response.text().catch(() => "");
+			return { ok: false, status: response.status, error: detail };
+		}
+		return { ok: true, status: response.status };
+	} catch (error) {
+		return { ok: false, error };
+	}
+}
+
+/**
  * Internal action to email the creator their public + admin links right after
  * an event is created. Sent to the account email (signed-in) or a guest-supplied
- * email; a no-op when neither Resend nor a recipient/APP_URL is configured.
- *
- * Runs in the Node.js runtime for parity with the other email action.
+ * email; a no-op when neither lame-mail nor a recipient/APP_URL is configured.
  */
 export const sendEventCreatedEmail = internalAction({
 	args: {
 		eventId: v.id("events"),
 	},
 	handler: async (ctx, args) => {
-		const apiKey = process.env.RESEND_API_KEY;
-		const fromEmail = process.env.RESEND_FROM_EMAIL;
+		const baseUrl = process.env.LAME_MAIL_URL;
+		const apiKey = process.env.LAME_MAIL_API_KEY;
 		const appUrl = process.env.APP_URL;
 
-		if (!apiKey || !fromEmail) {
+		if (!baseUrl || !apiKey) {
 			console.warn(
-				"[Email] Resend not configured (RESEND_API_KEY or RESEND_FROM_EMAIL missing). Skipping event-created email.",
+				"[Email] lame-mail not configured (LAME_MAIL_URL or LAME_MAIL_API_KEY missing). Skipping event-created email.",
 			);
 			return;
 		}
@@ -106,48 +113,29 @@ export const sendEventCreatedEmail = internalAction({
 
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		const subject = `Your TimeSync event "${sanitizedTitle}" is ready`;
+		const body = [
+			`"${event.title}" has been created — here are your links.`,
+			"",
+			"Share this link with participants:",
+			publicUrl,
+			"",
+			"Your private admin link (view results and manage responses — keep this secret):",
+			adminUrl,
+		].join("\n");
 
-		const html = `
-			<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-				<h2 style="color: #0d9488;">Your event is ready to share</h2>
-				<p><strong>${escapeHtml(event.title)}</strong> has been created. Here are your links — keep the admin link private.</p>
-				<p style="margin: 20px 0;">
-					<a href="${escapeHtml(publicUrl)}" style="display: inline-block; background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Open sharing link</a>
-				</p>
-				<table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
-					<tr>
-						<td style="padding: 8px 0; color: #6b7280; font-size: 13px;">Public link (share with participants)</td>
-					</tr>
-					<tr>
-						<td style="padding: 0 0 12px; font-size: 13px;"><a href="${escapeHtml(publicUrl)}" style="color: #0d9488; word-break: break-all;">${escapeHtml(publicUrl)}</a></td>
-					</tr>
-					<tr>
-						<td style="padding: 8px 0; color: #6b7280; font-size: 13px;">Admin link (keep this private — it manages results)</td>
-					</tr>
-					<tr>
-						<td style="padding: 0 0 12px; font-size: 13px;"><a href="${escapeHtml(adminUrl)}" style="color: #0d9488; word-break: break-all;">${escapeHtml(adminUrl)}</a></td>
-					</tr>
-				</table>
-				<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-				<p style="color: #6b7280; font-size: 12px;">
-					You're receiving this because an event was created with your email on TimeSync.
-				</p>
-			</div>
-		`;
-
-		const { ok, error } = await sendEmail(apiKey, {
-			from: fromEmail,
+		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
+			idempotencyKey: `event-created-${args.eventId}`,
 			subject,
-			html,
+			body,
 		});
 		if (ok) {
 			console.log(
-				`[Email] Event-created email sent to ${recipientEmail} for event ${args.eventId}`,
+				`[Email] Event-created email queued for ${recipientEmail} (event ${args.eventId})`,
 			);
 		} else {
 			console.error(
-				`[Email] Failed to send event-created email for event ${args.eventId}:`,
+				`[Email] Failed to queue event-created email for event ${args.eventId} (status ${status ?? "n/a"}):`,
 				error,
 			);
 		}
@@ -157,8 +145,6 @@ export const sendEventCreatedEmail = internalAction({
 /**
  * Internal action to send an email notification when someone
  * submits a new response to an event.
- *
- * Runs in the Node.js runtime for parity with the other email action.
  */
 export const sendResponseNotification = internalAction({
 	args: {
@@ -167,13 +153,13 @@ export const sendResponseNotification = internalAction({
 		responseCount: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const apiKey = process.env.RESEND_API_KEY;
-		const fromEmail = process.env.RESEND_FROM_EMAIL;
+		const baseUrl = process.env.LAME_MAIL_URL;
+		const apiKey = process.env.LAME_MAIL_API_KEY;
 		const appUrl = process.env.APP_URL;
 
-		if (!apiKey || !fromEmail) {
+		if (!baseUrl || !apiKey) {
 			console.warn(
-				"[Email] Resend not configured (RESEND_API_KEY or RESEND_FROM_EMAIL missing). Skipping notification.",
+				"[Email] lame-mail not configured (LAME_MAIL_URL or LAME_MAIL_API_KEY missing). Skipping notification.",
 			);
 			return;
 		}
@@ -215,33 +201,33 @@ export const sendResponseNotification = internalAction({
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		const subject = `New response to "${sanitizedTitle}"`;
 
-		const html = `
-			<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-				<h2 style="color: #0d9488;">New Response Submitted</h2>
-				<p><strong>${escapeHtml(args.respondentName)}</strong> just submitted their availability for <strong>${escapeHtml(event.title)}</strong>.</p>
-				<p>Your event now has <strong>${args.responseCount}</strong> ${args.responseCount === 1 ? "response" : "responses"}.</p>
-				${adminUrl ? `<p><a href="${escapeHtml(adminUrl)}" style="display: inline-block; background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 8px;">View Results</a></p>` : ""}
-				<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-				<p style="color: #6b7280; font-size: 12px;">
-					This notification was sent by TimeSync.
-					${unsubscribeUrl ? `<br /><a href="${escapeHtml(unsubscribeUrl)}" style="color: #6b7280;">Unsubscribe from notifications for this event</a>` : ""}
-				</p>
-			</div>
-		`;
+		const responseWord = args.responseCount === 1 ? "response" : "responses";
+		const lines = [
+			`${args.respondentName} just submitted their availability for "${event.title}".`,
+			"",
+			`Your event now has ${args.responseCount} ${responseWord}.`,
+		];
+		if (adminUrl) {
+			lines.push("", "View results:", adminUrl);
+		}
+		if (unsubscribeUrl) {
+			lines.push("", "To stop notifications for this event:", unsubscribeUrl);
+		}
+		const body = lines.join("\n");
 
-		const { ok, error } = await sendEmail(apiKey, {
-			from: fromEmail,
+		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
+			idempotencyKey: `response-${args.eventId}-${args.responseCount}`,
 			subject,
-			html,
+			body,
 		});
 		if (ok) {
 			console.log(
-				`[Email] Notification sent to ${recipientEmail} for event ${args.eventId}`,
+				`[Email] Notification queued for ${recipientEmail} (event ${args.eventId})`,
 			);
 		} else {
 			console.error(
-				`[Email] Failed to send notification for event ${args.eventId}:`,
+				`[Email] Failed to queue notification for event ${args.eventId} (status ${status ?? "n/a"}):`,
 				error,
 			);
 		}

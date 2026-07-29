@@ -85,8 +85,8 @@ STRIPE_PRICE_ID=price_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Email notifications
-RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=notifications@yourdomain.com
+LAME_MAIL_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/prod
+LAME_MAIL_API_KEY=your-lame-mail-api-key
 ```
 
 Notes:

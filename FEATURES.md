@@ -128,7 +128,7 @@ rather than a time of day.
 - Toggle on event edit dialog for existing events
 - Emails include respondent name, response count, and link to admin dashboard
 - Unsubscribe link opens confirmation page before disabling notifications
-- Powered by Resend transactional email service
+- Delivered via lame-mail, a self-hosted transactional email service
 
 ### Event Links Emailed on Creation
 
@@ -136,7 +136,7 @@ rather than a time of day.
 - Signed-in creators receive it at their account email automatically
 - Guests can enter an optional email on the create form to receive the links
 - Email highlights that the admin link is private (it manages results)
-- Silently skipped when Resend / `APP_URL` are not configured (event creation
+- Silently skipped when lame-mail / `APP_URL` are not configured (event creation
   never fails because of email)
 
 ### Heatmap Visualization

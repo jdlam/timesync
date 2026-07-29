@@ -255,7 +255,7 @@ Key fields:
 - `events.creatorEmail` - Recipient for transactional email. Set from the
   authenticated account email, or a guest-supplied email on the create form.
   On creation, `sendEventCreatedEmail` (scheduled from `events.create`) emails
-  the public + admin links here when Resend + `APP_URL` are configured.
+  the public + admin links here when lame-mail + `APP_URL` are configured.
 - `events.isActive` - Soft delete flag
 - `events.eventMode` - `"times"` (default) or `"dates"`. Dates events align on
   whole calendar days: each candidate date maps to one canonical
@@ -400,8 +400,8 @@ APP_URL=https://timesync.example.com
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_PRICE_ID=price_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=notifications@yourdomain.com
+LAME_MAIL_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/prod
+LAME_MAIL_API_KEY=your-lame-mail-api-key
 ```
 
 ## What's Not Implemented Yet
