@@ -34,8 +34,11 @@ async function sendViaLameMail(
 	apiKey: string,
 	payload: { to: string; idempotencyKey?: string; subject: string; body: string },
 ): Promise<{ ok: boolean; status?: number; error?: unknown }> {
+	// The API Gateway stage URL (e.g. the CDK `ApiUrl` output) ends in a slash;
+	// normalize so we never build a route-breaking `.../prod//send`.
+	const endpoint = `${baseUrl.replace(/\/+$/, "")}/send`;
 	try {
-		const response = await fetch(`${baseUrl}/send`, {
+		const response = await fetch(endpoint, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
