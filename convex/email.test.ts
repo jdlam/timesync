@@ -379,5 +379,84 @@ describe("email", () => {
 
 			logSpy.mockRestore();
 		});
+
+		// QA regression: title newlines must not survive sanitization into
+		// heading — a raw \n in the title would break the branded heading slot
+		// or, if lame-mail interprets structure, could be used to inject content.
+		it("sendEventCreatedEmail: strips newlines from title in heading (not just subject)", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			const eventId = await createTestEvent(t, {
+				title: "Line1\nLine2\rLine3",
+			});
+
+			await t.action(internal.email_actions.sendEventCreatedEmail, { eventId });
+
+			const requestBody = getRequestBody();
+			expect(requestBody.data.heading).not.toMatch(/[\r\n]/);
+			expect(requestBody.data.heading).toBe('Your event "Line1 Line2 Line3" is ready');
+
+			logSpy.mockRestore();
+		});
+
+		// QA regression: HTML in the title must pass through as literal text in
+		// the request body — lame-mail escapes at render time, so pre-escaping
+		// or stripping here would double-escape or silently drop markup chars.
+		it("sendEventCreatedEmail: passes HTML-like title characters through unescaped in the request payload", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			const eventId = await createTestEvent(t, {
+				title: '<b>"quoted"</b> & stuff',
+			});
+
+			await t.action(internal.email_actions.sendEventCreatedEmail, { eventId });
+
+			const requestBody = getRequestBody();
+			expect(requestBody.data.heading).toBe(
+				'Your event "<b>"quoted"</b> & stuff" is ready',
+			);
+
+			logSpy.mockRestore();
+		});
+
+		// QA regression: title newlines must not survive sanitization into
+		// the body prose. A title containing \r\n would inject literal newlines
+		// into the plain-text body sent to lame-mail. The body must sanitize
+		// consistently with subject/heading to maintain message integrity.
+		it("sendResponseNotification: body prose uses the sanitized title, no raw newlines", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			const eventId = await createTestEvent(t, { title: "Line1\nLine2" });
+
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Alice",
+				responseCount: 1,
+			});
+
+			const requestBody = getRequestBody();
+			// heading is sanitized...
+			expect(requestBody.data.heading).toBe('New response to "Line1 Line2"');
+			// ...body must also be sanitized consistently for message integrity.
+			expect(requestBody.data.body).toContain("Line1 Line2");
+			expect(requestBody.data.body).not.toMatch(/[\r\n]/);
+
+			logSpy.mockRestore();
+		});
 	});
 });

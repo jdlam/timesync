@@ -224,7 +224,7 @@ export const sendResponseNotification = internalAction({
 		const heading = `New response to "${sanitizedTitle}"`;
 
 		const responseWord = args.responseCount === 1 ? "response" : "responses";
-		const body = `${args.respondentName} just submitted their availability for "${event.title}".`;
+		const body = `${args.respondentName} just submitted their availability for "${sanitizedTitle}".`;
 		const highlight = `${args.responseCount} ${responseWord}`;
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
