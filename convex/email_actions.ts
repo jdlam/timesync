@@ -222,15 +222,16 @@ export const sendResponseNotification = internalAction({
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		// Control chars in user input must not break the single-line prose or template layout.
 		const sanitizedRespondentName = args.respondentName.replace(/[\r\n]/g, " ");
-		// Unique per response (not just per event) so Gmail doesn't collapse every
-		// notification for an event into one thread.
-		const subject = `${sanitizedRespondentName} responded to "${sanitizedTitle}"`;
+		// Stable across every response for an event (identical to heading) so
+		// mail clients thread all notifications for an event into one
+		// conversation instead of spawning a new thread per response.
+		const subject = `New response to "${sanitizedTitle}"`;
 		const heading = `New response to "${sanitizedTitle}"`;
 
 		const responseWord = args.responseCount === 1 ? "response" : "responses";
 		const body = `${sanitizedRespondentName} just submitted their availability.`;
 		const highlight = `${args.responseCount} ${responseWord} so far`;
-		const preheader = `${sanitizedRespondentName} just added their availability — ${args.responseCount} ${responseWord} so far.`;
+		const preheader = `${sanitizedRespondentName} just submitted their availability — ${args.responseCount} ${responseWord} so far.`;
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,

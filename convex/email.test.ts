@@ -540,11 +540,11 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			expect(requestBody.data.subject).toBe('Alice responded to "Team Sync"');
+			expect(requestBody.data.subject).toBe('New response to "Team Sync"');
 			expect(requestBody.data.heading).toBe('New response to "Team Sync"');
 			expect(requestBody.data.highlight).toBe("3 responses so far");
 			expect(requestBody.data.preheader).toBe(
-				"Alice just added their availability — 3 responses so far.",
+				"Alice just submitted their availability — 3 responses so far.",
 			);
 			expect(requestBody.data.links).toEqual([
 				{
@@ -629,6 +629,43 @@ describe("email", () => {
 			expect(requestBody.data.highlight).toBe("1 response so far");
 			expect("links" in requestBody.data).toBe(false);
 			expect("unsubscribeUrl" in requestBody.data).toBe(false);
+
+			logSpy.mockRestore();
+		});
+
+		// Product decision: subject must stay IDENTICAL across every response
+		// notification for a given event (matching the heading) so mail clients
+		// thread them into one conversation instead of spawning a new thread
+		// per responder — this is spam-prevention for events with many
+		// responders. Who/what changed lives entirely in the content instead.
+		it("sendResponseNotification: subject is identical across different respondents for the same event (threading)", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+			const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+			const { getRequestBody: getFirstBody } = mockLameMailFetch();
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Alice",
+				responseCount: 1,
+			});
+			const firstSubject = getFirstBody().data.subject;
+
+			const { getRequestBody: getSecondBody } = mockLameMailFetch();
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Bob",
+				responseCount: 2,
+			});
+			const secondSubject = getSecondBody().data.subject;
+
+			expect(firstSubject).toBe('New response to "Team Sync"');
+			expect(secondSubject).toBe('New response to "Team Sync"');
+			expect(firstSubject).toBe(secondSubject);
 
 			logSpy.mockRestore();
 		});
@@ -731,7 +768,9 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			expect(requestBody.data.subject).toBe('Alice responded to "Line1 Line2"');
+			// Subject no longer embeds the responder name (it must stay identical
+			// per event for threading), so title sanitization is what covers it.
+			expect(requestBody.data.subject).toBe('New response to "Line1 Line2"');
 			expect(requestBody.data.subject).not.toMatch(/[\r\n]/);
 			expect(requestBody.data.heading).toBe('New response to "Line1 Line2"');
 			expect(requestBody.data.heading).not.toMatch(/[\r\n]/);
@@ -739,11 +778,11 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		// QA regression: subject now embeds the responder name (to keep each
-		// notification's Gmail thread unique), so a name containing \r\n must be
-		// sanitized the same way it already is in the body — otherwise raw
-		// newlines would inject into the subject line.
-		it("sendResponseNotification: strips newlines from respondent name in subject and preheader", async () => {
+		// QA regression: the responder name still lands in the body and
+		// preheader (subject stays name-free for threading), so a name
+		// containing \r\n must be sanitized there — otherwise raw newlines
+		// would inject into those fields.
+		it("sendResponseNotification: strips newlines from respondent name in body and preheader", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
@@ -760,10 +799,10 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			expect(requestBody.data.subject).toBe('Line1 Line2 responded to "Team Sync"');
-			expect(requestBody.data.subject).not.toMatch(/[\r\n]/);
+			expect(requestBody.data.body).toContain("Line1 Line2");
+			expect(requestBody.data.body).not.toMatch(/[\r\n]/);
 			expect(requestBody.data.preheader).toBe(
-				"Line1 Line2 just added their availability — 1 response so far.",
+				"Line1 Line2 just submitted their availability — 1 response so far.",
 			);
 			expect(requestBody.data.preheader).not.toMatch(/[\r\n]/);
 
