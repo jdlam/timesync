@@ -117,17 +117,28 @@ app must render instantly on a cold mobile connection.
 Measured usage across `src/**/*.tsx` gives this scale. `text-sm` is the workhorse
 at 171 uses; treat anything above `text-2xl` as a marketing-only size.
 
-| Role | Classes | Mobile | Notes |
-|------|---------|--------|-------|
-| Hero | `text-4xl font-bold` → `text-5xl` | `text-3xl` | Landing page only |
-| Page title | `text-3xl font-bold` | `text-2xl` | One per route |
-| Section header | `text-xl font-semibold` | same | Gradient text allowed |
-| Card title | `text-lg font-semibold` | same | `CardTitle` applies this |
-| Body | `text-sm` | same | **Default. Do not set `text-base`.** |
-| Helper / meta | `text-xs text-muted-foreground` | same | Timestamps, hints |
+Classes are written **mobile-first**: the unprefixed value is the mobile size and
+`md:` scales it up. Read `text-5xl md:text-7xl` as "5xl on phones, 7xl from
+768px", never as a desktop size being shrunk.
+
+| Role | Classes | Notes |
+|------|---------|-------|
+| Landing hero | `text-5xl md:text-7xl font-black leading-tight` | **Exactly one**, `index.tsx`. Only `font-black` in the app. |
+| Marketing section | `text-4xl md:text-5xl font-bold` | Landing + pricing `h2`. 4 uses. |
+| Marketing lede | `text-xl md:text-2xl text-muted-foreground` | Paragraph under a hero |
+| Page title | `text-3xl font-bold` | One per app route |
+| Section header | `text-xl font-semibold` | Gradient text allowed |
+| Card title | `text-lg font-semibold` | `CardTitle` applies this |
+| Body | `text-sm` | **Default. Do not set `text-base`.** |
+| Helper / meta | `text-xs text-muted-foreground` | Timestamps, hints |
+
+Marketing routes (`index.tsx`, `pricing.tsx`) and app routes are two different
+registers. The 4xl–7xl tier belongs to marketing only; inside the app, `text-3xl`
+is the ceiling. Do not carry hero sizing into a product surface.
 
 Weights: `font-medium` for interactive labels, `font-semibold` for headings,
-`font-bold` for page titles and numerals in stat cards. `font-normal` is the
+`font-bold` for page titles and numerals in stat cards. `font-black` is reserved
+for the single landing hero — do not introduce a second. `font-normal` is the
 default and should not be written explicitly.
 
 Inputs are the deliberate exception: `text-base md:text-sm`. 16px on mobile
@@ -304,4 +315,3 @@ Check both themes before considering any UI change done.
 | Primary contrast | `--primary` at 3.74:1 fails AA. teal-700 fixes it. See 1.4. |
 | Gradient drift | Logo SVG uses teal-600→emerald-500; utilities use teal-500→emerald-500. Documented as intentional; confirm. |
 | Button touch floor | `Button` defaults to h-9 (36px), below the 44px mobile floor. No systematic enforcement today. |
-| Mockups | `.ai/mockups/*.html` are untracked explorations, not normative. Delete or commit them. |
