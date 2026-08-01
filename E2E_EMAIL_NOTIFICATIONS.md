@@ -7,7 +7,7 @@ Manual procedure for verifying response-notification emails against a **live** d
 
 ## Why this can't be a unit test
 
-`npm run test` (563 tests) asserts on what gets *scheduled* — the right action, the right
+`npm run test` asserts on what gets *scheduled* — the right action, the right
 args. It cannot see what SES actually delivers, how the email renders in a real inbox, or
 whether Gmail threads the messages correctly. A production deploy has already shipped a bug
 that a fully green local suite missed. This live check is the last gate before those code

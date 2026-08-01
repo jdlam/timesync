@@ -723,7 +723,11 @@ describe("events", () => {
 			expect(event).toBeNull();
 		});
 
-		it("should return null (not throw) after the event has been deleted, so the still-mounted admin dashboard query doesn't crash into the error boundary", async () => {
+		it("should return null (not throw) after the event has been deleted", async () => {
+			// The admin dashboard query stays mounted across the delete (real-time
+			// subscription). If this threw instead of returning null, it would crash
+			// the still-mounted subscription into the React error boundary right
+			// after a successful delete.
 			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
