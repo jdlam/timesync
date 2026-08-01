@@ -40,6 +40,7 @@ async function sendViaLameMail(
 		body: string;
 		heading?: string;
 		highlight?: string;
+		preheader?: string;
 		links?: { text: string; url: string; primary?: boolean }[];
 		unsubscribeUrl?: string;
 	},
@@ -64,6 +65,7 @@ async function sendViaLameMail(
 					body: payload.body,
 					...(payload.heading !== undefined && { heading: payload.heading }),
 					...(payload.highlight !== undefined && { highlight: payload.highlight }),
+					...(payload.preheader !== undefined && { preheader: payload.preheader }),
 					...(payload.links !== undefined && { links: payload.links }),
 					...(payload.unsubscribeUrl !== undefined && {
 						unsubscribeUrl: payload.unsubscribeUrl,
@@ -168,10 +170,20 @@ export const sendEventCreatedEmail = internalAction({
  * submits a new response to an event.
  */
 export const sendResponseNotification = internalAction({
+	// Convex rejects a union at the top level of `args` ("Args validator must
+	// be an object or any") — this is enforced at push time, not caught by
+	// tsc or convex-test, so a discriminated union here breaks deploys
+	// without any local signal. isUpdate is therefore a flat optional
+	// boolean, and the "updateTimestamp/responseId required together when
+	// isUpdate is true" invariant is enforced by an explicit runtime guard
+	// below instead of the type system. Do NOT reintroduce a union here.
 	args: {
 		eventId: v.id("events"),
 		respondentName: v.string(),
 		responseCount: v.number(),
+		isUpdate: v.optional(v.boolean()),
+		updateTimestamp: v.optional(v.number()),
+		responseId: v.optional(v.id("responses")),
 	},
 	handler: async (ctx, args) => {
 		const baseUrl = process.env.LAME_MAIL_URL;
@@ -217,23 +229,62 @@ export const sendResponseNotification = internalAction({
 			? `${appUrl}/unsubscribe?eventId=${args.eventId}&token=${event.notificationToken ?? event.adminToken}`
 			: undefined;
 
-		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
-		const subject = `New response to "${sanitizedTitle}"`;
-		const heading = `New response to "${sanitizedTitle}"`;
+		const isUpdate = args.isUpdate === true;
 
-		const responseWord = args.responseCount === 1 ? "response" : "responses";
+		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		// Control chars in user input must not break the single-line prose or template layout.
 		const sanitizedRespondentName = args.respondentName.replace(/[\r\n]/g, " ");
-		const body = `${sanitizedRespondentName} just submitted their availability for "${sanitizedTitle}".`;
-		const highlight = `${args.responseCount} ${responseWord}`;
+		// INVARIANT: subject must stay this exact stable per-event string
+		// across BOTH submit and update notifications — it does NOT vary by
+		// isUpdate (unlike heading, which does: "Updated response to..." vs
+		// "New response to..."). Every notification for a given event shares
+		// this one subject so mail clients thread them into one conversation
+		// instead of spawning a new thread per response/update.
+		const subject = `New response to "${sanitizedTitle}"`;
+		const heading = isUpdate
+			? `Updated response to "${sanitizedTitle}"`
+			: `New response to "${sanitizedTitle}"`;
+
+		const responseWord = args.responseCount === 1 ? "response" : "responses";
+		const verb = isUpdate ? "updated" : "submitted";
+		const body = `${sanitizedRespondentName} just ${verb} their availability.`;
+		const highlight = `${args.responseCount} ${responseWord} so far`;
+		const preheader = `${sanitizedRespondentName} just ${verb} their availability — ${args.responseCount} ${responseWord} so far.`;
+
+		// Must include responseId: two different responders editing their
+		// responses on the same event within the same millisecond would
+		// otherwise mint an identical key (eventId + timestamp alone), and
+		// lame-mail's 24h dedup would silently drop one of the two emails.
+		//
+		// Runtime guard (replaces the type-level discriminated union Convex
+		// rejects for `args`, see comment above): fail loudly rather than
+		// silently building a key containing "undefined", which would
+		// recreate the exact dedup collision this guards against.
+		let idempotencyKey: string;
+		if (args.isUpdate === true) {
+			if (args.responseId === undefined) {
+				throw new Error(
+					"sendResponseNotification: responseId is required when isUpdate is true",
+				);
+			}
+			if (args.updateTimestamp === undefined) {
+				throw new Error(
+					"sendResponseNotification: updateTimestamp is required when isUpdate is true",
+				);
+			}
+			idempotencyKey = `response-update-${args.eventId}-${args.responseId}-${args.updateTimestamp}`;
+		} else {
+			idempotencyKey = `response-${args.eventId}-${args.responseCount}`;
+		}
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
-			idempotencyKey: `response-${args.eventId}-${args.responseCount}`,
+			idempotencyKey,
 			subject,
 			body,
 			heading,
 			highlight,
+			preheader,
 			...(adminUrl !== undefined && {
 				links: [{ text: "View results", url: adminUrl, primary: true }],
 			}),

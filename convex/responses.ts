@@ -288,14 +288,57 @@ export const update = mutation({
 		if (!event.isActive) {
 			throw new Error("This event is no longer accepting responses");
 		}
+		// Same limits/window as submit (responses.ts:165-177): update needs the
+		// same edit-spam protection, and there's no reason to weight it
+		// differently — reuse the numbers rather than invent a new policy.
+		await enforceRateLimit(ctx, {
+			key: "responses:update:global",
+			maxRequests: 600,
+			windowMs: 10 * 60 * 1000,
+			errorMessage: "Too many responses updated right now. Please try again shortly.",
+		});
+		await enforceRateLimit(ctx, {
+			key: `responses:update:event:${existing.eventId}`,
+			maxRequests: 120,
+			windowMs: 10 * 60 * 1000,
+			errorMessage:
+				"Too many responses updated for this event right now. Please try again shortly.",
+		});
 		validateSelectedSlotsAgainstEvent(normalizedSelectedSlots, event);
 
+		const now = Date.now();
 		await ctx.db.patch(args.responseId, {
 			respondentName: args.respondentName,
 			respondentComment: args.respondentComment,
 			selectedSlots: normalizedSelectedSlots,
-			updatedAt: Date.now(),
+			updatedAt: now,
 		});
+
+		// Schedule email notification if enabled (mirrors the submit mutation's
+		// gating above). An update doesn't change the response count, so pass
+		// the current count and a fresh timestamp for the idempotency key.
+		if (event.notifyOnResponse && event.creatorId) {
+			const responses = await ctx.db
+				.query("responses")
+				.withIndex("by_event", (q) => q.eq("eventId", existing.eventId))
+				.collect();
+
+			await ctx.scheduler.runAfter(
+				0,
+				internal.email_actions.sendResponseNotification,
+				{
+					eventId: existing.eventId,
+					respondentName: args.respondentName,
+					responseCount: responses.length,
+					isUpdate: true,
+					updateTimestamp: now,
+					// Included so the idempotency key stays unique across
+					// different responders updating the same event at the
+					// same millisecond (see email_actions.ts).
+					responseId: args.responseId,
+				},
+			);
+		}
 
 		return await ctx.db.get(args.responseId);
 	},

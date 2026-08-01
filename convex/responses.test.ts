@@ -796,6 +796,278 @@ describe("responses", () => {
 				"Selected time slots must match the event's configured schedule",
 			);
 		});
+
+		it("should accept an update within the rate limit", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const updated = await t.mutation(api.responses.update, {
+				responseId,
+				editToken: "edit-token",
+				respondentName: "Alice Updated",
+				selectedSlots: ["2025-01-20T14:00:00Z"],
+			});
+
+			expect(updated?.respondentName).toBe("Alice Updated");
+		});
+
+		it("should reject an update when the event-scoped rate limit is exceeded, and not patch the response or schedule a notification", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t, {
+				notifyOnResponse: true,
+				creatorId: "user_123",
+			});
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "edit-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const now = Date.now();
+			await t.run(async (ctx) => {
+				await ctx.db.insert("rateLimits", {
+					key: `responses:update:event:${eventId}`,
+					count: 120,
+					windowStart: now,
+					updatedAt: now,
+				});
+			});
+
+			await expect(
+				t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Rate Limited",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				}),
+			).rejects.toThrow(
+				"Too many responses updated for this event right now. Please try again shortly.",
+			);
+
+			// The whole mutation must be rejected — no partial patch, matching
+			// how submit behaves when limited (nothing is inserted at all).
+			const response = await t.run(async (ctx) => {
+				return await ctx.db.get(responseId);
+			});
+			expect(response?.respondentName).toBe("Alice");
+			expect(response?.selectedSlots).toEqual(["2025-01-20T10:00:00Z"]);
+
+			// Nor scheduled: the rate limit sits before notification scheduling.
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			expect(scheduledJobs).toEqual([]);
+		});
+	});
+
+	describe("update with email notifications", () => {
+		it("should schedule an update email when notifyOnResponse is true and creator is signed in", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: true,
+					creatorId: "user_123",
+				});
+
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Alice",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "edit-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Alice Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				// Drain scheduled functions (the action may fail without lame-mail, that's OK)
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
+				);
+				expect(emailNotConfiguredWarned).toBe(true);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+
+		// QA regression: an update doesn't change the number of responses, so
+		// the scheduled notification's responseCount must reflect the
+		// pre-existing count, not count+1 (that would be a submit-path bug
+		// leaking into update). Pins the post-patch count query directly
+		// against the scheduled action's args.
+		it("schedules the update email with responseCount equal to the pre-existing number of responses (not incremented)", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: true,
+					creatorId: "user_123",
+				});
+
+				// Two pre-existing responses for the event; we'll update the second one.
+				await t.run(async (ctx) => {
+					await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Alice",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "alice-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Bob",
+						selectedSlots: ["2025-01-20T11:00:00Z"],
+						editToken: "bob-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "bob-token",
+					respondentName: "Bob Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				const scheduledJobs = await t.run(async (ctx) => {
+					return await ctx.db.system.query("_scheduled_functions").collect();
+				});
+				expect(scheduledJobs).toHaveLength(1);
+				expect(scheduledJobs[0]?.name).toBe(
+					"email_actions:sendResponseNotification",
+				);
+				const scheduledArgs = scheduledJobs[0]?.args[0] as {
+					responseCount: number;
+					isUpdate?: boolean;
+					respondentName: string;
+				};
+				// 2 pre-existing responses total, unchanged by the update.
+				expect(scheduledArgs.responseCount).toBe(2);
+				expect(scheduledArgs.isUpdate).toBe(true);
+				expect(scheduledArgs.respondentName).toBe("Bob Updated");
+
+				// Drain the scheduled function (the action may fail without
+				// lame-mail, that's OK) so it doesn't leak into a later test.
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+
+		it("should not schedule an update email when notifyOnResponse is false", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: false,
+					creatorId: "user_123",
+				});
+
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Bob",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "edit-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Bob Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
+				);
+				expect(emailNotConfiguredWarned).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+
+		it("should not schedule an update email when creator is a guest (no creatorId)", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: true,
+				});
+
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Dave",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "edit-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Dave Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
+				);
+				expect(emailNotConfiguredWarned).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe("remove", () => {

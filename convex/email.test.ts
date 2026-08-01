@@ -29,6 +29,25 @@ async function createTestEvent(
 	});
 }
 
+// Helper to create a test response (needed for update-notification args,
+// which require a real responseId).
+async function createTestResponse(
+	t: ReturnType<typeof convexTest>,
+	eventId: Awaited<ReturnType<typeof createTestEvent>>,
+	respondentName = "Alice",
+) {
+	return await t.run(async (ctx) => {
+		return await ctx.db.insert("responses", {
+			eventId,
+			respondentName,
+			selectedSlots: ["2025-01-20T10:00:00Z"],
+			editToken: "test-token",
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		});
+	});
+}
+
 // Captures the JSON body of the single fetch call made to lame-mail's /send
 // endpoint, so tests can assert on the exact request shape sent.
 function mockLameMailFetch() {
@@ -540,8 +559,12 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
+			expect(requestBody.data.subject).toBe('New response to "Team Sync"');
 			expect(requestBody.data.heading).toBe('New response to "Team Sync"');
-			expect(requestBody.data.highlight).toBe("3 responses");
+			expect(requestBody.data.highlight).toBe("3 responses so far");
+			expect(requestBody.data.preheader).toBe(
+				"Alice just submitted their availability — 3 responses so far.",
+			);
 			expect(requestBody.data.links).toEqual([
 				{
 					text: "View results",
@@ -622,9 +645,46 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			expect(requestBody.data.highlight).toBe("1 response");
+			expect(requestBody.data.highlight).toBe("1 response so far");
 			expect("links" in requestBody.data).toBe(false);
 			expect("unsubscribeUrl" in requestBody.data).toBe(false);
+
+			logSpy.mockRestore();
+		});
+
+		// Product decision: subject must stay IDENTICAL across every response
+		// notification for a given event (matching the heading) so mail clients
+		// thread them into one conversation instead of spawning a new thread
+		// per responder — this is spam-prevention for events with many
+		// responders. Who/what changed lives entirely in the content instead.
+		it("sendResponseNotification: subject is identical across different respondents for the same event (threading)", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+			const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+			const { getRequestBody: getFirstBody } = mockLameMailFetch();
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Alice",
+				responseCount: 1,
+			});
+			const firstSubject = getFirstBody().data.subject;
+
+			const { getRequestBody: getSecondBody } = mockLameMailFetch();
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Bob",
+				responseCount: 2,
+			});
+			const secondSubject = getSecondBody().data.subject;
+
+			expect(firstSubject).toBe('New response to "Team Sync"');
+			expect(secondSubject).toBe('New response to "Team Sync"');
+			expect(firstSubject).toBe(secondSubject);
 
 			logSpy.mockRestore();
 		});
@@ -706,11 +766,11 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		// QA regression: title newlines must not survive sanitization into
-		// the body prose. A title containing \r\n would inject literal newlines
-		// into the plain-text body sent to lame-mail. The body must sanitize
-		// consistently with subject/heading to maintain message integrity.
-		it("sendResponseNotification: body prose uses the sanitized title, no raw newlines", async () => {
+		// QA regression: title newlines must not survive sanitization into the
+		// subject line. A title containing \r\n would inject literal newlines
+		// into the subject/heading sent to lame-mail. Sanitization must be
+		// consistent across subject and heading to maintain message integrity.
+		it("sendResponseNotification: subject and heading use the sanitized title, no raw newlines", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
@@ -727,13 +787,288 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			// heading is sanitized...
+			// Subject no longer embeds the responder name (it must stay identical
+			// per event for threading), so title sanitization is what covers it.
+			expect(requestBody.data.subject).toBe('New response to "Line1 Line2"');
+			expect(requestBody.data.subject).not.toMatch(/[\r\n]/);
 			expect(requestBody.data.heading).toBe('New response to "Line1 Line2"');
-			// ...body must also be sanitized consistently for message integrity.
-			expect(requestBody.data.body).toContain("Line1 Line2");
-			expect(requestBody.data.body).not.toMatch(/[\r\n]/);
+			expect(requestBody.data.heading).not.toMatch(/[\r\n]/);
 
 			logSpy.mockRestore();
+		});
+
+		// QA regression: the responder name still lands in the body and
+		// preheader (subject stays name-free for threading), so a name
+		// containing \r\n must be sanitized there — otherwise raw newlines
+		// would inject into those fields.
+		it("sendResponseNotification: strips newlines from respondent name in body and preheader", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Line1\nLine2",
+				responseCount: 1,
+			});
+
+			const requestBody = getRequestBody();
+			expect(requestBody.data.body).toContain("Line1 Line2");
+			expect(requestBody.data.body).not.toMatch(/[\r\n]/);
+			expect(requestBody.data.preheader).toBe(
+				"Line1 Line2 just submitted their availability — 1 response so far.",
+			);
+			expect(requestBody.data.preheader).not.toMatch(/[\r\n]/);
+
+			logSpy.mockRestore();
+		});
+
+		describe("sendResponseNotification: isUpdate", () => {
+			it("uses updated-availability copy for heading/body/preheader, but keeps subject byte-identical to a new-response email for the same event (threading invariant)", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+				const responseId = await createTestResponse(t, eventId, "Alice");
+
+				const { getRequestBody: getSubmitBody } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 2,
+				});
+				const submitSubject = getSubmitBody().data.subject;
+
+				const { getRequestBody: getUpdateBody } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 2,
+					isUpdate: true,
+					updateTimestamp: 1700000000000,
+					responseId,
+				});
+				const requestBody = getUpdateBody();
+
+				// Content reflects the update...
+				expect(requestBody.data.heading).toBe('Updated response to "Team Sync"');
+				expect(requestBody.data.body).toBe(
+					"Alice just updated their availability.",
+				);
+				expect(requestBody.data.preheader).toBe(
+					"Alice just updated their availability — 2 responses so far.",
+				);
+				expect(requestBody.data.highlight).toBe("2 responses so far");
+				// ...but subject stays the stable per-event string, identical to a
+				// submit email for the same event, so mail clients thread them.
+				expect(requestBody.data.subject).toBe('New response to "Team Sync"');
+				expect(requestBody.data.subject).toBe(submitSubject);
+
+				logSpy.mockRestore();
+			});
+
+			it("defaults isUpdate to false: omitting it produces byte-identical submit copy", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+				const { getRequestBody } = mockLameMailFetch();
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+				});
+
+				const requestBody = getRequestBody();
+				expect(requestBody.data.heading).toBe('New response to "Team Sync"');
+				expect(requestBody.data.body).toBe(
+					"Alice just submitted their availability.",
+				);
+				expect(requestBody.data.preheader).toBe(
+					"Alice just submitted their availability — 1 response so far.",
+				);
+
+				logSpy.mockRestore();
+			});
+
+			// CRITICAL correctness point: responseCount doesn't change on an
+			// update, so reusing the submit idempotency key format would collide
+			// with the original submit email (and with a second update sharing
+			// the same count) and get silently suppressed by lame-mail's 24h
+			// dedup. The update path must mint a distinct, per-update key.
+			it("idempotency key: update key differs from the submit key and from a second update's key", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+				const responseId = await createTestResponse(t, eventId, "Alice");
+
+				const { fetchMock: submitFetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+				});
+				const submitKey = JSON.parse(submitFetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				const { fetchMock: update1Fetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+					isUpdate: true,
+					updateTimestamp: 1700000000000,
+					responseId,
+				});
+				const update1Key = JSON.parse(update1Fetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				const { fetchMock: update2Fetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+					isUpdate: true,
+					updateTimestamp: 1700000005000,
+					responseId,
+				});
+				const update2Key = JSON.parse(update2Fetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				expect(submitKey).toBe(`response-${eventId}-1`);
+				expect(update1Key).toBe(
+					`response-update-${eventId}-${responseId}-1700000000000`,
+				);
+				expect(update2Key).toBe(
+					`response-update-${eventId}-${responseId}-1700000005000`,
+				);
+				expect(update1Key).not.toBe(submitKey);
+				expect(update2Key).not.toBe(submitKey);
+				expect(update1Key).not.toBe(update2Key);
+
+				logSpy.mockRestore();
+			});
+
+			// Copilot-found bug (PR #80): the old key format
+			// `response-update-{eventId}-{updateTimestamp}` had no per-responder
+			// component, so two different responders editing the same event in
+			// the same millisecond minted an identical idempotency key — and
+			// lame-mail's 24h dedup would silently drop one of the two emails.
+			// This pins the fix: distinct responseIds must always yield distinct
+			// keys even when eventId and updateTimestamp are identical. (Against
+			// the old format both keys below would equal
+			// `response-update-{eventId}-1700000000000`, so this test fails on
+			// that regression.)
+			it("idempotency key: two different responses on the same event updated at the same millisecond get different keys", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+				const responseIdA = await createTestResponse(t, eventId, "Alice");
+				const responseIdB = await createTestResponse(t, eventId, "Bob");
+				const sharedTimestamp = 1700000000000;
+
+				const { fetchMock: updateAFetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 2,
+					isUpdate: true,
+					updateTimestamp: sharedTimestamp,
+					responseId: responseIdA,
+				});
+				const updateAKey = JSON.parse(updateAFetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				const { fetchMock: updateBFetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Bob",
+					responseCount: 2,
+					isUpdate: true,
+					updateTimestamp: sharedTimestamp,
+					responseId: responseIdB,
+				});
+				const updateBKey = JSON.parse(updateBFetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				expect(updateAKey).toBe(
+					`response-update-${eventId}-${responseIdA}-${sharedTimestamp}`,
+				);
+				expect(updateBKey).toBe(
+					`response-update-${eventId}-${responseIdB}-${sharedTimestamp}`,
+				);
+				expect(updateAKey).not.toBe(updateBKey);
+
+				logSpy.mockRestore();
+			});
+
+			// Runtime guard (PR #80 review, revised after the deploy failure this
+			// caused — Convex rejects a union `args` validator at push time, so
+			// the "updateTimestamp/responseId required when isUpdate is true"
+			// invariant can no longer be enforced at the type level). The
+			// handler must fail loudly instead of silently building a key
+			// containing "undefined", which would recreate the exact dedup
+			// collision this guards against.
+			it("throws when isUpdate is true but responseId is missing", async () => {
+				const t = convexTest(schema, modules);
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+				mockLameMailFetch();
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+				await expect(
+					t.action(internal.email_actions.sendResponseNotification, {
+						eventId,
+						respondentName: "Alice",
+						responseCount: 1,
+						isUpdate: true,
+						updateTimestamp: 1700000000000,
+					}),
+				).rejects.toThrow(/responseId is required/);
+			});
+
+			it("throws when isUpdate is true but updateTimestamp is missing", async () => {
+				const t = convexTest(schema, modules);
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+				mockLameMailFetch();
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+				const responseId = await createTestResponse(t, eventId, "Alice");
+
+				await expect(
+					t.action(internal.email_actions.sendResponseNotification, {
+						eventId,
+						respondentName: "Alice",
+						responseCount: 1,
+						isUpdate: true,
+						responseId,
+					}),
+				).rejects.toThrow(/updateTimestamp is required/);
+			});
 		});
 	});
 });
