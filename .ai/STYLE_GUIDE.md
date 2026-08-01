@@ -219,6 +219,10 @@ targets 8px apart in the mobile card views (`MyEventsTable`, admin
 
 - No horizontal page scroll. Wide content — grids, tables — scrolls inside its
   own `overflow-x-auto` container.
+- **Any row of two or more buttons uses `flex-wrap`.** `Button` carries
+  `shrink-0`, so a non-wrapping row cannot compress and will spill past its
+  container on a 320px screen. Wrapping costs nothing at normal widths — the
+  row stays on one line from 360px up.
 - Time-based grids always show time labels, even at 320px. Truncate the label,
   never drop it.
 - Tables collapse to stacked cards below `sm:`. See `MyEventsTable.tsx` and
@@ -348,8 +352,8 @@ Check both themes before considering any UI change done.
 
 | Item | Detail |
 |------|--------|
-| **Mobile card action row overflows at 320px** | `MyEventsTable.tsx:141` puts 5 buttons in a `flex gap-2` with no `flex-wrap`. `Button` is `shrink-0`, so at a 320px viewport the row is 12px wider than its card and the last button spills past the border. Measured in-browser, not estimated. Clean at 360px and above. Admin `EventsTable.tsx:131` uses the same pattern with 3 buttons and fits. |
-| Icon action rows under touch floor | The same rows use `size="sm"` — five 32×32px targets 8px apart on mobile. Under the 44px floor and outside the §4.1 rationale. |
+| Icon action rows under touch floor | Mobile card action rows use `size="sm"` — five 32×32px targets 8px apart. Under the 44px floor and outside the §4.1 rationale. |
+| Admin `EventsTable` action row | `EventsTable.tsx:131` still uses `flex gap-2` with no wrap. Fits today at 3 buttons; would overflow like `MyEventsTable` did if a fourth is added. |
 | Gradient drift | Logo SVG uses teal-600→emerald-500; utilities use teal-500→emerald-500. Documented as intentional; confirm. |
 
 Resolved: primary-token contrast is settled at teal-600 (§1.4); the 44px floor
