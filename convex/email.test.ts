@@ -540,8 +540,12 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
+			expect(requestBody.data.subject).toBe('Alice responded to "Team Sync"');
 			expect(requestBody.data.heading).toBe('New response to "Team Sync"');
-			expect(requestBody.data.highlight).toBe("3 responses");
+			expect(requestBody.data.highlight).toBe("3 responses so far");
+			expect(requestBody.data.preheader).toBe(
+				"Alice just added their availability — 3 responses so far.",
+			);
 			expect(requestBody.data.links).toEqual([
 				{
 					text: "View results",
@@ -622,7 +626,7 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			expect(requestBody.data.highlight).toBe("1 response");
+			expect(requestBody.data.highlight).toBe("1 response so far");
 			expect("links" in requestBody.data).toBe(false);
 			expect("unsubscribeUrl" in requestBody.data).toBe(false);
 
@@ -706,11 +710,11 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		// QA regression: title newlines must not survive sanitization into
-		// the body prose. A title containing \r\n would inject literal newlines
-		// into the plain-text body sent to lame-mail. The body must sanitize
-		// consistently with subject/heading to maintain message integrity.
-		it("sendResponseNotification: body prose uses the sanitized title, no raw newlines", async () => {
+		// QA regression: title newlines must not survive sanitization into the
+		// subject line. A title containing \r\n would inject literal newlines
+		// into the subject/heading sent to lame-mail. Sanitization must be
+		// consistent across subject and heading to maintain message integrity.
+		it("sendResponseNotification: subject and heading use the sanitized title, no raw newlines", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
@@ -727,11 +731,41 @@ describe("email", () => {
 			});
 
 			const requestBody = getRequestBody();
-			// heading is sanitized...
+			expect(requestBody.data.subject).toBe('Alice responded to "Line1 Line2"');
+			expect(requestBody.data.subject).not.toMatch(/[\r\n]/);
 			expect(requestBody.data.heading).toBe('New response to "Line1 Line2"');
-			// ...body must also be sanitized consistently for message integrity.
-			expect(requestBody.data.body).toContain("Line1 Line2");
-			expect(requestBody.data.body).not.toMatch(/[\r\n]/);
+			expect(requestBody.data.heading).not.toMatch(/[\r\n]/);
+
+			logSpy.mockRestore();
+		});
+
+		// QA regression: subject now embeds the responder name (to keep each
+		// notification's Gmail thread unique), so a name containing \r\n must be
+		// sanitized the same way it already is in the body — otherwise raw
+		// newlines would inject into the subject line.
+		it("sendResponseNotification: strips newlines from respondent name in subject and preheader", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Line1\nLine2",
+				responseCount: 1,
+			});
+
+			const requestBody = getRequestBody();
+			expect(requestBody.data.subject).toBe('Line1 Line2 responded to "Team Sync"');
+			expect(requestBody.data.subject).not.toMatch(/[\r\n]/);
+			expect(requestBody.data.preheader).toBe(
+				"Line1 Line2 just added their availability — 1 response so far.",
+			);
+			expect(requestBody.data.preheader).not.toMatch(/[\r\n]/);
 
 			logSpy.mockRestore();
 		});
