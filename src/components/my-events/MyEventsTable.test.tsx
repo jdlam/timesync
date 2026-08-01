@@ -6,7 +6,13 @@ vi.mock("convex/react", () => ({
 	useMutation: () => vi.fn(),
 }));
 
-const { MyEventsTable } = await import("./MyEventsTable");
+// Radix popovers call pointer-capture APIs that jsdom does not implement.
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => undefined;
+Element.prototype.releasePointerCapture ??= () => undefined;
+Element.prototype.scrollIntoView ??= () => undefined;
+
+const { EventActionsMenu, MyEventsTable } = await import("./MyEventsTable");
 
 function makeEvent(overrides: Record<string, unknown> = {}) {
 	return {
@@ -20,38 +26,96 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-describe("MyEventsTable mobile card actions", () => {
+function renderTable() {
+	render(
+		<MyEventsTable events={[makeEvent()]} onViewEvent={() => undefined} />,
+	);
+}
+
+function renderMenu(touch: boolean) {
+	render(
+		<EventActionsMenu
+			event={makeEvent()}
+			open
+			onOpenChange={() => undefined}
+			isLoading={false}
+			onView={() => undefined}
+			onViewResults={() => undefined}
+			onViewPublicPage={() => undefined}
+			onToggleStatus={() => undefined}
+			onDelete={() => undefined}
+			touch={touch}
+		/>,
+	);
+}
+
+const ACTION_LABELS = [
+	"View Details",
+	"View Results",
+	"View Public Page",
+	"Deactivate",
+	"Delete",
+];
+
+describe("EventActionsMenu", () => {
 	afterEach(() => cleanup());
 
-	// The mobile card packs five action buttons into one row. Button carries
-	// shrink-0, so without wrapping the row is wider than its card at a 320px
-	// viewport and the last button renders outside the card border. The row must
-	// stay able to reflow onto a second line.
-	it("lets the action row wrap so it cannot overflow a narrow card", () => {
-		render(
-			<MyEventsTable events={[makeEvent()]} onViewEvent={() => undefined} />,
-		);
-
-		const viewButton = screen.getAllByRole("button", { name: /view/i })[0];
-		const actionRow = viewButton.parentElement;
-
-		expect(actionRow).toBeTruthy();
-		expect(actionRow?.className).toContain("flex-wrap");
+	// Mobile previously splayed all five actions as unlabelled 32px icon buttons
+	// while desktop got a labelled menu. Both surfaces now share this component,
+	// so a touch user reads action names instead of guessing at icons.
+	it.each([
+		["touch", true],
+		["pointer", false],
+	])("names every action on the %s surface", (_name, touch) => {
+		renderMenu(touch as boolean);
+		for (const label of ACTION_LABELS) {
+			expect(screen.getByText(label)).toBeTruthy();
+		}
 	});
 
-	// Wrapping only helps if the buttons are actually allowed to occupy a second
-	// line as siblings — a nested container would reintroduce the overflow.
-	it("keeps every action button in the same wrapping row", () => {
-		render(
-			<MyEventsTable events={[makeEvent()]} onViewEvent={() => undefined} />,
-		);
+	// A mistap here toggles or deletes a live event, so per style guide 4.1 this
+	// is a selection surface and its rows must meet the 44px floor on touch.
+	it("sizes menu rows to the 44px floor on touch only", () => {
+		renderMenu(true);
+		for (const label of ACTION_LABELS) {
+			expect(screen.getByText(label).closest("button")?.className).toContain(
+				"min-h-[44px]",
+			);
+		}
 
-		const viewButton = screen.getAllByRole("button", { name: /view/i })[0];
+		cleanup();
+		renderMenu(false);
+		for (const label of ACTION_LABELS) {
+			expect(
+				screen.getByText(label).closest("button")?.className,
+			).not.toContain("min-h-[44px]");
+		}
+	});
+});
+
+describe("MyEventsTable mobile card", () => {
+	afterEach(() => cleanup());
+
+	// Both surfaces must render the shared menu rather than diverging again.
+	it("renders one actions menu per surface", () => {
+		renderTable();
+		expect(
+			screen.getAllByRole("button", { name: /actions for design review/i }),
+		).toHaveLength(2);
+	});
+
+	// Two targets instead of five is what removes the 320px overflow; wrapping
+	// alone only papered over it.
+	it("reduces the action row to a primary action and one menu, both 44px", () => {
+		renderTable();
+
+		const viewButton = screen.getAllByRole("button", { name: /^view$/i })[0];
 		const actionRow = viewButton.parentElement;
 
-		expect(actionRow?.children.length).toBe(5);
+		expect(actionRow?.children.length).toBe(2);
+		expect(actionRow?.className).toContain("flex-wrap");
 		for (const child of Array.from(actionRow?.children ?? [])) {
-			expect(child.tagName).toBe("BUTTON");
+			expect(child.className).toContain("min-h-[44px]");
 		}
 	});
 });

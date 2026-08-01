@@ -10,7 +10,7 @@ import {
 	PowerOff,
 	Trash2,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
 	AlertDialog,
@@ -28,6 +28,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -46,6 +47,108 @@ interface MyEventsTableProps {
 	onViewEvent: (eventId: Id<"events">) => void;
 }
 
+interface EventActionsMenuProps {
+	event: Event;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	isLoading: boolean;
+	onView: () => void;
+	onViewResults: () => void;
+	onViewPublicPage: () => void;
+	onToggleStatus: () => void;
+	onDelete: () => void;
+	/**
+	 * Touch surfaces size the trigger and every row to the 44px floor. A mistap
+	 * here toggles or deletes a live event, so this is a selection surface in the
+	 * sense of the style guide, not an ordinary button.
+	 */
+	touch?: boolean;
+}
+
+/**
+ * The five per-event actions, as a labelled menu. Shared by the mobile card and
+ * the desktop table so both surfaces offer the same actions under the same
+ * names — mobile previously splayed them as unlabelled 32px icon buttons.
+ */
+export function EventActionsMenu({
+	event,
+	open,
+	onOpenChange,
+	isLoading,
+	onView,
+	onViewResults,
+	onViewPublicPage,
+	onToggleStatus,
+	onDelete,
+	touch = false,
+}: EventActionsMenuProps) {
+	const item = cn(
+		"w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors",
+		touch && "min-h-[44px]",
+	);
+	const run = (action: () => void) => () => {
+		onOpenChange(false);
+		action();
+	};
+
+	return (
+		<Popover open={open} onOpenChange={onOpenChange}>
+			<PopoverTrigger asChild>
+				<Button
+					variant={touch ? "outline" : "ghost"}
+					size="sm"
+					className={cn(touch && "min-h-[44px] min-w-[44px] px-3")}
+					aria-label={`Actions for ${event.title}`}
+				>
+					<MoreVertical className="w-4 h-4" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-48 p-1">
+				<button type="button" className={item} onClick={run(onView)}>
+					<Eye className="w-4 h-4" />
+					View Details
+				</button>
+				<button type="button" className={item} onClick={run(onViewResults)}>
+					<BarChart3 className="w-4 h-4" />
+					View Results
+				</button>
+				<button type="button" className={item} onClick={run(onViewPublicPage)}>
+					<ExternalLink className="w-4 h-4" />
+					View Public Page
+				</button>
+				<button
+					type="button"
+					className={item}
+					onClick={run(onToggleStatus)}
+					disabled={isLoading}
+				>
+					{isLoading ? (
+						<Loader2 className="w-4 h-4 animate-spin" />
+					) : event.isActive ? (
+						<>
+							<PowerOff className="w-4 h-4" />
+							Deactivate
+						</>
+					) : (
+						<>
+							<Power className="w-4 h-4" />
+							Activate
+						</>
+					)}
+				</button>
+				<button
+					type="button"
+					className={cn(item, "text-destructive")}
+					onClick={run(onDelete)}
+				>
+					<Trash2 className="w-4 h-4" />
+					Delete
+				</button>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 	const [deleteEventId, setDeleteEventId] = useState<Id<"events"> | null>(null);
 	const [actionLoading, setActionLoading] = useState<Id<"events"> | null>(null);
@@ -53,11 +156,6 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 
 	const toggleStatus = useMutation(api.myEvents.toggleMyEventStatus);
 	const deleteEvent = useMutation(api.myEvents.deleteMyEvent);
-
-	// Close popover when performing an action
-	const closePopover = useCallback(() => {
-		setOpenPopoverId(null);
-	}, []);
 
 	const handleToggleStatus = async (eventId: Id<"events">) => {
 		setActionLoading(eventId);
@@ -142,49 +240,28 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 							<Button
 								variant="outline"
 								size="sm"
-								className="flex-1"
+								className="flex-1 min-h-[44px]"
 								onClick={() => onViewEvent(event._id)}
 							>
 								<Eye className="w-4 h-4 mr-1" />
 								View
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => handleViewResults(event._id, event.adminToken)}
-							>
-								<BarChart3 className="w-4 h-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => handleViewPublicPage(event._id)}
-							>
-								<ExternalLink className="w-4 h-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => handleToggleStatus(event._id)}
-								disabled={actionLoading === event._id}
-							>
-								{actionLoading === event._id ? (
-									<Loader2 className="w-4 h-4 animate-spin" />
-								) : event.isActive ? (
-									<PowerOff className="w-4 h-4" />
-								) : (
-									<Power className="w-4 h-4" />
-								)}
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => setDeleteEventId(event._id)}
-								disabled={actionLoading === event._id}
-								className="text-destructive hover:text-destructive"
-							>
-								<Trash2 className="w-4 h-4" />
-							</Button>
+							<EventActionsMenu
+								event={event}
+								touch
+								open={openPopoverId === event._id}
+								onOpenChange={(open) =>
+									setOpenPopoverId(open ? event._id : null)
+								}
+								isLoading={actionLoading === event._id}
+								onView={() => onViewEvent(event._id)}
+								onViewResults={() =>
+									handleViewResults(event._id, event.adminToken)
+								}
+								onViewPublicPage={() => handleViewPublicPage(event._id)}
+								onToggleStatus={() => handleToggleStatus(event._id)}
+								onDelete={() => setDeleteEventId(event._id)}
+							/>
 						</div>
 					</div>
 				))}
@@ -244,87 +321,21 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 									</span>
 								</td>
 								<td className="py-3 px-4 text-right">
-									<Popover
+									<EventActionsMenu
+										event={event}
 										open={openPopoverId === event._id}
 										onOpenChange={(open) =>
 											setOpenPopoverId(open ? event._id : null)
 										}
-									>
-										<PopoverTrigger asChild>
-											<Button variant="ghost" size="sm">
-												<MoreVertical className="w-4 h-4" />
-											</Button>
-										</PopoverTrigger>
-										<PopoverContent align="end" className="w-48 p-1">
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => {
-													closePopover();
-													onViewEvent(event._id);
-												}}
-											>
-												<Eye className="w-4 h-4" />
-												View Details
-											</button>
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => {
-													closePopover();
-													handleViewResults(event._id, event.adminToken);
-												}}
-											>
-												<BarChart3 className="w-4 h-4" />
-												View Results
-											</button>
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => {
-													closePopover();
-													handleViewPublicPage(event._id);
-												}}
-											>
-												<ExternalLink className="w-4 h-4" />
-												View Public Page
-											</button>
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => {
-													closePopover();
-													handleToggleStatus(event._id);
-												}}
-												disabled={actionLoading === event._id}
-											>
-												{actionLoading === event._id ? (
-													<Loader2 className="w-4 h-4 animate-spin" />
-												) : event.isActive ? (
-													<>
-														<PowerOff className="w-4 h-4" />
-														Deactivate
-													</>
-												) : (
-													<>
-														<Power className="w-4 h-4" />
-														Activate
-													</>
-												)}
-											</button>
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors text-destructive"
-												onClick={() => {
-													closePopover();
-													setDeleteEventId(event._id);
-												}}
-											>
-												<Trash2 className="w-4 h-4" />
-												Delete
-											</button>
-										</PopoverContent>
-									</Popover>
+										isLoading={actionLoading === event._id}
+										onView={() => onViewEvent(event._id)}
+										onViewResults={() =>
+											handleViewResults(event._id, event.adminToken)
+										}
+										onViewPublicPage={() => handleViewPublicPage(event._id)}
+										onToggleStatus={() => handleToggleStatus(event._id)}
+										onDelete={() => setDeleteEventId(event._id)}
+									/>
 								</td>
 							</tr>
 						))}
