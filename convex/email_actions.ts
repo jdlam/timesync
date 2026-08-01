@@ -170,16 +170,30 @@ export const sendEventCreatedEmail = internalAction({
  * submits a new response to an event.
  */
 export const sendResponseNotification = internalAction({
-	args: {
-		eventId: v.id("events"),
-		respondentName: v.string(),
-		responseCount: v.number(),
-		isUpdate: v.optional(v.boolean()),
-		// Only used (and required) when isUpdate is true: a timestamp minted by
-		// the calling mutation, used to build a per-update idempotency key
-		// (responseCount doesn't change on update, so it can't be reused here).
-		updateTimestamp: v.optional(v.number()),
-	},
+	// isUpdate is a discriminated union rather than a bare boolean so that
+	// updateTimestamp/responseId are *required at the type level* whenever
+	// isUpdate is true, instead of optional args a caller could omit and
+	// silently produce an idempotency key containing "undefined" (PR #80
+	// review). responseCount doesn't change on update, so it can't
+	// disambiguate updates from each other or from the submit email —
+	// updateTimestamp + responseId (unique per response, per update) are
+	// required together to build a collision-free key.
+	args: v.union(
+		v.object({
+			eventId: v.id("events"),
+			respondentName: v.string(),
+			responseCount: v.number(),
+			isUpdate: v.optional(v.literal(false)),
+		}),
+		v.object({
+			eventId: v.id("events"),
+			respondentName: v.string(),
+			responseCount: v.number(),
+			isUpdate: v.literal(true),
+			updateTimestamp: v.number(),
+			responseId: v.id("responses"),
+		}),
+	),
 	handler: async (ctx, args) => {
 		const baseUrl = process.env.LAME_MAIL_URL;
 		const apiKey = process.env.LAME_MAIL_API_KEY;
@@ -224,16 +238,17 @@ export const sendResponseNotification = internalAction({
 			? `${appUrl}/unsubscribe?eventId=${args.eventId}&token=${event.notificationToken ?? event.adminToken}`
 			: undefined;
 
-		const isUpdate = args.isUpdate ?? false;
+		const isUpdate = args.isUpdate === true;
 
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		// Control chars in user input must not break the single-line prose or template layout.
 		const sanitizedRespondentName = args.respondentName.replace(/[\r\n]/g, " ");
-		// INVARIANT: subject must stay this exact stable per-event string for
-		// BOTH new and updated responses — it's identical to heading and
-		// identical across every response for a given event, so mail clients
-		// thread all notifications for an event into one conversation instead
-		// of spawning a new thread per response. Do not vary this by isUpdate.
+		// INVARIANT: subject must stay this exact stable per-event string
+		// across BOTH submit and update notifications — it does NOT vary by
+		// isUpdate (unlike heading, which does: "Updated response to..." vs
+		// "New response to..."). Every notification for a given event shares
+		// this one subject so mail clients thread them into one conversation
+		// instead of spawning a new thread per response/update.
 		const subject = `New response to "${sanitizedTitle}"`;
 		const heading = isUpdate
 			? `Updated response to "${sanitizedTitle}"`
@@ -245,8 +260,12 @@ export const sendResponseNotification = internalAction({
 		const highlight = `${args.responseCount} ${responseWord} so far`;
 		const preheader = `${sanitizedRespondentName} just ${verb} their availability — ${args.responseCount} ${responseWord} so far.`;
 
-		const idempotencyKey = isUpdate
-			? `response-update-${args.eventId}-${args.updateTimestamp}`
+		// Must include responseId: two different responders editing their
+		// responses on the same event within the same millisecond would
+		// otherwise mint an identical key (eventId + timestamp alone), and
+		// lame-mail's 24h dedup would silently drop one of the two emails.
+		const idempotencyKey = args.isUpdate === true
+			? `response-update-${args.eventId}-${args.responseId}-${args.updateTimestamp}`
 			: `response-${args.eventId}-${args.responseCount}`;
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {

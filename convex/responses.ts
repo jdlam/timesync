@@ -332,6 +332,10 @@ export const update = mutation({
 					responseCount: responses.length,
 					isUpdate: true,
 					updateTimestamp: now,
+					// Included so the idempotency key stays unique across
+					// different responders updating the same event at the
+					// same millisecond (see email_actions.ts).
+					responseId: args.responseId,
 				},
 			);
 		}
