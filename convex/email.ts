@@ -22,6 +22,10 @@ async function authorizeNotificationToken(
 	eventId: string,
 	token: string,
 ): Promise<Doc<"events"> | null> {
+	// Defense-in-depth: reject empty tokens before any comparison (adminToken and
+	// notificationToken should never be empty, but a future migration or manual DB
+	// write could violate this invariant; empty token must never authorize).
+	if (token === "") return null;
 	const id = ctx.db.normalizeId("events", eventId);
 	if (!id) return null;
 	const event = await ctx.db.get(id);

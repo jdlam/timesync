@@ -92,7 +92,7 @@ export function UnsubscribePage({
 				);
 				return;
 			}
-			setOverride(action === "unsubscribe" ? false : true);
+			setOverride(action !== "unsubscribe");
 			setJustResubscribed(action === "resubscribe");
 		} catch {
 			setError("Something went wrong. Please try again.");
