@@ -290,12 +290,35 @@ export const update = mutation({
 		}
 		validateSelectedSlotsAgainstEvent(normalizedSelectedSlots, event);
 
+		const now = Date.now();
 		await ctx.db.patch(args.responseId, {
 			respondentName: args.respondentName,
 			respondentComment: args.respondentComment,
 			selectedSlots: normalizedSelectedSlots,
-			updatedAt: Date.now(),
+			updatedAt: now,
 		});
+
+		// Schedule email notification if enabled (mirrors the submit mutation's
+		// gating above). An update doesn't change the response count, so pass
+		// the current count and a fresh timestamp for the idempotency key.
+		if (event.notifyOnResponse && event.creatorId) {
+			const responses = await ctx.db
+				.query("responses")
+				.withIndex("by_event", (q) => q.eq("eventId", existing.eventId))
+				.collect();
+
+			await ctx.scheduler.runAfter(
+				0,
+				internal.email_actions.sendResponseNotification,
+				{
+					eventId: existing.eventId,
+					respondentName: args.respondentName,
+					responseCount: responses.length,
+					isUpdate: true,
+					updateTimestamp: now,
+				},
+			);
+		}
 
 		return await ctx.db.get(args.responseId);
 	},

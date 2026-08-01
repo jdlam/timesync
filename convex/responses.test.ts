@@ -798,6 +798,128 @@ describe("responses", () => {
 		});
 	});
 
+	describe("update with email notifications", () => {
+		it("should schedule an update email when notifyOnResponse is true and creator is signed in", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: true,
+					creatorId: "user_123",
+				});
+
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Alice",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "edit-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Alice Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				// Drain scheduled functions (the action may fail without lame-mail, that's OK)
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
+				);
+				expect(emailNotConfiguredWarned).toBe(true);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+
+		it("should not schedule an update email when notifyOnResponse is false", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: false,
+					creatorId: "user_123",
+				});
+
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Bob",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "edit-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Bob Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
+				);
+				expect(emailNotConfiguredWarned).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+
+		it("should not schedule an update email when creator is a guest (no creatorId)", async () => {
+			vi.useFakeTimers();
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			try {
+				const t = convexTest(schema, modules);
+				const eventId = await createTestEvent(t, {
+					notifyOnResponse: true,
+				});
+
+				const responseId = await t.run(async (ctx) => {
+					return await ctx.db.insert("responses", {
+						eventId,
+						respondentName: "Dave",
+						selectedSlots: ["2025-01-20T10:00:00Z"],
+						editToken: "edit-token",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				await t.mutation(api.responses.update, {
+					responseId,
+					editToken: "edit-token",
+					respondentName: "Dave Updated",
+					selectedSlots: ["2025-01-20T14:00:00Z"],
+				});
+
+				vi.runAllTimers();
+				await t.finishInProgressScheduledFunctions();
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
+				);
+				expect(emailNotConfiguredWarned).toBe(false);
+			} finally {
+				warnSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe("remove", () => {
 		it("should delete a response with valid adminToken", async () => {
 			const t = convexTest(schema, modules);

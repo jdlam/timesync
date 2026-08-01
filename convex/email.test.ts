@@ -808,5 +808,134 @@ describe("email", () => {
 
 			logSpy.mockRestore();
 		});
+
+		describe("sendResponseNotification: isUpdate", () => {
+			it("uses updated-availability copy for heading/body/preheader, but keeps subject byte-identical to a new-response email for the same event (threading invariant)", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+				const { getRequestBody: getSubmitBody } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 2,
+				});
+				const submitSubject = getSubmitBody().data.subject;
+
+				const { getRequestBody: getUpdateBody } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 2,
+					isUpdate: true,
+					updateTimestamp: 1700000000000,
+				});
+				const requestBody = getUpdateBody();
+
+				// Content reflects the update...
+				expect(requestBody.data.heading).toBe('Updated response to "Team Sync"');
+				expect(requestBody.data.body).toBe(
+					"Alice just updated their availability.",
+				);
+				expect(requestBody.data.preheader).toBe(
+					"Alice just updated their availability — 2 responses so far.",
+				);
+				expect(requestBody.data.highlight).toBe("2 responses so far");
+				// ...but subject stays the stable per-event string, identical to a
+				// submit email for the same event, so mail clients thread them.
+				expect(requestBody.data.subject).toBe('New response to "Team Sync"');
+				expect(requestBody.data.subject).toBe(submitSubject);
+
+				logSpy.mockRestore();
+			});
+
+			it("defaults isUpdate to false: omitting it produces byte-identical submit copy", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+				const { getRequestBody } = mockLameMailFetch();
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+				});
+
+				const requestBody = getRequestBody();
+				expect(requestBody.data.heading).toBe('New response to "Team Sync"');
+				expect(requestBody.data.body).toBe(
+					"Alice just submitted their availability.",
+				);
+				expect(requestBody.data.preheader).toBe(
+					"Alice just submitted their availability — 1 response so far.",
+				);
+
+				logSpy.mockRestore();
+			});
+
+			// CRITICAL correctness point: responseCount doesn't change on an
+			// update, so reusing the submit idempotency key format would collide
+			// with the original submit email (and with a second update sharing
+			// the same count) and get silently suppressed by lame-mail's 24h
+			// dedup. The update path must mint a distinct, per-update key.
+			it("idempotency key: update key differs from the submit key and from a second update's key", async () => {
+				const t = convexTest(schema, modules);
+				const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+				const { fetchMock: submitFetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+				});
+				const submitKey = JSON.parse(submitFetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				const { fetchMock: update1Fetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+					isUpdate: true,
+					updateTimestamp: 1700000000000,
+				});
+				const update1Key = JSON.parse(update1Fetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				const { fetchMock: update2Fetch } = mockLameMailFetch();
+				await t.action(internal.email_actions.sendResponseNotification, {
+					eventId,
+					respondentName: "Alice",
+					responseCount: 1,
+					isUpdate: true,
+					updateTimestamp: 1700000005000,
+				});
+				const update2Key = JSON.parse(update2Fetch.mock.calls[0]?.[1].body)
+					.idempotencyKey;
+
+				expect(submitKey).toBe(`response-${eventId}-1`);
+				expect(update1Key).toBe(`response-update-${eventId}-1700000000000`);
+				expect(update2Key).toBe(`response-update-${eventId}-1700000005000`);
+				expect(update1Key).not.toBe(submitKey);
+				expect(update2Key).not.toBe(submitKey);
+				expect(update1Key).not.toBe(update2Key);
+
+				logSpy.mockRestore();
+			});
+		});
 	});
 });

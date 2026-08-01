@@ -174,6 +174,11 @@ export const sendResponseNotification = internalAction({
 		eventId: v.id("events"),
 		respondentName: v.string(),
 		responseCount: v.number(),
+		isUpdate: v.optional(v.boolean()),
+		// Only used (and required) when isUpdate is true: a timestamp minted by
+		// the calling mutation, used to build a per-update idempotency key
+		// (responseCount doesn't change on update, so it can't be reused here).
+		updateTimestamp: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const baseUrl = process.env.LAME_MAIL_URL;
@@ -219,23 +224,34 @@ export const sendResponseNotification = internalAction({
 			? `${appUrl}/unsubscribe?eventId=${args.eventId}&token=${event.notificationToken ?? event.adminToken}`
 			: undefined;
 
+		const isUpdate = args.isUpdate ?? false;
+
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		// Control chars in user input must not break the single-line prose or template layout.
 		const sanitizedRespondentName = args.respondentName.replace(/[\r\n]/g, " ");
-		// Stable across every response for an event (identical to heading) so
-		// mail clients thread all notifications for an event into one
-		// conversation instead of spawning a new thread per response.
+		// INVARIANT: subject must stay this exact stable per-event string for
+		// BOTH new and updated responses — it's identical to heading and
+		// identical across every response for a given event, so mail clients
+		// thread all notifications for an event into one conversation instead
+		// of spawning a new thread per response. Do not vary this by isUpdate.
 		const subject = `New response to "${sanitizedTitle}"`;
-		const heading = `New response to "${sanitizedTitle}"`;
+		const heading = isUpdate
+			? `Updated response to "${sanitizedTitle}"`
+			: `New response to "${sanitizedTitle}"`;
 
 		const responseWord = args.responseCount === 1 ? "response" : "responses";
-		const body = `${sanitizedRespondentName} just submitted their availability.`;
+		const verb = isUpdate ? "updated" : "submitted";
+		const body = `${sanitizedRespondentName} just ${verb} their availability.`;
 		const highlight = `${args.responseCount} ${responseWord} so far`;
-		const preheader = `${sanitizedRespondentName} just submitted their availability — ${args.responseCount} ${responseWord} so far.`;
+		const preheader = `${sanitizedRespondentName} just ${verb} their availability — ${args.responseCount} ${responseWord} so far.`;
+
+		const idempotencyKey = isUpdate
+			? `response-update-${args.eventId}-${args.updateTimestamp}`
+			: `response-${args.eventId}-${args.responseCount}`;
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
-			idempotencyKey: `response-${args.eventId}-${args.responseCount}`,
+			idempotencyKey,
 			subject,
 			body,
 			heading,
