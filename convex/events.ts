@@ -350,11 +350,14 @@ export const create = mutation({
 		const identity = await ctx.auth.getUserIdentity();
 		const creatorId = identity?.subject;
 		// Prefer the authenticated account email; fall back to a guest-supplied one.
-		const guestEmail = args.creatorEmail?.trim() || undefined;
+		// Only look at args.creatorEmail when there is no account email to use it,
+		// so a signed-in caller can't fail the request with a value we'd discard.
+		const accountEmail = identity?.email ?? undefined;
+		const guestEmail = accountEmail ? undefined : args.creatorEmail?.trim() || undefined;
 		if (guestEmail && !isValidEmail(guestEmail)) {
 			throw new Error("Please enter a valid email address");
 		}
-		const creatorEmail = identity?.email ?? guestEmail;
+		const creatorEmail = accountEmail ?? guestEmail;
 
 		// Basic abuse protection for event creation traffic.
 		await enforceRateLimit(ctx, {

@@ -1709,6 +1709,31 @@ describe("events", () => {
 			expect(event?.creatorEmail).toBe("guest@example.com");
 		});
 
+		// The client now lets a padded address through (it used to reject one),
+		// and TanStack Form submits raw field state, so this arrives untrimmed.
+		// The stored value has to be the trimmed address — it's what lame-mail
+		// gets handed as the recipient.
+		it("should trim a guest creatorEmail before storing it", async () => {
+			const t = makeConvexTest();
+
+			const result = await t.mutation(api.events.create, {
+				title: "Guest Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+				creatorEmail: "  guest@example.com  ",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorEmail).toBe("guest@example.com");
+		});
+
 		it("should treat a blank guest creatorEmail as none", async () => {
 			const t = makeConvexTest();
 
@@ -1764,6 +1789,35 @@ describe("events", () => {
 					slotDuration: 30,
 					maxRespondents: 5,
 					creatorEmail: "someone-else@example.com",
+				});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorEmail).toBe("account@example.com");
+		});
+
+		// "Ignored for signed-in users" has to mean ignored, not "discarded but
+		// still able to fail the request". A signed-in caller's creatorEmail is
+		// never used, so a malformed one must not block event creation.
+		it("should ignore an invalid creatorEmail arg when an account email exists", async () => {
+			const t = makeConvexTest();
+
+			const result = await t
+				.withIdentity({
+					subject: "user_12345",
+					email: "account@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Signed-in Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					creatorEmail: "not-an-email",
 				});
 
 			const event = await t.run(async (ctx) => {
