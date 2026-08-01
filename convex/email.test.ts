@@ -259,6 +259,7 @@ describe("email", () => {
 		afterEach(() => {
 			vi.unstubAllEnvs();
 			vi.unstubAllGlobals();
+			vi.restoreAllMocks();
 		});
 
 		it("sendEventCreatedEmail: puts links in `links[]`, not in body prose, so they render as clickable buttons/links instead of unclickable text", async () => {
@@ -425,6 +426,34 @@ describe("email", () => {
 			expect(requestBody.data.heading).toBe(
 				'Your event "<b>"quoted"</b> & stuff" is ready',
 			);
+
+			logSpy.mockRestore();
+		});
+
+		// QA regression: respondent name newlines must not survive sanitization
+		// into the body prose. A name containing \r\n would inject literal newlines
+		// into the plain-text body sent to lame-mail. The body must sanitize
+		// respondent name consistently with title to maintain message integrity.
+		it("sendResponseNotification: strips newlines from respondent name in body", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			const eventId = await createTestEvent(t, { title: "Team Sync" });
+
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Line1\nLine2",
+				responseCount: 1,
+			});
+
+			const requestBody = getRequestBody();
+			// Control chars in user input must not break the single-line prose or template layout.
+			expect(requestBody.data.body).toContain("Line1 Line2");
+			expect(requestBody.data.body).not.toMatch(/[\r\n]/);
 
 			logSpy.mockRestore();
 		});
