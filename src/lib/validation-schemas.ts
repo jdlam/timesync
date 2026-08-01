@@ -79,9 +79,19 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 			notifyOnResponse: z.boolean().optional(),
 
 			// Optional guest email so the creator can be sent their event links.
-			// Empty string is allowed (field left blank); otherwise must be valid.
+			// Trimmed first so pasted values with stray whitespace behave the same
+			// here as they do on the server, which trims before validating. Blank
+			// (or whitespace-only) means "field left blank"; anything else must be
+			// a valid address.
 			creatorEmail: z
-				.union([z.literal(""), z.string().email("Enter a valid email address")])
+				.string()
+				.trim()
+				.refine(
+					(val) => val === "" || z.string().email().safeParse(val).success,
+					{
+						message: "Enter a valid email address",
+					},
+				)
 				.optional(),
 		})
 		.refine(

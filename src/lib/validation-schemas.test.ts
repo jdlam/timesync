@@ -777,6 +777,28 @@ describe("validation-schemas", () => {
 			});
 			expect(result.success).toBe(false);
 		});
+
+		// The server trims before validating, so an address pasted with stray
+		// whitespace is accepted there. Rejecting it here would surface a
+		// confusing error for input the backend considers perfectly valid.
+		it("should accept a creatorEmail with surrounding whitespace", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				creatorEmail: "  guest@example.com  ",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		// Server-side, "   " trims to empty and means "no email given" rather
+		// than an error. The client must agree, or a stray space in an otherwise
+		// blank optional field blocks the form.
+		it("should treat a whitespace-only creatorEmail as blank", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				creatorEmail: "   ",
+			});
+			expect(result.success).toBe(true);
+		});
 	});
 
 	describe("tier-specific error messages", () => {
