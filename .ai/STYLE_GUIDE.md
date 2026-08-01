@@ -213,9 +213,21 @@ shadcn default to buy 8px there costs more than it returns.
 So: **do not add `min-h-[44px]` to `<Button>`.** Do add it to any new control
 where a mistap changes recorded data rather than just navigating.
 
-The known exception is icon-only action rows — `size="sm"` gives five 32×32
-targets 8px apart in the mobile card views (`MyEventsTable`, admin
-`EventsTable`). That is under the floor and outside the rationale above. See §9.
+### 4.2 Row actions
+
+A card or table row usually has one obvious action and several secondary ones.
+Give the primary action a visible button and put the rest behind a single
+`MoreVertical` popover — the same menu on both breakpoints.
+
+Do **not** splay every action as a row of icon-only buttons. It fails three ways
+at once: the targets end up under the floor, the actions lose their names so a
+touch user is guessing at glyphs, and the row cannot fit a narrow card.
+`MyEventsTable` did exactly this — five unlabelled 32×32 buttons that overflowed
+at 320px — and now renders `View` plus one 44×44 menu trigger.
+
+Share one menu component across breakpoints rather than writing a touch variant
+and a pointer variant. A `touch` flag that lifts rows and trigger to 44px is
+enough; if the two surfaces offer different actions, they will drift.
 
 - No horizontal page scroll. Wide content — grids, tables — scrolls inside its
   own `overflow-x-auto` container.
@@ -352,8 +364,7 @@ Check both themes before considering any UI change done.
 
 | Item | Detail |
 |------|--------|
-| Icon action rows under touch floor | Mobile card action rows use `size="sm"` — five 32×32px targets 8px apart. Under the 44px floor and outside the §4.1 rationale. |
-| Admin `EventsTable` action row | `EventsTable.tsx:131` still uses `flex gap-2` with no wrap. Fits today at 3 buttons; would overflow like `MyEventsTable` did if a fourth is added. |
+| Admin tables keep the flat icon row | `admin/EventsTable.tsx` and `admin/ResponsesTable.tsx` still splay `size="sm"` icon buttons in their mobile cards, unlabelled and under the touch floor. `my-events` moved to the shared menu; these have not. |
 | Gradient drift | Logo SVG uses teal-600→emerald-500; utilities use teal-500→emerald-500. Documented as intentional; confirm. |
 
 Resolved: primary-token contrast is settled at teal-600 (§1.4); the 44px floor
