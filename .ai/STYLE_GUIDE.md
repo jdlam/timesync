@@ -65,27 +65,41 @@ correct in three places:
 
 Anywhere else, reach for a token.
 
-### 1.4 Known contrast gap
+### 1.4 Primary button contrast
 
-`--primary` (teal-600, `#0d9488`) on white measures **3.74:1**. WCAG AA for
-normal text is 4.5:1, so `<Button>` at its default `text-sm font-medium` does
-not pass.
+**`--primary` is teal-600 (`#0d9488`). That is the shipped value and the
+settled choice.** Use `bg-primary` for primary CTAs; do not substitute a darker
+teal to chase a contrast number.
 
-This is not a regression — the previous cyan-600 token measured 3.68:1, so the
-retoken slightly improved it while bringing the token in line with the brand.
-It is still a real gap.
+The tradeoff was made knowingly. teal-600 on white measures 3.74:1, under the
+4.5:1 WCAG AA threshold for normal text, so `<Button>` at its default
+`text-sm font-medium` does not meet AA on contrast alone:
 
-| Candidate | Contrast on white | AA |
-|-----------|------------------|-----|
-| cyan-600 (previous) | 3.68:1 | ✗ |
-| teal-500 | 2.49:1 | ✗ |
-| **teal-600 (current)** | **3.74:1** | **✗** |
-| teal-700 `#0f766e` | 5.47:1 | ✓ |
-| emerald-500 | 2.54:1 | ✗ |
+| Candidate | Contrast on white | AA | |
+|-----------|------------------|-----|---|
+| cyan-600 | 3.68:1 | ✗ | previous token, off-brand |
+| teal-500 | 2.49:1 | ✗ | |
+| **teal-600** | **3.74:1** | **✗** | **shipped — brand gradient start** |
+| teal-700 `#0f766e` | 5.47:1 | ✓ | passes, but off the brand ramp |
+| emerald-500 | 2.54:1 | ✗ | |
 
-Switching `--primary` to teal-700 fixes it and touches only `src/styles.css`.
-It was not done here because it darkens every primary button, which is a design
-call rather than a token cleanup. **Open decision.**
+teal-600 was chosen because it is the exact start of the brand gradient, which
+keeps one teal across the logo, gradient, and every primary control. teal-700
+would pass AA but sits off that ramp, giving buttons a colour that appears
+nowhere else in the brand.
+
+What this means in practice:
+
+- Primary buttons must not rely on fill contrast alone to be identifiable.
+  Every variant already carries a visible focus ring, hover, and active state —
+  keep all of them.
+- Never lighten `--primary-foreground` below pure white.
+- Never place `--primary` as *text* on a light background at body size. As a
+  text colour use `text-teal-600 dark:text-teal-400`, or `--foreground`.
+- If a surface needs AA-compliant fill contrast specifically, use
+  `--foreground` or `--destructive`, not a one-off teal.
+
+Revisit only as a deliberate brand decision, not as a drive-by fix.
 
 ### 1.5 Heatmap scale
 
@@ -177,10 +191,32 @@ Non-negotiable, per the project's design philosophy. Write the mobile styles as
 the unprefixed base, then add `sm:` / `md:` / `lg:`. Never write
 `md:flex-col` to undo a desktop-first default.
 
-- **Touch targets are 44×44px minimum.** `min-h-[44px]` where a control would
-  otherwise be smaller. Note `Button` defaults to `h-9` (36px) — that is below
-  the floor, so any button that is a *primary mobile action* needs an explicit
-  `size="lg"` (40px) plus `min-h-[44px]`, or a wrapping tap area.
+### 4.1 Touch targets
+
+The project applies the 44px floor **selectively, by mistap cost** — not
+uniformly. This is deliberate; match it rather than "fixing" it.
+
+| Control | Height | Rule |
+|---------|--------|------|
+| Selection surfaces | `min-h-[44px]` | **Required.** Grid cells, date blocks, pattern toggles |
+| shadcn `<Button>` | `h-9` (36px) | Library default. **Leave it alone.** |
+| `<Button size="sm">` | `h-8` (32px) | Dense desktop rows only |
+
+The split exists because the two failure modes differ. On a selection surface —
+`DateBlockSelector`, `DateHeatmapCalendar`, the pattern toggles in
+`events/create.tsx` — a mistap silently records the wrong availability, which is
+the whole point of the product. Those get an explicit `min-h-[44px]`, and there
+are exactly three such call sites. An ordinary button sits alone with space
+around it and a wrong tap is obvious and instantly undone, so forking the
+shadcn default to buy 8px there costs more than it returns.
+
+So: **do not add `min-h-[44px]` to `<Button>`.** Do add it to any new control
+where a mistap changes recorded data rather than just navigating.
+
+The known exception is icon-only action rows — `size="sm"` gives five 32×32
+targets 8px apart in the mobile card views (`MyEventsTable`, admin
+`EventsTable`). That is under the floor and outside the rationale above. See §9.
+
 - No horizontal page scroll. Wide content — grids, tables — scrolls inside its
   own `overflow-x-auto` container.
 - Time-based grids always show time labels, even at 320px. Truncate the label,
@@ -312,6 +348,9 @@ Check both themes before considering any UI change done.
 
 | Item | Detail |
 |------|--------|
-| Primary contrast | `--primary` at 3.74:1 fails AA. teal-700 fixes it. See 1.4. |
+| **Mobile card action row overflows at 320px** | `MyEventsTable.tsx:141` puts 5 buttons in a `flex gap-2` with no `flex-wrap`. `Button` is `shrink-0`, so at a 320px viewport the row is 12px wider than its card and the last button spills past the border. Measured in-browser, not estimated. Clean at 360px and above. Admin `EventsTable.tsx:131` uses the same pattern with 3 buttons and fits. |
+| Icon action rows under touch floor | The same rows use `size="sm"` — five 32×32px targets 8px apart on mobile. Under the 44px floor and outside the §4.1 rationale. |
 | Gradient drift | Logo SVG uses teal-600→emerald-500; utilities use teal-500→emerald-500. Documented as intentional; confirm. |
-| Button touch floor | `Button` defaults to h-9 (36px), below the 44px mobile floor. No systematic enforcement today. |
+
+Resolved: primary-token contrast is settled at teal-600 (§1.4); the 44px floor
+is applied by mistap cost, which is deliberate (§4.1).
