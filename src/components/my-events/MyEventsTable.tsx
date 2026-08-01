@@ -5,13 +5,13 @@ import {
 	ExternalLink,
 	Eye,
 	Loader2,
-	MoreVertical,
 	Power,
 	PowerOff,
 	Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { type RowAction, RowActionsMenu } from "@/components/RowActionsMenu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -23,12 +23,6 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -45,108 +39,6 @@ interface Event {
 interface MyEventsTableProps {
 	events: Event[];
 	onViewEvent: (eventId: Id<"events">) => void;
-}
-
-interface EventActionsMenuProps {
-	event: Event;
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	isLoading: boolean;
-	onView: () => void;
-	onViewResults: () => void;
-	onViewPublicPage: () => void;
-	onToggleStatus: () => void;
-	onDelete: () => void;
-	/**
-	 * Touch surfaces size the trigger and every row to the 44px floor. A mistap
-	 * here toggles or deletes a live event, so this is a selection surface in the
-	 * sense of the style guide, not an ordinary button.
-	 */
-	touch?: boolean;
-}
-
-/**
- * The five per-event actions, as a labelled menu. Shared by the mobile card and
- * the desktop table so both surfaces offer the same actions under the same
- * names — mobile previously splayed them as unlabelled 32px icon buttons.
- */
-export function EventActionsMenu({
-	event,
-	open,
-	onOpenChange,
-	isLoading,
-	onView,
-	onViewResults,
-	onViewPublicPage,
-	onToggleStatus,
-	onDelete,
-	touch = false,
-}: EventActionsMenuProps) {
-	const item = cn(
-		"w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors",
-		touch && "min-h-[44px]",
-	);
-	const run = (action: () => void) => () => {
-		onOpenChange(false);
-		action();
-	};
-
-	return (
-		<Popover open={open} onOpenChange={onOpenChange}>
-			<PopoverTrigger asChild>
-				<Button
-					variant={touch ? "outline" : "ghost"}
-					size="sm"
-					className={cn(touch && "min-h-[44px] min-w-[44px] px-3")}
-					aria-label={`Actions for ${event.title}`}
-				>
-					<MoreVertical className="w-4 h-4" />
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent align="end" className="w-48 p-1">
-				<button type="button" className={item} onClick={run(onView)}>
-					<Eye className="w-4 h-4" />
-					View Details
-				</button>
-				<button type="button" className={item} onClick={run(onViewResults)}>
-					<BarChart3 className="w-4 h-4" />
-					View Results
-				</button>
-				<button type="button" className={item} onClick={run(onViewPublicPage)}>
-					<ExternalLink className="w-4 h-4" />
-					View Public Page
-				</button>
-				<button
-					type="button"
-					className={item}
-					onClick={run(onToggleStatus)}
-					disabled={isLoading}
-				>
-					{isLoading ? (
-						<Loader2 className="w-4 h-4 animate-spin" />
-					) : event.isActive ? (
-						<>
-							<PowerOff className="w-4 h-4" />
-							Deactivate
-						</>
-					) : (
-						<>
-							<Power className="w-4 h-4" />
-							Activate
-						</>
-					)}
-				</button>
-				<button
-					type="button"
-					className={cn(item, "text-destructive")}
-					onClick={run(onDelete)}
-				>
-					<Trash2 className="w-4 h-4" />
-					Delete
-				</button>
-			</PopoverContent>
-		</Popover>
-	);
 }
 
 export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
@@ -193,6 +85,37 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 	const handleViewResults = (eventId: Id<"events">, adminToken: string) => {
 		window.open(`/events/${eventId}/admin/${adminToken}`, "_blank");
 	};
+
+	// One action list per event, rendered identically on both breakpoints.
+	const actionsFor = (event: Event): RowAction[] => [
+		{
+			label: "View Details",
+			icon: Eye,
+			onSelect: () => onViewEvent(event._id),
+		},
+		{
+			label: "View Results",
+			icon: BarChart3,
+			onSelect: () => handleViewResults(event._id, event.adminToken),
+		},
+		{
+			label: "View Public Page",
+			icon: ExternalLink,
+			onSelect: () => handleViewPublicPage(event._id),
+		},
+		{
+			label: event.isActive ? "Deactivate" : "Activate",
+			icon: event.isActive ? PowerOff : Power,
+			onSelect: () => handleToggleStatus(event._id),
+			loading: actionLoading === event._id,
+		},
+		{
+			label: "Delete",
+			icon: Trash2,
+			onSelect: () => setDeleteEventId(event._id),
+			destructive: true,
+		},
+	];
 
 	if (events.length === 0) {
 		return (
@@ -246,21 +169,14 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 								<Eye className="w-4 h-4 mr-1" />
 								View
 							</Button>
-							<EventActionsMenu
-								event={event}
+							<RowActionsMenu
 								touch
+								label={`Actions for ${event.title}`}
+								actions={actionsFor(event)}
 								open={openPopoverId === event._id}
 								onOpenChange={(open) =>
 									setOpenPopoverId(open ? event._id : null)
 								}
-								isLoading={actionLoading === event._id}
-								onView={() => onViewEvent(event._id)}
-								onViewResults={() =>
-									handleViewResults(event._id, event.adminToken)
-								}
-								onViewPublicPage={() => handleViewPublicPage(event._id)}
-								onToggleStatus={() => handleToggleStatus(event._id)}
-								onDelete={() => setDeleteEventId(event._id)}
 							/>
 						</div>
 					</div>
@@ -321,20 +237,13 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 									</span>
 								</td>
 								<td className="py-3 px-4 text-right">
-									<EventActionsMenu
-										event={event}
+									<RowActionsMenu
+										label={`Actions for ${event.title}`}
+										actions={actionsFor(event)}
 										open={openPopoverId === event._id}
 										onOpenChange={(open) =>
 											setOpenPopoverId(open ? event._id : null)
 										}
-										isLoading={actionLoading === event._id}
-										onView={() => onViewEvent(event._id)}
-										onViewResults={() =>
-											handleViewResults(event._id, event.adminToken)
-										}
-										onViewPublicPage={() => handleViewPublicPage(event._id)}
-										onToggleStatus={() => handleToggleStatus(event._id)}
-										onDelete={() => setDeleteEventId(event._id)}
 									/>
 								</td>
 							</tr>

@@ -101,7 +101,8 @@ export function ResponsesTable({ responses }: ResponsesTableProps) {
 								variant="outline"
 								size="sm"
 								onClick={() => setDeleteResponseId(response._id)}
-								className="text-destructive hover:text-destructive"
+								className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px]"
+								aria-label={`Delete response from ${response.respondentName}`}
 							>
 								<Trash2 className="w-4 h-4" />
 							</Button>
@@ -169,6 +170,7 @@ export function ResponsesTable({ responses }: ResponsesTableProps) {
 										size="sm"
 										className="text-destructive hover:text-destructive"
 										onClick={() => setDeleteResponseId(response._id)}
+										aria-label={`Delete response from ${response.respondentName}`}
 									>
 										<Trash2 className="w-4 h-4" />
 									</Button>

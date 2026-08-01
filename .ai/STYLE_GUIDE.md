@@ -225,9 +225,16 @@ touch user is guessing at glyphs, and the row cannot fit a narrow card.
 `MyEventsTable` did exactly this — five unlabelled 32×32 buttons that overflowed
 at 320px — and now renders `View` plus one 44×44 menu trigger.
 
-Share one menu component across breakpoints rather than writing a touch variant
-and a pointer variant. A `touch` flag that lifts rows and trigger to 44px is
-enough; if the two surfaces offer different actions, they will drift.
+Use `RowActionsMenu` (`src/components/RowActionsMenu.tsx`) — one menu on both
+breakpoints, with a `touch` flag that lifts the trigger and every row to 44px.
+Pass actions as data (`RowAction[]`: label, icon, `onSelect`, optional
+`destructive` / `loading`) rather than writing the popover again. Writing a
+touch variant and a pointer variant is how the two surfaces drift apart.
+
+**A row with a single action does not get a menu.** A popover costs a tap, so
+one action means one labelled button — `min-h-[44px] min-w-[44px]` plus an
+`aria-label`, since an icon-only button has no accessible name otherwise. Admin
+`ResponsesTable` is the example: delete only, so no menu.
 
 - No horizontal page scroll. Wide content — grids, tables — scrolls inside its
   own `overflow-x-auto` container.
@@ -364,8 +371,8 @@ Check both themes before considering any UI change done.
 
 | Item | Detail |
 |------|--------|
-| Admin tables keep the flat icon row | `admin/EventsTable.tsx` and `admin/ResponsesTable.tsx` still splay `size="sm"` icon buttons in their mobile cards, unlabelled and under the touch floor. `my-events` moved to the shared menu; these have not. |
 | Gradient drift | Logo SVG uses teal-600→emerald-500; utilities use teal-500→emerald-500. Documented as intentional; confirm. |
 
 Resolved: primary-token contrast is settled at teal-600 (§1.4); the 44px floor
-is applied by mistap cost, which is deliberate (§4.1).
+is applied by mistap cost, which is deliberate (§4.1); every row-action surface
+now uses `RowActionsMenu` or a single labelled button (§4.2).

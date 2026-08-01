@@ -1,15 +1,9 @@
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
-import {
-	Eye,
-	Loader2,
-	MoreVertical,
-	Power,
-	PowerOff,
-	Trash2,
-} from "lucide-react";
-import { useCallback, useState } from "react";
+import { Eye, Loader2, Power, PowerOff, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { type RowAction, RowActionsMenu } from "@/components/RowActionsMenu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,11 +15,6 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -51,11 +40,6 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 
 	const toggleStatus = useMutation(api.admin.toggleEventStatus);
 	const deleteEvent = useMutation(api.admin.deleteEvent);
-
-	// Close popover when performing an action
-	const closePopover = useCallback(() => {
-		setOpenPopoverId(null);
-	}, []);
 
 	const handleToggleStatus = async (eventId: Id<"events">) => {
 		setActionLoading(eventId);
@@ -85,6 +69,27 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 			setActionLoading(null);
 		}
 	};
+
+	// One action list per event, rendered identically on both breakpoints.
+	const actionsFor = (event: Event): RowAction[] => [
+		{
+			label: "View Details",
+			icon: Eye,
+			onSelect: () => onViewEvent(event._id),
+		},
+		{
+			label: event.isActive ? "Deactivate" : "Activate",
+			icon: event.isActive ? PowerOff : Power,
+			onSelect: () => handleToggleStatus(event._id),
+			loading: actionLoading === event._id,
+		},
+		{
+			label: "Delete",
+			icon: Trash2,
+			onSelect: () => setDeleteEventId(event._id),
+			destructive: true,
+		},
+	];
 
 	if (events.length === 0) {
 		return (
@@ -128,39 +133,25 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 							Creator: {event.creatorEmail || "Guest"}
 						</p>
 
-						<div className="flex gap-2">
+						<div className="flex flex-wrap gap-2">
 							<Button
 								variant="outline"
 								size="sm"
-								className="flex-1"
+								className="flex-1 min-h-[44px]"
 								onClick={() => onViewEvent(event._id)}
 							>
 								<Eye className="w-4 h-4 mr-1" />
 								View
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => handleToggleStatus(event._id)}
-								disabled={actionLoading === event._id}
-							>
-								{actionLoading === event._id ? (
-									<Loader2 className="w-4 h-4 animate-spin" />
-								) : event.isActive ? (
-									<PowerOff className="w-4 h-4" />
-								) : (
-									<Power className="w-4 h-4" />
-								)}
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => setDeleteEventId(event._id)}
-								disabled={actionLoading === event._id}
-								className="text-destructive hover:text-destructive"
-							>
-								<Trash2 className="w-4 h-4" />
-							</Button>
+							<RowActionsMenu
+								touch
+								label={`Actions for ${event.title}`}
+								actions={actionsFor(event)}
+								open={openPopoverId === event._id}
+								onOpenChange={(open) =>
+									setOpenPopoverId(open ? event._id : null)
+								}
+							/>
 						</div>
 					</div>
 				))}
@@ -230,65 +221,14 @@ export function EventsTable({ events, onViewEvent }: EventsTableProps) {
 									</span>
 								</td>
 								<td className="py-3 px-4 text-right">
-									<Popover
+									<RowActionsMenu
+										label={`Actions for ${event.title}`}
+										actions={actionsFor(event)}
 										open={openPopoverId === event._id}
 										onOpenChange={(open) =>
 											setOpenPopoverId(open ? event._id : null)
 										}
-									>
-										<PopoverTrigger asChild>
-											<Button variant="ghost" size="sm">
-												<MoreVertical className="w-4 h-4" />
-											</Button>
-										</PopoverTrigger>
-										<PopoverContent align="end" className="w-48 p-1">
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => {
-													closePopover();
-													onViewEvent(event._id);
-												}}
-											>
-												<Eye className="w-4 h-4" />
-												View Details
-											</button>
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors"
-												onClick={() => {
-													closePopover();
-													handleToggleStatus(event._id);
-												}}
-												disabled={actionLoading === event._id}
-											>
-												{actionLoading === event._id ? (
-													<Loader2 className="w-4 h-4 animate-spin" />
-												) : event.isActive ? (
-													<>
-														<PowerOff className="w-4 h-4" />
-														Deactivate
-													</>
-												) : (
-													<>
-														<Power className="w-4 h-4" />
-														Activate
-													</>
-												)}
-											</button>
-											<button
-												type="button"
-												className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors text-destructive"
-												onClick={() => {
-													closePopover();
-													setDeleteEventId(event._id);
-												}}
-											>
-												<Trash2 className="w-4 h-4" />
-												Delete
-											</button>
-										</PopoverContent>
-									</Popover>
+									/>
 								</td>
 							</tr>
 						))}
