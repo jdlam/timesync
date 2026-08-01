@@ -1,6 +1,7 @@
 sequenceDiagram
     actor Guest
     participant Page as PublicEvent
+    participant LS as localStorage
     participant Grid as AvailabilityGrid
     participant Convex
     participant DB as Database
@@ -9,27 +10,50 @@ sequenceDiagram
     Page->>Convex: events.getByIdWithResponseCount
     Convex->>DB: SELECT event + count
     Convex-->>Page: event data
-    alt eventMode = "dates"
-        Page->>Grid: Render DateAvailabilityCalendar
-        Grid->>Grid: generateDateSlots()
-        alt grouped pattern
-            Grid->>Guest: DateBlockSelector (toggle whole blocks)
-        else individual
-            Guest->>Grid: Pick individual days / ranges
+    Page->>LS: getStoredResponse(eventId)
+    LS-->>Page: {responseId, editToken} | null
+
+    alt Already responded from this browser
+        Page->>Convex: responses.getByEditToken
+        Convex->>DB: SELECT response by editToken
+        alt Response still exists
+            Convex-->>Page: response
+            Page->>Grid: Render EditResponseForm (pre-filled)
+            Note over Grid: Same eventMode branch as below
+            Guest->>Page: Adjust selection, submit
+            Page->>Convex: responses.update
+            Convex->>DB: PATCH response
+            Convex-->>Page: updated response
+            Page->>Guest: "Response updated"
+        else Deleted by admin (null)
+            Convex-->>Page: null
+            Page->>LS: clearStoredResponse(eventId)
+            Note over Page: Falls through to first-time submit
         end
-    else eventMode = "times"
-        Page->>Grid: Render AvailabilityGrid
-        Grid->>Grid: generateTimeSlots()
-        Guest->>Grid: Select availability slots
-    end
-    Guest->>Page: Enter name, submit
-    Page->>Page: generateEditToken()
-    Page->>Convex: responses.submit
-    Convex->>DB: Check maxRespondents
-    alt Limit reached
-        Convex-->>Page: Error: limit reached
-    else Space available
-        Convex->>DB: INSERT response
-        Convex-->>Page: responseId + editToken
-        Page->>Guest: Success + edit link
+    else First response from this browser
+        alt eventMode = "dates"
+            Page->>Grid: Render DateAvailabilityCalendar
+            Grid->>Grid: generateDateSlots()
+            alt grouped pattern
+                Grid->>Guest: DateBlockSelector (toggle whole blocks)
+            else individual
+                Guest->>Grid: Pick individual days / ranges
+            end
+        else eventMode = "times"
+            Page->>Grid: Render AvailabilityGrid
+            Grid->>Grid: generateTimeSlots()
+            Guest->>Grid: Select availability slots
+        end
+        Guest->>Page: Enter name, submit
+        Page->>Convex: responses.submit
+        Convex->>DB: Check maxRespondents
+        alt Limit reached
+            Convex-->>Page: Error: limit reached
+        else Space available
+            Convex->>DB: INSERT response (generates editToken)
+            Convex-->>Page: responseId + editToken
+            Page->>LS: setStoredResponse(eventId, ...)
+            Page->>Guest: Success + edit link
+            Note over Page: Page now renders edit mode,<br/>so a repeat submit updates<br/>instead of duplicating
+        end
     end

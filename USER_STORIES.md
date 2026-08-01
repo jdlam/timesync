@@ -159,11 +159,20 @@
 - [x] Submit button saves their response
 - [x] Success message shown after submission
 - [x] User receives edit link to modify response later
+- [x] Submitting again from the same browser edits the existing response instead
+      of creating a duplicate
 
 **Technical Notes:**
 - Generate unique `editToken` on submission
 - Store selections as array of ISO timestamps in `selectedSlots`
 - No authentication required
+- The returned `{responseId, editToken}` is persisted to `localStorage` under
+  `response-${eventId}` (`src/lib/stored-response.ts`). On load, the event page
+  resolves that token via `responses.getByEditToken` and renders the edit form
+  when it matches a live response — otherwise a second submit would consume
+  another `maxRespondents` slot
+- `responses.getByEditToken` returns `null` (rather than throwing) for an
+  unknown token, so a stale saved token falls back to the submit form
 
 ---
 

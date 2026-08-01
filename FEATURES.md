@@ -70,12 +70,21 @@ rather than a time of day.
   - Optional comment field
   - Submit response with success confirmation
   - Edit link provided after submission
+  - Returning to the event page edits the response already submitted from this
+    browser instead of creating a duplicate (which would consume another
+    respondent slot). The edit token is remembered per event in `localStorage`
+    under `response-${eventId}`
+  - "Not <name>? Submit a new response" clears that memory, so a shared device
+    isn't locked to one respondent
+  - A remembered response that the admin has since deleted is forgotten
+    automatically, returning the visitor to the submit form
 
 - **Edit Response** at `/events/:eventId/edit/:editToken`
   - Retrieve existing response via edit token
   - Pre-filled selections from previous submission
   - Update name, comment, and availability
   - Toast notification on successful update
+  - Shares the `EditResponseForm` component with the event page's edit mode
 
 ---
 
