@@ -1,5 +1,4 @@
 import { convexTest } from "convex-test";
-import type { FunctionArgs } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
@@ -1023,40 +1022,52 @@ describe("email", () => {
 				logSpy.mockRestore();
 			});
 
-			// Type-level guard (PR #80 review): the args validator is a
-			// discriminated union so isUpdate: true *requires* updateTimestamp
-			// and responseId at compile time — a caller can no longer omit them
-			// and silently mint a key containing "undefined". This is enforced
-			// by TypeScript/tsc (via convex's v.union-derived arg types), not by
-			// a runtime check, so there's nothing to invoke or assert on at
-			// runtime. The `@ts-expect-error` assignments below are compile-only
-			// (never invoked, so no runtime rejection risk) and pin the compile
-			// error; they would themselves fail `tsc` (unused-error) if the
-			// union were ever loosened back to optional fields.
-			it("type-level: isUpdate true requires responseId/updateTimestamp; submit shape still works without them (compile-time only, not invoked)", async () => {
-				type SendResponseNotificationArgs = FunctionArgs<
-					typeof internal.email_actions.sendResponseNotification
-				>;
-
+			// Runtime guard (PR #80 review, revised after the deploy failure this
+			// caused — Convex rejects a union `args` validator at push time, so
+			// the "updateTimestamp/responseId required when isUpdate is true"
+			// invariant can no longer be enforced at the type level). The
+			// handler must fail loudly instead of silently building a key
+			// containing "undefined", which would recreate the exact dedup
+			// collision this guards against.
+			it("throws when isUpdate is true but responseId is missing", async () => {
 				const t = convexTest(schema, modules);
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+				mockLameMailFetch();
+
 				const eventId = await createTestEvent(t, { title: "Team Sync" });
 
-				// Submit-shaped object: no isUpdate/updateTimestamp/responseId — compiles fine.
-				const submitArgs: SendResponseNotificationArgs = {
-					eventId,
-					respondentName: "Alice",
-					responseCount: 1,
-				};
-				expect(submitArgs.respondentName).toBe("Alice");
+				await expect(
+					t.action(internal.email_actions.sendResponseNotification, {
+						eventId,
+						respondentName: "Alice",
+						responseCount: 1,
+						isUpdate: true,
+						updateTimestamp: 1700000000000,
+					}),
+				).rejects.toThrow(/responseId is required/);
+			});
 
-				// @ts-expect-error isUpdate: true must require updateTimestamp and responseId
-				const badUpdateArgs: SendResponseNotificationArgs = {
-					eventId,
-					respondentName: "Alice",
-					responseCount: 1,
-					isUpdate: true,
-				};
-				expect(badUpdateArgs).toBeDefined();
+			it("throws when isUpdate is true but updateTimestamp is missing", async () => {
+				const t = convexTest(schema, modules);
+				vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+				vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+				vi.stubEnv("APP_URL", "https://timesync.example.com");
+				mockLameMailFetch();
+
+				const eventId = await createTestEvent(t, { title: "Team Sync" });
+				const responseId = await createTestResponse(t, eventId, "Alice");
+
+				await expect(
+					t.action(internal.email_actions.sendResponseNotification, {
+						eventId,
+						respondentName: "Alice",
+						responseCount: 1,
+						isUpdate: true,
+						responseId,
+					}),
+				).rejects.toThrow(/updateTimestamp is required/);
 			});
 		});
 	});

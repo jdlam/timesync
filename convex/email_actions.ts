@@ -170,30 +170,21 @@ export const sendEventCreatedEmail = internalAction({
  * submits a new response to an event.
  */
 export const sendResponseNotification = internalAction({
-	// isUpdate is a discriminated union rather than a bare boolean so that
-	// updateTimestamp/responseId are *required at the type level* whenever
-	// isUpdate is true, instead of optional args a caller could omit and
-	// silently produce an idempotency key containing "undefined" (PR #80
-	// review). responseCount doesn't change on update, so it can't
-	// disambiguate updates from each other or from the submit email —
-	// updateTimestamp + responseId (unique per response, per update) are
-	// required together to build a collision-free key.
-	args: v.union(
-		v.object({
-			eventId: v.id("events"),
-			respondentName: v.string(),
-			responseCount: v.number(),
-			isUpdate: v.optional(v.literal(false)),
-		}),
-		v.object({
-			eventId: v.id("events"),
-			respondentName: v.string(),
-			responseCount: v.number(),
-			isUpdate: v.literal(true),
-			updateTimestamp: v.number(),
-			responseId: v.id("responses"),
-		}),
-	),
+	// Convex rejects a union at the top level of `args` ("Args validator must
+	// be an object or any") — this is enforced at push time, not caught by
+	// tsc or convex-test, so a discriminated union here breaks deploys
+	// without any local signal. isUpdate is therefore a flat optional
+	// boolean, and the "updateTimestamp/responseId required together when
+	// isUpdate is true" invariant is enforced by an explicit runtime guard
+	// below instead of the type system. Do NOT reintroduce a union here.
+	args: {
+		eventId: v.id("events"),
+		respondentName: v.string(),
+		responseCount: v.number(),
+		isUpdate: v.optional(v.boolean()),
+		updateTimestamp: v.optional(v.number()),
+		responseId: v.optional(v.id("responses")),
+	},
 	handler: async (ctx, args) => {
 		const baseUrl = process.env.LAME_MAIL_URL;
 		const apiKey = process.env.LAME_MAIL_API_KEY;
@@ -264,9 +255,27 @@ export const sendResponseNotification = internalAction({
 		// responses on the same event within the same millisecond would
 		// otherwise mint an identical key (eventId + timestamp alone), and
 		// lame-mail's 24h dedup would silently drop one of the two emails.
-		const idempotencyKey = args.isUpdate === true
-			? `response-update-${args.eventId}-${args.responseId}-${args.updateTimestamp}`
-			: `response-${args.eventId}-${args.responseCount}`;
+		//
+		// Runtime guard (replaces the type-level discriminated union Convex
+		// rejects for `args`, see comment above): fail loudly rather than
+		// silently building a key containing "undefined", which would
+		// recreate the exact dedup collision this guards against.
+		let idempotencyKey: string;
+		if (args.isUpdate === true) {
+			if (args.responseId === undefined) {
+				throw new Error(
+					"sendResponseNotification: responseId is required when isUpdate is true",
+				);
+			}
+			if (args.updateTimestamp === undefined) {
+				throw new Error(
+					"sendResponseNotification: updateTimestamp is required when isUpdate is true",
+				);
+			}
+			idempotencyKey = `response-update-${args.eventId}-${args.responseId}-${args.updateTimestamp}`;
+		} else {
+			idempotencyKey = `response-${args.eventId}-${args.responseCount}`;
+		}
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
