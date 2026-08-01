@@ -136,8 +136,21 @@ rather than a time of day.
 - Toggle on event creation form (default: checked for signed-in users)
 - Toggle on event edit dialog for existing events
 - Emails include respondent name, response count, and link to admin dashboard
-- Unsubscribe link opens confirmation page before disabling notifications
 - Delivered via lame-mail, a self-hosted transactional email service
+
+### Branded Unsubscribe Portal
+
+- **Unsubscribe Portal** at `/unsubscribe`
+  - Branded portal with TimeSync logo and teal-emerald gradient
+  - Reached from notification email footers via `?eventId=` and `?token=` query params
+  - Confirms before unsubscribing (prevents accidental opt-outs)
+  - Shows success screen naming the specific event ("Stop email notifications for '{event title}'?")
+  - Allows re-enabling notifications if unsubscribed
+  - Token-authenticated with least-privilege notification token
+  - Legacy admin-token links still supported for backward compatibility
+  - Displays "You're unsubscribed" and "Notifications are back on" states with re-enable/disable toggles
+  - Responsive design with centered card layout
+  - Error handling with retry button for stale/invalid links
 
 ### Event Links Emailed on Creation
 
