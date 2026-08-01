@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MyEventsIndexRouteImport } from './routes/my-events/index'
@@ -24,6 +25,11 @@ import { Route as AdminEventsEventIdRouteImport } from './routes/admin/events/$e
 import { Route as EventsEventIdEditEditTokenRouteImport } from './routes/events/$eventId/edit/$editToken'
 import { Route as EventsEventIdAdminAdminTokenRouteImport } from './routes/events/$eventId/admin/$adminToken'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -100,6 +106,7 @@ const EventsEventIdAdminAdminTokenRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/responses': typeof AdminResponsesRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/pricing'
+    | '/unsubscribe'
     | '/admin/dashboard'
     | '/admin/logs'
     | '/admin/responses'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/pricing'
+    | '/unsubscribe'
     | '/admin/dashboard'
     | '/admin/logs'
     | '/admin/responses'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/pricing'
+    | '/unsubscribe'
     | '/admin/dashboard'
     | '/admin/logs'
     | '/admin/responses'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PricingRoute: typeof PricingRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminLogsRoute: typeof AdminLogsRoute
   AdminResponsesRoute: typeof AdminResponsesRoute
@@ -216,6 +229,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
@@ -320,6 +340,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PricingRoute: PricingRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminLogsRoute: AdminLogsRoute,
   AdminResponsesRoute: AdminResponsesRoute,

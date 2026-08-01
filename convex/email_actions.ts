@@ -211,12 +211,10 @@ export const sendResponseNotification = internalAction({
 			? `${appUrl}/events/${args.eventId}/admin/${event.adminToken}`
 			: undefined;
 
-		const convexSiteUrl = process.env.CONVEX_CLOUD_URL?.replace(
-			".cloud",
-			".site",
-		);
-		const unsubscribeUrl = convexSiteUrl
-			? `${convexSiteUrl}/unsubscribe?eventId=${args.eventId}&adminToken=${event.adminToken}`
+		// Prefer the least-privilege notificationToken; fall back to adminToken
+		// for events created before notificationToken existed.
+		const unsubscribeUrl = appUrl
+			? `${appUrl}/unsubscribe?eventId=${args.eventId}&token=${event.notificationToken ?? event.adminToken}`
 			: undefined;
 
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");

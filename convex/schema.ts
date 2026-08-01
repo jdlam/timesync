@@ -36,6 +36,13 @@ export default defineSchema({
 		// Guest access token (unique secret URL for non-authenticated creators)
 		adminToken: v.string(),
 
+		// Least-privilege token for the unsubscribe portal — grants only the
+		// ability to toggle notifyOnResponse, unlike adminToken which grants
+		// full event admin. Optional because pre-existing events predate it;
+		// the portal auth accepts either token, so legacy links carrying adminToken
+		// continue to work.
+		notificationToken: v.optional(v.string()),
+
 		// Event details
 		title: v.string(),
 		description: v.optional(v.string()),
@@ -100,6 +107,7 @@ export default defineSchema({
 	})
 		.index("by_creator", ["creatorId"])
 		.index("by_admin_token", ["adminToken"])
+		.index("by_notification_token", ["notificationToken"])
 		.index("by_is_active", ["isActive"]),
 
 	// Responses table (availability submissions)
