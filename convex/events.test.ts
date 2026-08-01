@@ -692,10 +692,10 @@ describe("events", () => {
 				adminToken: "secret-admin-token",
 			});
 
-			expect(event.title).toBe("Admin Event");
+			expect(event?.title).toBe("Admin Event");
 		});
 
-		it("should throw error for invalid admin token", async () => {
+		it("should return null (not throw) for invalid admin token", async () => {
 			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
@@ -715,12 +715,49 @@ describe("events", () => {
 				});
 			});
 
-			await expect(
-				t.query(api.events.getByAdminToken, {
-					eventId,
-					adminToken: "wrong-token",
-				}),
-			).rejects.toThrow("Event not found or invalid admin token");
+			const event = await t.query(api.events.getByAdminToken, {
+				eventId,
+				adminToken: "wrong-token",
+			});
+
+			expect(event).toBeNull();
+		});
+
+		it("should return null (not throw) after the event has been deleted", async () => {
+			// The admin dashboard query stays mounted across the delete (real-time
+			// subscription). If this threw instead of returning null, it would crash
+			// the still-mounted subscription into the React error boundary right
+			// after a successful delete.
+			const t = makeConvexTest();
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Admin Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "secret-admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.mutation(api.events.deleteByAdminToken, {
+				eventId,
+				adminToken: "secret-admin-token",
+			});
+
+			const event = await t.query(api.events.getByAdminToken, {
+				eventId,
+				adminToken: "secret-admin-token",
+			});
+
+			expect(event).toBeNull();
 		});
 	});
 
