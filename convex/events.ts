@@ -44,8 +44,12 @@ export const getById = query({
 			}
 		}
 
-		const { adminToken: _adminToken, password: _password, ...safeEvent } =
-			event;
+		const {
+			adminToken: _adminToken,
+			notificationToken: _notificationToken,
+			password: _password,
+			...safeEvent
+		} = event;
 		return safeEvent;
 	},
 });
@@ -96,6 +100,7 @@ export const getByIdWithResponseCount = query({
 		// Strip sensitive fields from returned event
 		const {
 			adminToken: _adminToken,
+			notificationToken: _notificationToken,
 			password: _password,
 			...safeEvent
 		} = event;
@@ -490,6 +495,7 @@ export const create = mutation({
 				: undefined;
 
 		const adminToken = crypto.randomUUID();
+		const notificationToken = crypto.randomUUID();
 		const now = Date.now();
 		// Only honor notifyOnResponse for authenticated users
 		const notifyOnResponse =
@@ -508,6 +514,7 @@ export const create = mutation({
 			timeRangeEnd: isDatesMode ? "00:00" : args.timeRangeEnd,
 			slotDuration: isDatesMode ? 1440 : args.slotDuration,
 			adminToken,
+			notificationToken,
 			isPremium,
 			password: hashedPassword,
 			maxRespondents: actualMaxRespondents,

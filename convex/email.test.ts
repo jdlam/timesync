@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { modules } from "./test.setup";
 
@@ -18,6 +18,7 @@ async function createTestEvent(
 			timeRangeEnd: "17:00",
 			slotDuration: 30,
 			adminToken: "admin-token",
+			notificationToken: "notification-token",
 			maxRespondents: 5,
 			isPremium: false,
 			isActive: true,
@@ -255,6 +256,232 @@ describe("email", () => {
 		});
 	});
 
+	// QA regression: the public unsubscribe-portal functions (getUnsubscribeInfo,
+	// unsubscribe, resubscribe) shipped with zero direct convex-test coverage —
+	// only a UI test that mocks them out. These probe the actual auth rule
+	// (authorizeNotificationToken) and the public/client-facing surface.
+	describe("QA regression: public unsubscribe-portal functions", () => {
+		async function insertEvent(
+			t: ReturnType<typeof convexTest>,
+			overrides: Partial<{
+				notificationToken: string;
+				adminToken: string;
+				notifyOnResponse: boolean;
+			}> = {},
+		) {
+			return await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Team Sync",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: overrides.adminToken ?? "admin-token",
+					notificationToken: overrides.notificationToken ?? "notif-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					notifyOnResponse: overrides.notifyOnResponse,
+					creatorEmail: "creator@example.com",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+		}
+
+		describe("getUnsubscribeInfo", () => {
+			it("resolves title/notifyOnResponse for a correct notificationToken", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t, { notifyOnResponse: true });
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId,
+					token: "notif-token",
+				});
+
+				expect(info).toEqual({ title: "Team Sync", notifyOnResponse: true });
+			});
+
+			it("also resolves via the legacy adminToken fallback", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t, { notifyOnResponse: true });
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId,
+					token: "admin-token",
+				});
+
+				expect(info).toEqual({ title: "Team Sync", notifyOnResponse: true });
+			});
+
+			it("returns null (not an error) for a wrong-but-valid-format token", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t);
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId,
+					token: "not-the-right-token",
+				});
+
+				expect(info).toBeNull();
+			});
+
+			it("returns null for an empty-string token against a real event (non-empty tokens)", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t);
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId,
+					token: "",
+				});
+
+				expect(info).toBeNull();
+			});
+
+			it("rejects an empty-string token even if adminToken/notificationToken are empty (defense-in-depth)", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await t.run(async (ctx) => {
+					return await ctx.db.insert("events", {
+						title: "No Token Event",
+						timeZone: "UTC",
+						dates: ["2025-01-20"],
+						timeRangeStart: "09:00",
+						timeRangeEnd: "17:00",
+						slotDuration: 30,
+						adminToken: "",
+						maxRespondents: 5,
+						isPremium: false,
+						isActive: true,
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					});
+				});
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId,
+					token: "",
+				});
+
+				// Even if adminToken is empty (violates schema invariant), empty
+				// token is explicitly rejected before any comparison.
+				expect(info).toBeNull();
+			});
+
+			it("rejects a token that is valid for a DIFFERENT event", async () => {
+				const t = convexTest(schema, modules);
+				await insertEvent(t, { notificationToken: "notif-token-A" });
+				const eventB = await insertEvent(t, {
+					notificationToken: "notif-token-B",
+					adminToken: "admin-token-B",
+				});
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId: eventB,
+					token: "notif-token-A",
+				});
+
+				expect(info).toBeNull();
+			});
+
+			it("does not throw on a malformed eventId (not a Convex id)", async () => {
+				const t = convexTest(schema, modules);
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId: "abc",
+					token: "notif-token",
+				});
+
+				expect(info).toBeNull();
+			});
+
+			it("does not throw for a garbage eventId shaped like an id from another table", async () => {
+				const t = convexTest(schema, modules);
+
+				const info = await t.query(api.email.getUnsubscribeInfo, {
+					eventId: "not_a_real_convex_id_at_all_12345",
+					token: "notif-token",
+				});
+
+				expect(info).toBeNull();
+			});
+		});
+
+		describe("unsubscribe / resubscribe", () => {
+			it("unsubscribe flips notifyOnResponse to false with a valid notificationToken", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t, { notifyOnResponse: true });
+
+				const result = await t.mutation(api.email.unsubscribe, {
+					eventId,
+					token: "notif-token",
+				});
+
+				expect(result).toEqual({ success: true });
+				const event = await t.run((ctx) => ctx.db.get(eventId));
+				expect(event?.notifyOnResponse).toBe(false);
+			});
+
+			it("resubscribe flips notifyOnResponse back to true with a valid notificationToken", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t, { notifyOnResponse: false });
+
+				const result = await t.mutation(api.email.resubscribe, {
+					eventId,
+					token: "notif-token",
+				});
+
+				expect(result).toEqual({ success: true });
+				const event = await t.run((ctx) => ctx.db.get(eventId));
+				expect(event?.notifyOnResponse).toBe(true);
+			});
+
+			it("unsubscribe is idempotent: calling it twice still reports success and stays off", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t, { notifyOnResponse: true });
+
+				const first = await t.mutation(api.email.unsubscribe, {
+					eventId,
+					token: "notif-token",
+				});
+				const second = await t.mutation(api.email.unsubscribe, {
+					eventId,
+					token: "notif-token",
+				});
+
+				expect(first).toEqual({ success: true });
+				expect(second).toEqual({ success: true });
+				const event = await t.run((ctx) => ctx.db.get(eventId));
+				expect(event?.notifyOnResponse).toBe(false);
+			});
+
+			it("unsubscribe reports failure (not a thrown error) for a wrong token, and leaves state untouched", async () => {
+				const t = convexTest(schema, modules);
+				const eventId = await insertEvent(t, { notifyOnResponse: true });
+
+				const result = await t.mutation(api.email.unsubscribe, {
+					eventId,
+					token: "wrong-token",
+				});
+
+				expect(result).toEqual({ success: false });
+				const event = await t.run((ctx) => ctx.db.get(eventId));
+				expect(event?.notifyOnResponse).toBe(true);
+			});
+
+			it("resubscribe reports failure (not a thrown error) for a malformed eventId", async () => {
+				const t = convexTest(schema, modules);
+
+				const result = await t.mutation(api.email.resubscribe, {
+					eventId: "not-an-id",
+					token: "notif-token",
+				});
+
+				expect(result).toEqual({ success: false });
+			});
+		});
+	});
+
 	describe("lame-mail request body (branded notification fields)", () => {
 		afterEach(() => {
 			vi.unstubAllEnvs();
@@ -296,13 +523,12 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		it("sendResponseNotification: includes highlight, a primary results link, and unsubscribeUrl in the footer slot", async () => {
+		it("sendResponseNotification: includes highlight, a primary results link, and a branded unsubscribeUrl in the footer slot", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
 			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
 			vi.stubEnv("APP_URL", "https://timesync.example.com");
-			vi.stubEnv("CONVEX_CLOUD_URL", "https://my-deployment.convex.cloud");
 			const { getRequestBody } = mockLameMailFetch();
 
 			const eventId = await createTestEvent(t, { title: "Team Sync" });
@@ -323,11 +549,13 @@ describe("email", () => {
 					primary: true,
 				},
 			]);
-			// Unsubscribe must ride in `data.unsubscribeUrl` — that's the only
-			// field lame-mail renders into the footer; body prose would not.
+			// Unsubscribe must ride in `data.unsubscribeUrl`, on our own branded
+			// domain (not the raw Convex .site deployment URL), carrying a
+			// least-privilege token — not the full-power adminToken.
 			expect(requestBody.data.unsubscribeUrl).toBe(
-				`https://my-deployment.convex.site/unsubscribe?eventId=${eventId}&adminToken=admin-token`,
+				`https://timesync.example.com/unsubscribe?eventId=${eventId}&token=notification-token`,
 			);
+			expect(requestBody.data.unsubscribeUrl).not.toContain("adminToken=");
 			// Neither the admin link nor the unsubscribe link should leak into
 			// the plain-text body now that they have dedicated fields.
 			expect(requestBody.data.body).not.toMatch(/https?:\/\//);
@@ -335,7 +563,49 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		it("sendResponseNotification: omits `links` entirely (not an empty array) when APP_URL is unset, since lame-mail treats presence as validity", async () => {
+		it("sendResponseNotification: falls back to adminToken in unsubscribeUrl for pre-existing events with no notificationToken", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			// Simulate an event created before notificationToken existed: no
+			// notificationToken field on the doc at all.
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Legacy Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					creatorEmail: "creator@example.com",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Alice",
+				responseCount: 1,
+			});
+
+			const requestBody = getRequestBody();
+			expect(requestBody.data.unsubscribeUrl).toBe(
+				`https://timesync.example.com/unsubscribe?eventId=${eventId}&token=admin-token`,
+			);
+
+			logSpy.mockRestore();
+		});
+
+		it("sendResponseNotification: omits `links` and `unsubscribeUrl` when APP_URL is unset, since lame-mail treats presence as validity and no portal URL can be built", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
@@ -354,28 +624,6 @@ describe("email", () => {
 			const requestBody = getRequestBody();
 			expect(requestBody.data.highlight).toBe("1 response");
 			expect("links" in requestBody.data).toBe(false);
-
-			logSpy.mockRestore();
-		});
-
-		it("sendResponseNotification: omits `unsubscribeUrl` when CONVEX_CLOUD_URL is unset", async () => {
-			const t = convexTest(schema, modules);
-			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
-			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
-			vi.stubEnv("APP_URL", "https://timesync.example.com");
-			vi.stubEnv("CONVEX_CLOUD_URL", "");
-			const { getRequestBody } = mockLameMailFetch();
-
-			const eventId = await createTestEvent(t, { title: "Team Sync" });
-
-			await t.action(internal.email_actions.sendResponseNotification, {
-				eventId,
-				respondentName: "Alice",
-				responseCount: 2,
-			});
-
-			const requestBody = getRequestBody();
 			expect("unsubscribeUrl" in requestBody.data).toBe(false);
 
 			logSpy.mockRestore();
