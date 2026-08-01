@@ -100,7 +100,10 @@ export const getByEventId = query({
 	},
 });
 
-// Query: Get response by edit token
+// Query: Get response by edit token.
+// Returns null (rather than throwing) for an unknown or stale token, because
+// callers poll this with a token remembered in localStorage that may point at a
+// response an admin has since deleted.
 export const getByEditToken = query({
 	args: { eventId: v.id("events"), editToken: v.string() },
 	handler: async (ctx, args) => {
@@ -109,11 +112,7 @@ export const getByEditToken = query({
 			.withIndex("by_edit_token", (q) => q.eq("editToken", args.editToken))
 			.collect();
 
-		const response = responses.find((r) => r.eventId === args.eventId);
-		if (!response) {
-			throw new Error("Response not found or invalid edit token");
-		}
-		return response;
+		return responses.find((r) => r.eventId === args.eventId) ?? null;
 	},
 });
 

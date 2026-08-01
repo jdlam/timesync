@@ -457,22 +457,49 @@ describe("responses", () => {
 				editToken: "unique-edit-token",
 			});
 
-			expect(response.respondentName).toBe("Alice");
+			expect(response?.respondentName).toBe("Alice");
 		});
 
-		it("should throw error for invalid edit token", async () => {
+		it("should return null for invalid edit token so a stale saved token falls back to submitting", async () => {
 			const t = convexTest(schema, modules);
 			const eventId = await createTestEvent(t);
 
-			await expect(
-				t.query(api.responses.getByEditToken, {
-					eventId,
-					editToken: "non-existent-token",
-				}),
-			).rejects.toThrow("Response not found or invalid edit token");
+			const response = await t.query(api.responses.getByEditToken, {
+				eventId,
+				editToken: "non-existent-token",
+			});
+
+			expect(response).toBeNull();
 		});
 
-		it("should throw error when token exists but for different event", async () => {
+		it("should return null when the response was deleted after the token was saved", async () => {
+			const t = convexTest(schema, modules);
+			const eventId = await createTestEvent(t);
+
+			const responseId = await t.run(async (ctx) => {
+				return await ctx.db.insert("responses", {
+					eventId,
+					respondentName: "Alice",
+					selectedSlots: ["2025-01-20T10:00:00Z"],
+					editToken: "deleted-token",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.run(async (ctx) => {
+				await ctx.db.delete(responseId);
+			});
+
+			const response = await t.query(api.responses.getByEditToken, {
+				eventId,
+				editToken: "deleted-token",
+			});
+
+			expect(response).toBeNull();
+		});
+
+		it("should return null when token exists but for different event", async () => {
 			const t = convexTest(schema, modules);
 			const eventId1 = await createTestEvent(t);
 			const eventId2 = await createTestEvent(t);
@@ -489,12 +516,12 @@ describe("responses", () => {
 			});
 
 			// Try to get Alice's response using event2's ID
-			await expect(
-				t.query(api.responses.getByEditToken, {
-					eventId: eventId2,
-					editToken: "alice-token",
-				}),
-			).rejects.toThrow("Response not found or invalid edit token");
+			const response = await t.query(api.responses.getByEditToken, {
+				eventId: eventId2,
+				editToken: "alice-token",
+			});
+
+			expect(response).toBeNull();
 		});
 	});
 
