@@ -18,16 +18,24 @@ Companion documents:
 ### 1.1 Brand gradient
 
 The brand is a **teal-to-emerald gradient**, always left-to-right or
-top-left-to-bottom-right:
+top-left-to-bottom-right.
 
-```
-from-teal-500 to-emerald-500      #14b8a6 → #10b981   (Tailwind utilities)
-#0d9488 → #10b981                 (Logo.tsx SVG stops, teal-600 → emerald-500)
-```
+There are **two pairings, and the split is intentional**. Which one you use
+depends on whether you are drawing an asset or tinting text:
 
-Note the two are not identical — the SVG logo starts a shade darker than the
-Tailwind utility pairing. This is deliberate: the logo needs more weight at
-small sizes. Do not "fix" one to match the other.
+| Pairing | Use for | Where |
+|---------|---------|-------|
+| `#0d9488 → #10b981` (teal-600 → emerald-500) | Fixed-size marks rendered on unknown backgrounds | `Logo.tsx`, `logo.svg`, `logo-simplified.svg`, `og-image.svg`, `brand-kit.html` |
+| `from-teal-500 to-emerald-500` (teal-500 → emerald-500) | In-app gradient text | Header, layout wordmarks, hero and section headers |
+
+The asset pairing starts one step darker. Do not "fix" either to match the
+other — a logo re-tinted to teal-500 loses contrast against light backgrounds,
+and header text darkened to teal-600 goes muddy on dark surfaces.
+
+The original reason is not recorded in the history (see `17ea080`, which
+unified the brand); the asset-versus-text split is inferred from consistent
+usage. Treat the split as settled, but if you ever need to change one side,
+that is a brand decision rather than a cleanup.
 
 **Use the gradient for:** logo, wordmark, page-level section headers, hero
 emphasis text.
@@ -371,8 +379,9 @@ Check both themes before considering any UI change done.
 
 | Item | Detail |
 |------|--------|
-| Gradient drift | Logo SVG uses teal-600→emerald-500; utilities use teal-500→emerald-500. Documented as intentional; confirm. |
+| _None._ | |
 
 Resolved: primary-token contrast is settled at teal-600 (§1.4); the 44px floor
 is applied by mistap cost, which is deliberate (§4.1); every row-action surface
-now uses `RowActionsMenu` or a single labelled button (§4.2).
+now uses `RowActionsMenu` or a single labelled button (§4.2); the two brand
+gradient pairings are intentional and split by asset versus text (§1.1).
