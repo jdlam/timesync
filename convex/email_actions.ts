@@ -25,14 +25,24 @@ async function resolveRecipientEmail(
 
 /**
  * Send one transactional email through lame-mail (self-hosted HTTP email
- * service). We only ever use the "notification" template: lame-mail renders the
- * branded layout and HTML-escapes all `data` values, so callers pass plain-text
- * `subject` + `body` — never HTML. Returns a normalized result to log.
+ * service). We only ever use the "notification" template: lame-mail does NOT
+ * HTML-escape `data` server-side (React Email escapes at render time), so
+ * callers pass plain-text `subject` + `body` — never HTML. Returns a
+ * normalized result to log.
  */
 async function sendViaLameMail(
 	baseUrl: string,
 	apiKey: string,
-	payload: { to: string; idempotencyKey?: string; subject: string; body: string },
+	payload: {
+		to: string;
+		idempotencyKey?: string;
+		subject: string;
+		body: string;
+		heading?: string;
+		highlight?: string;
+		links?: { text: string; url: string; primary?: boolean }[];
+		unsubscribeUrl?: string;
+	},
 ): Promise<{ ok: boolean; status?: number; error?: unknown }> {
 	// The API Gateway stage URL (e.g. the CDK `ApiUrl` output) ends in a slash;
 	// normalize so we never build a route-breaking `.../prod//send`.
@@ -49,7 +59,16 @@ async function sendViaLameMail(
 				template: "notification",
 				to: payload.to,
 				idempotencyKey: payload.idempotencyKey,
-				data: { subject: payload.subject, body: payload.body },
+				data: {
+					subject: payload.subject,
+					body: payload.body,
+					...(payload.heading !== undefined && { heading: payload.heading }),
+					...(payload.highlight !== undefined && { highlight: payload.highlight }),
+					...(payload.links !== undefined && { links: payload.links }),
+					...(payload.unsubscribeUrl !== undefined && {
+						unsubscribeUrl: payload.unsubscribeUrl,
+					}),
+				},
 			}),
 		});
 		if (!response.ok) {
@@ -116,21 +135,20 @@ export const sendEventCreatedEmail = internalAction({
 
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		const subject = `Your TimeSync event "${sanitizedTitle}" is ready`;
-		const body = [
-			`"${event.title}" has been created — here are your links.`,
-			"",
-			"Share this link with participants:",
-			publicUrl,
-			"",
-			"Your private admin link (view results and manage responses — keep this secret):",
-			adminUrl,
-		].join("\n");
+		const heading = `Your event "${sanitizedTitle}" is ready`;
+		const body =
+			"Here are your links: one to share with participants, and a private admin link to view results and manage responses — keep the admin link secret.";
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
 			idempotencyKey: `event-created-${args.eventId}`,
 			subject,
 			body,
+			heading,
+			links: [
+				{ text: "Share with participants", url: publicUrl, primary: true },
+				{ text: "Open admin dashboard", url: adminUrl },
+			],
 		});
 		if (ok) {
 			console.log(
@@ -203,26 +221,25 @@ export const sendResponseNotification = internalAction({
 
 		const sanitizedTitle = event.title.replace(/[\r\n]/g, " ");
 		const subject = `New response to "${sanitizedTitle}"`;
+		const heading = `New response to "${sanitizedTitle}"`;
 
 		const responseWord = args.responseCount === 1 ? "response" : "responses";
-		const lines = [
-			`${args.respondentName} just submitted their availability for "${event.title}".`,
-			"",
-			`Your event now has ${args.responseCount} ${responseWord}.`,
-		];
-		if (adminUrl) {
-			lines.push("", "View results:", adminUrl);
-		}
-		if (unsubscribeUrl) {
-			lines.push("", "To stop notifications for this event:", unsubscribeUrl);
-		}
-		const body = lines.join("\n");
+		// Control chars in user input must not break the single-line prose or template layout.
+		const sanitizedRespondentName = args.respondentName.replace(/[\r\n]/g, " ");
+		const body = `${sanitizedRespondentName} just submitted their availability for "${sanitizedTitle}".`;
+		const highlight = `${args.responseCount} ${responseWord}`;
 
 		const { ok, status, error } = await sendViaLameMail(baseUrl, apiKey, {
 			to: recipientEmail,
 			idempotencyKey: `response-${args.eventId}-${args.responseCount}`,
 			subject,
 			body,
+			heading,
+			highlight,
+			...(adminUrl !== undefined && {
+				links: [{ text: "View results", url: adminUrl, primary: true }],
+			}),
+			...(unsubscribeUrl !== undefined && { unsubscribeUrl }),
 		});
 		if (ok) {
 			console.log(
