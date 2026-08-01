@@ -12,41 +12,38 @@ Element.prototype.setPointerCapture ??= () => undefined;
 Element.prototype.releasePointerCapture ??= () => undefined;
 Element.prototype.scrollIntoView ??= () => undefined;
 
-const { MyEventsTable } = await import("./MyEventsTable");
+const { EventsTable } = await import("./EventsTable");
 
 function makeEvent(overrides: Record<string, unknown> = {}) {
 	return {
 		_id: "e1" as Id<"events">,
-		title: "Design Review",
+		title: "Holiday Party",
 		isActive: true,
 		createdAt: Date.parse("2026-01-15T00:00:00Z"),
-		responseCount: 3,
-		adminToken: "tok",
+		responseCount: 7,
 		...overrides,
 	};
 }
 
 function renderTable() {
-	render(
-		<MyEventsTable events={[makeEvent()]} onViewEvent={() => undefined} />,
-	);
+	render(<EventsTable events={[makeEvent()]} onViewEvent={() => undefined} />);
 }
 
-describe("MyEventsTable", () => {
+describe("admin EventsTable", () => {
 	afterEach(() => cleanup());
 
-	// Mobile and desktop must render the same menu, or they drift apart again:
-	// mobile previously had five unlabelled icon buttons, desktop a named menu.
+	// The mobile card used to splay toggle and delete as unlabelled 32px icon
+	// buttons while desktop had a named menu. Both now share one menu.
 	it("renders the shared actions menu on both surfaces", () => {
 		renderTable();
 		expect(
-			screen.getAllByRole("button", { name: /actions for design review/i }),
+			screen.getAllByRole("button", { name: /actions for holiday party/i }),
 		).toHaveLength(2);
 	});
 
-	// Two targets instead of five is what removes the 320px overflow; the
-	// flex-wrap is a guard, not the fix.
-	it("reduces the mobile card row to a primary action and one menu, both 44px", () => {
+	// Toggling an event's status here affects every responder holding the link,
+	// so the mobile row belongs above the 44px floor per style guide 4.1.
+	it("keeps the mobile card row to two 44px targets", () => {
 		renderTable();
 
 		const viewButton = screen.getAllByRole("button", { name: /^view$/i })[0];
