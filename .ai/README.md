@@ -8,6 +8,7 @@ This directory contains shared documentation for AI coding assistants (Claude, C
 .ai/
 ├── README.md              # This file
 ├── ARCHITECTURE.md        # Architecture overview and references
+├── STYLE_GUIDE.md         # Visual + interaction design spec (normative)
 ├── brand-kit.html         # Visual brand kit reference (open in browser)
 └── diagrams/              # Mermaid diagram files (.mmd)
     ├── architecture.mmd       # High-level system architecture

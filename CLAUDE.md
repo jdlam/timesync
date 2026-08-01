@@ -148,6 +148,11 @@ jlam/bug-multiselect-fix
 - Use `useQuery` and `useMutation` hooks from `convex/react`
 
 ### Styling
+
+**See `.ai/STYLE_GUIDE.md` for the full design spec** — color tokens, type
+scale, spacing, component variants, states, and dark mode. It is normative;
+the summary below is just the highlights.
+
 - Use Tailwind CSS utility classes
 - Use `cn()` helper from `@/lib/utils` for conditional classes
 - Follow shadcn/ui patterns for new components
@@ -422,6 +427,7 @@ See `USER_STORIES.md` for full status. Major missing features:
 | `USER_STORIES.md` | Requirements and implementation status |
 | `CLAUDE.md` | This file - AI assistant guidelines |
 | `.ai/ARCHITECTURE.md` | Codebase architecture diagrams and code flows |
+| `.ai/STYLE_GUIDE.md` | Design spec: color, type, spacing, components, states |
 | `.ai/README.md` | AI documentation directory index |
 | `.ai/brand-kit.html` | Visual brand kit reference (open in browser) |
 
