@@ -122,7 +122,7 @@ export const getByAdminToken = query({
 	handler: async (ctx, args) => {
 		const event = await ctx.db.get(args.eventId);
 		if (!event || event.adminToken !== args.adminToken) {
-			throw new Error("Event not found or invalid admin token");
+			return null;
 		}
 		return event;
 	},
