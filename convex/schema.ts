@@ -38,8 +38,9 @@ export default defineSchema({
 
 		// Least-privilege token for the unsubscribe portal — grants only the
 		// ability to toggle notifyOnResponse, unlike adminToken which grants
-		// full event admin. Optional because pre-existing events predate it
-		// (see the by_admin_token fallback in convex/email.ts).
+		// full event admin. Optional because pre-existing events predate it;
+		// the portal auth accepts either token, so legacy links carrying adminToken
+		// continue to work.
 		notificationToken: v.optional(v.string()),
 
 		// Event details

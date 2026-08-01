@@ -143,8 +143,8 @@ rather than a time of day.
 - **Unsubscribe Portal** at `/unsubscribe`
   - Branded portal with TimeSync logo and teal-emerald gradient
   - Reached from notification email footers via `?eventId=` and `?token=` query params
-  - Confirms before unsubscribing (prevents accidental opt-outs)
-  - Shows success screen naming the specific event ("Stop email notifications for '{event title}'?")
+  - Confirmation screen before unsubscribing ("Stop email notifications for '{event title}'?") to prevent accidental opt-outs
+  - Success screen after unsubscribing shows "You won't receive email notifications for '{event title}'"
   - Allows re-enabling notifications if unsubscribed
   - Token-authenticated with least-privilege notification token
   - Legacy admin-token links still supported for backward compatibility
