@@ -86,11 +86,11 @@ export function createEventSchemaForTier(tier: TierType = "free") {
 			creatorEmail: z
 				.string()
 				.trim()
-				.refine(
-					(val) => val === "" || z.string().email().safeParse(val).success,
-					{
-						message: "Enter a valid email address",
-					},
+				.pipe(
+					z.union([
+						z.literal(""),
+						z.string().email("Enter a valid email address"),
+					]),
 				)
 				.optional(),
 		})
