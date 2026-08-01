@@ -18,6 +18,7 @@ async function createTestEvent(
 			timeRangeEnd: "17:00",
 			slotDuration: 30,
 			adminToken: "admin-token",
+			notificationToken: "notification-token",
 			maxRespondents: 5,
 			isPremium: false,
 			isActive: true,
@@ -296,13 +297,12 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		it("sendResponseNotification: includes highlight, a primary results link, and unsubscribeUrl in the footer slot", async () => {
+		it("sendResponseNotification: includes highlight, a primary results link, and a branded unsubscribeUrl in the footer slot", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
 			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
 			vi.stubEnv("APP_URL", "https://timesync.example.com");
-			vi.stubEnv("CONVEX_CLOUD_URL", "https://my-deployment.convex.cloud");
 			const { getRequestBody } = mockLameMailFetch();
 
 			const eventId = await createTestEvent(t, { title: "Team Sync" });
@@ -323,11 +323,13 @@ describe("email", () => {
 					primary: true,
 				},
 			]);
-			// Unsubscribe must ride in `data.unsubscribeUrl` — that's the only
-			// field lame-mail renders into the footer; body prose would not.
+			// Unsubscribe must ride in `data.unsubscribeUrl`, on our own branded
+			// domain (not the raw Convex .site deployment URL), carrying a
+			// least-privilege token — not the full-power adminToken.
 			expect(requestBody.data.unsubscribeUrl).toBe(
-				`https://my-deployment.convex.site/unsubscribe?eventId=${eventId}&adminToken=admin-token`,
+				`https://timesync.example.com/unsubscribe?eventId=${eventId}&token=notification-token`,
 			);
+			expect(requestBody.data.unsubscribeUrl).not.toContain("adminToken=");
 			// Neither the admin link nor the unsubscribe link should leak into
 			// the plain-text body now that they have dedicated fields.
 			expect(requestBody.data.body).not.toMatch(/https?:\/\//);
@@ -335,7 +337,49 @@ describe("email", () => {
 			logSpy.mockRestore();
 		});
 
-		it("sendResponseNotification: omits `links` entirely (not an empty array) when APP_URL is unset, since lame-mail treats presence as validity", async () => {
+		it("sendResponseNotification: falls back to adminToken in unsubscribeUrl for pre-existing events with no notificationToken", async () => {
+			const t = convexTest(schema, modules);
+			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
+			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
+			vi.stubEnv("APP_URL", "https://timesync.example.com");
+			const { getRequestBody } = mockLameMailFetch();
+
+			// Simulate an event created before notificationToken existed: no
+			// notificationToken field on the doc at all.
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Legacy Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					creatorEmail: "creator@example.com",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			await t.action(internal.email_actions.sendResponseNotification, {
+				eventId,
+				respondentName: "Alice",
+				responseCount: 1,
+			});
+
+			const requestBody = getRequestBody();
+			expect(requestBody.data.unsubscribeUrl).toBe(
+				`https://timesync.example.com/unsubscribe?eventId=${eventId}&token=admin-token`,
+			);
+
+			logSpy.mockRestore();
+		});
+
+		it("sendResponseNotification: omits `links` and `unsubscribeUrl` when APP_URL is unset, since lame-mail treats presence as validity and no portal URL can be built", async () => {
 			const t = convexTest(schema, modules);
 			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
@@ -354,28 +398,6 @@ describe("email", () => {
 			const requestBody = getRequestBody();
 			expect(requestBody.data.highlight).toBe("1 response");
 			expect("links" in requestBody.data).toBe(false);
-
-			logSpy.mockRestore();
-		});
-
-		it("sendResponseNotification: omits `unsubscribeUrl` when CONVEX_CLOUD_URL is unset", async () => {
-			const t = convexTest(schema, modules);
-			const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-			vi.stubEnv("LAME_MAIL_URL", "https://lame-mail.example.com/prod");
-			vi.stubEnv("LAME_MAIL_API_KEY", "test-key");
-			vi.stubEnv("APP_URL", "https://timesync.example.com");
-			vi.stubEnv("CONVEX_CLOUD_URL", "");
-			const { getRequestBody } = mockLameMailFetch();
-
-			const eventId = await createTestEvent(t, { title: "Team Sync" });
-
-			await t.action(internal.email_actions.sendResponseNotification, {
-				eventId,
-				respondentName: "Alice",
-				responseCount: 2,
-			});
-
-			const requestBody = getRequestBody();
 			expect("unsubscribeUrl" in requestBody.data).toBe(false);
 
 			logSpy.mockRestore();
