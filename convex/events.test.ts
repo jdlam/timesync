@@ -1,13 +1,38 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { modules } from "./test.setup";
 
+// `events.create` schedules an internal action (the "here are your links"
+// email) whenever it can resolve a creator email. convex-test runs scheduled
+// functions on a real timer, so any that outlive a test surface as unhandled
+// rejections. Track every instance and drain it after each test.
+const activeInstances: Array<ReturnType<typeof convexTest>> = [];
+function makeConvexTest() {
+	const t = convexTest(schema, modules);
+	activeInstances.push(t);
+	return t;
+}
+
+afterEach(async () => {
+	for (const t of activeInstances) {
+		try {
+			// Let any runAfter(0) timer fire, then wait for it to finish inside the
+			// still-live instance so it can't write after teardown.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await t.finishInProgressScheduledFunctions();
+		} catch {
+			// Best-effort drain; the scheduled email is a no-op without lame-mail.
+		}
+	}
+	activeInstances.length = 0;
+});
+
 describe("events", () => {
 	describe("create", () => {
 		it("should create an event with all required fields", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Team Meeting",
@@ -27,7 +52,7 @@ describe("events", () => {
 		});
 
 		it("should generate unique admin tokens for different events", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result1 = await t.mutation(api.events.create, {
 				title: "Event 1",
@@ -53,7 +78,7 @@ describe("events", () => {
 		});
 
 		it("should create an event without optional description", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Quick Meeting",
@@ -69,7 +94,7 @@ describe("events", () => {
 		});
 
 		it("should set default values correctly", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Test Event",
@@ -95,7 +120,7 @@ describe("events", () => {
 		});
 
 		it("should reject title longer than 255 characters", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -111,7 +136,7 @@ describe("events", () => {
 		});
 
 		it("should reject invalid slot duration", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -127,7 +152,7 @@ describe("events", () => {
 		});
 
 		it("should reject invalid time format", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -143,7 +168,7 @@ describe("events", () => {
 		});
 
 		it("should reject out-of-range time values like 99:99", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -159,7 +184,7 @@ describe("events", () => {
 		});
 
 		it("should reject out-of-range hour 25:00", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -175,7 +200,7 @@ describe("events", () => {
 		});
 
 		it("should reject end time before start time", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -191,7 +216,7 @@ describe("events", () => {
 		});
 
 		it("should reject invalid date format", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -207,7 +232,7 @@ describe("events", () => {
 		});
 
 		it("should reject impossible date like Feb 31", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -223,7 +248,7 @@ describe("events", () => {
 		});
 
 		it("should reject empty password", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -240,7 +265,7 @@ describe("events", () => {
 		});
 
 		it("should enforce free-tier date limit of 14", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const tooManyDates = Array.from({ length: 15 }, (_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`);
 			await expect(
@@ -257,7 +282,7 @@ describe("events", () => {
 		});
 
 		it("should clamp maxRespondents for free tier", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Free user tries to pass -1 (unlimited) — server should clamp to free-tier max
 			const result = await t.mutation(api.events.create, {
@@ -279,7 +304,7 @@ describe("events", () => {
 		});
 
 		it("should cap maxRespondents at 5 for free tier", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Free Event",
@@ -299,7 +324,7 @@ describe("events", () => {
 		});
 
 		it("should set maxRespondents to -1 for premium users", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await t.run(async (ctx) => {
 				await ctx.db.insert("users", {
@@ -337,7 +362,7 @@ describe("events", () => {
 		});
 
 		it("should reject event creation when per-user rate limit is exceeded", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const now = Date.now();
 
 			await t.run(async (ctx) => {
@@ -372,7 +397,7 @@ describe("events", () => {
 
 	describe("getById", () => {
 		it("should return an active event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Create an event first
 			const eventId = await t.run(async (ctx) => {
@@ -399,7 +424,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for non-existent event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Create a dummy event to get a valid ID format, then delete it
 			const eventId = await t.run(async (ctx) => {
@@ -427,7 +452,7 @@ describe("events", () => {
 		});
 
 		it("should not return adminToken or password in response", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -474,7 +499,7 @@ describe("events", () => {
 		});
 
 		it("should block password-protected events without valid editToken", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -509,7 +534,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for inactive event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -536,7 +561,7 @@ describe("events", () => {
 
 	describe("getByIdWithResponseCount", () => {
 		it("should not return adminToken in response", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -566,7 +591,7 @@ describe("events", () => {
 		});
 
 		it("should return event with zero response count", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -594,7 +619,7 @@ describe("events", () => {
 		});
 
 		it("should return correct response count", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				const id = await ctx.db.insert("events", {
@@ -643,7 +668,7 @@ describe("events", () => {
 
 	describe("getByAdminToken", () => {
 		it("should return event with valid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -671,7 +696,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -701,7 +726,7 @@ describe("events", () => {
 
 	describe("getResponseCount", () => {
 		it("should return response count with valid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				const id = await ctx.db.insert("events", {
@@ -750,7 +775,7 @@ describe("events", () => {
 		});
 
 		it("should return zero count for event with no responses", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -779,7 +804,7 @@ describe("events", () => {
 		});
 
 		it("should return null for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -809,7 +834,7 @@ describe("events", () => {
 
 	describe("update", () => {
 		it("should update event title with valid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -838,7 +863,7 @@ describe("events", () => {
 		});
 
 		it("should update multiple fields at once", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -876,7 +901,7 @@ describe("events", () => {
 		});
 
 		it("should clear description when set to null", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -906,7 +931,7 @@ describe("events", () => {
 		});
 
 		it("should update updatedAt timestamp", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const originalTime = Date.now();
 			const eventId = await t.run(async (ctx) => {
@@ -936,7 +961,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -965,7 +990,7 @@ describe("events", () => {
 		});
 
 		it("should reject invalid time format in update", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -994,7 +1019,7 @@ describe("events", () => {
 		});
 
 		it("should reject end time before start time in update", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1024,7 +1049,7 @@ describe("events", () => {
 		});
 
 		it("should reject single-field time update that creates invalid range", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1054,7 +1079,7 @@ describe("events", () => {
 		});
 
 		it("should reject too many dates for free-tier event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1084,7 +1109,7 @@ describe("events", () => {
 		});
 
 		it("should allow many dates for premium-tier event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1114,7 +1139,7 @@ describe("events", () => {
 		});
 
 		it("should reject password update on non-premium event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1143,7 +1168,7 @@ describe("events", () => {
 		});
 
 		it("should reject description over 1000 characters in update", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1174,7 +1199,7 @@ describe("events", () => {
 
 	describe("toggleStatusByAdminToken", () => {
 		it("should toggle active event to inactive", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1208,7 +1233,7 @@ describe("events", () => {
 		});
 
 		it("should toggle inactive event to active", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1242,7 +1267,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1272,7 +1297,7 @@ describe("events", () => {
 
 	describe("deleteByAdminToken", () => {
 		it("should delete event with valid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1305,7 +1330,7 @@ describe("events", () => {
 		});
 
 		it("should cascade delete all responses", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				const id = await ctx.db.insert("events", {
@@ -1358,7 +1383,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1386,7 +1411,7 @@ describe("events", () => {
 		});
 
 		it("should throw error for non-existent event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				const id = await ctx.db.insert("events", {
@@ -1418,7 +1443,7 @@ describe("events", () => {
 
 	describe("create with notifyOnResponse", () => {
 		it("should store notifyOnResponse for authenticated users", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t
 				.withIdentity({
@@ -1444,7 +1469,7 @@ describe("events", () => {
 		});
 
 		it("should not store notifyOnResponse for guest users", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Guest Event",
@@ -1465,7 +1490,7 @@ describe("events", () => {
 		});
 
 		it("should default notifyOnResponse to undefined when not provided", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t
 				.withIdentity({
@@ -1492,7 +1517,7 @@ describe("events", () => {
 
 	describe("update with notifyOnResponse", () => {
 		it("should update notifyOnResponse to true", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1522,7 +1547,7 @@ describe("events", () => {
 		});
 
 		it("should update notifyOnResponse to false", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1553,7 +1578,7 @@ describe("events", () => {
 		});
 
 		it("should not change notifyOnResponse when not provided", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1590,7 +1615,7 @@ describe("events", () => {
 
 	describe("creator identity from auth context", () => {
 		it("should reject client-provided creator metadata", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t
@@ -1616,7 +1641,7 @@ describe("events", () => {
 		});
 
 		it("should store creator identity from auth context", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t
 				.withIdentity({
@@ -1642,7 +1667,7 @@ describe("events", () => {
 		});
 
 		it("should allow undefined creatorEmail for guest users", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Guest Event",
@@ -1661,11 +1686,97 @@ describe("events", () => {
 			expect(event?.creatorId).toBeUndefined();
 			expect(event?.creatorEmail).toBeUndefined();
 		});
+
+		it("should store a guest-supplied creatorEmail", async () => {
+			const t = makeConvexTest();
+
+			const result = await t.mutation(api.events.create, {
+				title: "Guest Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+				creatorEmail: "guest@example.com",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorId).toBeUndefined();
+			expect(event?.creatorEmail).toBe("guest@example.com");
+		});
+
+		it("should treat a blank guest creatorEmail as none", async () => {
+			const t = makeConvexTest();
+
+			const result = await t.mutation(api.events.create, {
+				title: "Guest Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+				creatorEmail: "   ",
+			});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorEmail).toBeUndefined();
+		});
+
+		it("should reject an invalid guest creatorEmail", async () => {
+			const t = makeConvexTest();
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Guest Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					creatorEmail: "not-an-email",
+				}),
+			).rejects.toThrow(/valid email/);
+		});
+
+		it("should prefer the account email over a guest creatorEmail arg", async () => {
+			const t = makeConvexTest();
+
+			const result = await t
+				.withIdentity({
+					subject: "user_12345",
+					email: "account@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Signed-in Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+					creatorEmail: "someone-else@example.com",
+				});
+
+			const event = await t.run(async (ctx) => {
+				return await ctx.db.get(result.eventId);
+			});
+
+			expect(event?.creatorEmail).toBe("account@example.com");
+		});
 	});
 
 	describe("create with password", () => {
 		it("should store hashed password for premium event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Create a premium user first
 			await t.run(async (ctx) => {
@@ -1706,7 +1817,7 @@ describe("events", () => {
 		});
 
 		it("should reject password for non-premium event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -1723,7 +1834,7 @@ describe("events", () => {
 		});
 
 		it("should not store password when premium user leaves it empty", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await t.run(async (ctx) => {
 				await ctx.db.insert("users", {
@@ -1760,7 +1871,7 @@ describe("events", () => {
 		});
 
 		it("should reject password for non-premium event even with valid length", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -1779,7 +1890,7 @@ describe("events", () => {
 
 	describe("getByIdWithResponseCount with password", () => {
 		it("should return full event when no password is set", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1807,7 +1918,7 @@ describe("events", () => {
 		});
 
 		it("should require password when event has one", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -1839,7 +1950,7 @@ describe("events", () => {
 		});
 
 		it("should reject wrong password", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Create a premium user and event with password via mutation
 			await t.run(async (ctx) => {
@@ -1881,7 +1992,7 @@ describe("events", () => {
 		});
 
 		it("should return full event with correct password", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await t.run(async (ctx) => {
 				await ctx.db.insert("users", {
@@ -1922,7 +2033,7 @@ describe("events", () => {
 		});
 
 		it("should strip password hash from returned event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await t.run(async (ctx) => {
 				await ctx.db.insert("users", {
@@ -1966,7 +2077,7 @@ describe("events", () => {
 
 	describe("update with password", () => {
 		it("should set password on premium event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -2000,7 +2111,7 @@ describe("events", () => {
 		});
 
 		it("should remove password with null", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const eventId = await t.run(async (ctx) => {
 				return await ctx.db.insert("events", {
@@ -2034,7 +2145,7 @@ describe("events", () => {
 		});
 
 		it("should not change password when undefined", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const originalPassword = "original-hash:value";
 			const eventId = await t.run(async (ctx) => {
@@ -2071,7 +2182,7 @@ describe("events", () => {
 
 	describe("create (dates mode)", () => {
 		it("should persist eventMode and sentinel time fields for a dates event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Summer Trip",
@@ -2094,7 +2205,7 @@ describe("events", () => {
 		});
 
 		it("should accept a candidate pool spanning exactly 8 weeks (free)", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Trip",
@@ -2112,7 +2223,7 @@ describe("events", () => {
 		});
 
 		it("should reject a dates pool spanning more than 8 weeks (free)", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -2130,7 +2241,7 @@ describe("events", () => {
 		});
 
 		it("should persist a grouped weekends pattern", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Weekend trip",
@@ -2152,7 +2263,7 @@ describe("events", () => {
 		});
 
 		it("should reject candidate days that don't match the pattern weekdays", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			await expect(
 				t.mutation(api.events.create, {
@@ -2172,7 +2283,7 @@ describe("events", () => {
 		});
 
 		it("should default eventMode to times when omitted", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const result = await t.mutation(api.events.create, {
 				title: "Regular Meeting",

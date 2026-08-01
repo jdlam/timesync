@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { isSuperAdmin } from "./lib/auth";
 import { hashPassword, verifyPassword } from "./lib/password";
@@ -341,11 +342,19 @@ export const create = mutation({
 		maxRespondents: v.number(),
 		password: v.optional(v.string()),
 		notifyOnResponse: v.optional(v.boolean()),
+		// Guest creators can optionally supply an email so the event links can be
+		// emailed to them. Ignored for signed-in users (their account email wins).
+		creatorEmail: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const identity = await ctx.auth.getUserIdentity();
 		const creatorId = identity?.subject;
-		const creatorEmail = identity?.email ?? undefined;
+		// Prefer the authenticated account email; fall back to a guest-supplied one.
+		const guestEmail = args.creatorEmail?.trim() || undefined;
+		if (guestEmail && !isValidEmail(guestEmail)) {
+			throw new Error("Please enter a valid email address");
+		}
+		const creatorEmail = identity?.email ?? guestEmail;
 
 		// Basic abuse protection for event creation traffic.
 		await enforceRateLimit(ctx, {
@@ -507,9 +516,25 @@ export const create = mutation({
 			updatedAt: now,
 		});
 
+		// Email the creator their public + admin links if we have an address for
+		// them (signed-in account email or a guest-supplied one). Runs async so a
+		// mail hiccup never blocks event creation.
+		if (creatorEmail) {
+			await ctx.scheduler.runAfter(
+				0,
+				internal.email_actions.sendEventCreatedEmail,
+				{ eventId },
+			);
+		}
+
 		return {
 			eventId,
 			adminToken,
 		};
 	},
 });
+
+/** Lightweight email format check for guest-supplied addresses. */
+function isValidEmail(email: string): boolean {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}

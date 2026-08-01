@@ -730,6 +730,55 @@ describe("validation-schemas", () => {
 		});
 	});
 
+	describe("creatorEmail field", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const validEvent = {
+			title: "Test",
+			timeZone: "UTC",
+			dates: ["2025-01-20"],
+			timeRangeStart: "09:00",
+			timeRangeEnd: "17:00",
+			slotDuration: "30" as const,
+		};
+
+		it("should accept a valid creatorEmail", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				creatorEmail: "guest@example.com",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept an empty creatorEmail (field left blank)", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				creatorEmail: "",
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it("should accept a missing creatorEmail", () => {
+			const result = createEventSchemaForTier("free").safeParse(validEvent);
+			expect(result.success).toBe(true);
+		});
+
+		it("should reject an invalid creatorEmail", () => {
+			const result = createEventSchemaForTier("free").safeParse({
+				...validEvent,
+				creatorEmail: "not-an-email",
+			});
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe("tier-specific error messages", () => {
 		beforeEach(() => {
 			vi.useFakeTimers();

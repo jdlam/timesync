@@ -869,13 +869,13 @@ describe("responses", () => {
 
 				expect(result.responseId).toBeDefined();
 
-				// Drain scheduled functions (the action may fail without SendGrid, that's OK)
+				// Drain scheduled functions (the action may fail without lame-mail, that's OK)
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
-				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
 				);
-				expect(sendGridWarningLogged).toBe(true);
+				expect(emailNotConfiguredWarned).toBe(true);
 			} finally {
 				warnSpy.mockRestore();
 				vi.useRealTimers();
@@ -901,10 +901,10 @@ describe("responses", () => {
 				expect(result.responseId).toBeDefined();
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
-				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
 				);
-				expect(sendGridWarningLogged).toBe(false);
+				expect(emailNotConfiguredWarned).toBe(false);
 			} finally {
 				warnSpy.mockRestore();
 				vi.useRealTimers();
@@ -927,10 +927,10 @@ describe("responses", () => {
 				expect(result.responseId).toBeDefined();
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
-				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
 				);
-				expect(sendGridWarningLogged).toBe(false);
+				expect(emailNotConfiguredWarned).toBe(false);
 			} finally {
 				warnSpy.mockRestore();
 				vi.useRealTimers();
@@ -955,10 +955,10 @@ describe("responses", () => {
 				expect(result.responseId).toBeDefined();
 				vi.runAllTimers();
 				await t.finishInProgressScheduledFunctions();
-				const sendGridWarningLogged = warnSpy.mock.calls.some((call) =>
-					String(call[0]).includes("SendGrid not configured"),
+				const emailNotConfiguredWarned = warnSpy.mock.calls.some((call) =>
+					String(call[0]).includes("lame-mail not configured"),
 				);
-				expect(sendGridWarningLogged).toBe(false);
+				expect(emailNotConfiguredWarned).toBe(false);
 			} finally {
 				warnSpy.mockRestore();
 				vi.useRealTimers();
