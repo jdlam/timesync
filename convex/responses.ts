@@ -288,6 +288,22 @@ export const update = mutation({
 		if (!event.isActive) {
 			throw new Error("This event is no longer accepting responses");
 		}
+		// Same limits/window as submit (responses.ts:165-177): update needs the
+		// same edit-spam protection, and there's no reason to weight it
+		// differently — reuse the numbers rather than invent a new policy.
+		await enforceRateLimit(ctx, {
+			key: "responses:update:global",
+			maxRequests: 600,
+			windowMs: 10 * 60 * 1000,
+			errorMessage: "Too many responses updated right now. Please try again shortly.",
+		});
+		await enforceRateLimit(ctx, {
+			key: `responses:update:event:${existing.eventId}`,
+			maxRequests: 120,
+			windowMs: 10 * 60 * 1000,
+			errorMessage:
+				"Too many responses updated for this event right now. Please try again shortly.",
+		});
 		validateSelectedSlotsAgainstEvent(normalizedSelectedSlots, event);
 
 		const now = Date.now();
