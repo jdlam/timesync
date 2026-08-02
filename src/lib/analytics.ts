@@ -27,8 +27,8 @@ export const umamiBeforeSendScript = `
   function sanitize(url) {
     if (!url) return url;
     return url
-      .replace(/(\\/events\\/[^\\/]+\\/admin\\/)[^\\/?#]+/g, '$1[redacted]')
-      .replace(/(\\/events\\/[^\\/]+\\/edit\\/)[^\\/?#]+/g, '$1[redacted]');
+      .replace(/(\\/events(?:\\/|%2[Ff])(?:(?!%2[Ff])[^\\/])+(?:\\/|%2[Ff])admin(?:\\/|%2[Ff]))(?:(?!%2[Ff])[^\\/?#])+/g, '$1[redacted]')
+      .replace(/(\\/events(?:\\/|%2[Ff])(?:(?!%2[Ff])[^\\/])+(?:\\/|%2[Ff])edit(?:\\/|%2[Ff]))(?:(?!%2[Ff])[^\\/?#])+/g, '$1[redacted]');
   }
   window.__umami_before_send = function(type, payload) {
     if (payload) {
@@ -68,6 +68,11 @@ export function getUmamiScriptConfig(
 /**
  * Redacts admin and edit tokens from a URL-like string.
  *
+ * The separator between path segments may be a literal `/` or a
+ * percent-encoded `%2F`/`%2f` (e.g. from a URL-rewriting proxy or a
+ * crafted `document.referrer`) - both are treated as path boundaries so
+ * a percent-encoded path can't smuggle a token past the redaction.
+ *
  * Same redaction pattern as `umamiBeforeSendScript` above (kept in sync
  * manually: that script must stay an inline literal so Umami's
  * `data-before-send` attribute can reference it as a global function, so
@@ -76,8 +81,14 @@ export function getUmamiScriptConfig(
 export function sanitizeUrl(url: string | undefined): string | undefined {
 	if (!url) return url;
 	return url
-		.replace(/(\/events\/[^/]+\/admin\/)[^/?#]+/g, "$1[redacted]")
-		.replace(/(\/events\/[^/]+\/edit\/)[^/?#]+/g, "$1[redacted]");
+		.replace(
+			/(\/events(?:\/|%2[Ff])(?:(?!%2[Ff])[^/])+(?:\/|%2[Ff])admin(?:\/|%2[Ff]))(?:(?!%2[Ff])[^/?#])+/g,
+			"$1[redacted]",
+		)
+		.replace(
+			/(\/events(?:\/|%2[Ff])(?:(?!%2[Ff])[^/])+(?:\/|%2[Ff])edit(?:\/|%2[Ff]))(?:(?!%2[Ff])[^/?#])+/g,
+			"$1[redacted]",
+		);
 }
 
 /**

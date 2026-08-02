@@ -135,6 +135,53 @@ describe("umamiBeforeSendScript", () => {
 		expect(result.url).toBeUndefined();
 		expect(result.referrer).toBeUndefined();
 	});
+
+	// Mirrors the `sanitizeUrl` percent-encoding regression tests below - the
+	// inline script can't import `sanitizeUrl`, so its copy of the regex is
+	// verified against the same cases to keep the two sources in sync.
+	it("should redact admin tokens even when path separators are percent-encoded", () => {
+		const result = beforeSend("event", {
+			url: "https://timesync.me/events%2Fabc123%2Fadmin%2Fsecret-token",
+		});
+		expect(result.url).toBe(
+			"https://timesync.me/events%2Fabc123%2Fadmin%2F[redacted]",
+		);
+	});
+
+	it("should redact tokens when path separators are lowercase-percent-encoded", () => {
+		const result = beforeSend("event", {
+			url: "https://timesync.me/events%2fabc123%2fadmin%2fsecret-token",
+		});
+		expect(result.url).toBe(
+			"https://timesync.me/events%2fabc123%2fadmin%2f[redacted]",
+		);
+	});
+
+	it("should redact tokens with mixed literal and percent-encoded separators", () => {
+		const result = beforeSend("event", {
+			url: "/events/abc123%2Fadmin%2Fsecret-token",
+		});
+		expect(result.url).toBe("/events/abc123%2Fadmin%2F[redacted]");
+	});
+
+	it("should preserve query string and hash after a percent-encoded redacted segment", () => {
+		const result = beforeSend("event", {
+			url: "https://timesync.me/events%2Fabc123%2Fadmin%2Fsecret-token?foo=bar#section",
+		});
+		expect(result.url).toBe(
+			"https://timesync.me/events%2Fabc123%2Fadmin%2F[redacted]?foo=bar#section",
+		);
+	});
+
+	it("should redact edit tokens even when path separators are percent-encoded", () => {
+		const result = beforeSend("event", {
+			referrer:
+				"https://timesync.me/events%2Fabc123%2Fedit%2Fsecret-edit-token",
+		});
+		expect(result.referrer).toBe(
+			"https://timesync.me/events%2Fabc123%2Fedit%2F[redacted]",
+		);
+	});
 });
 
 describe("getPostHogConfig", () => {
@@ -207,22 +254,51 @@ describe("sanitizeUrl", () => {
 	});
 
 	// QA regression (found during instrumentation review): the redaction regex
-	// matches literal "/" path separators only. A percent-encoded path (where
-	// "/" is sent as "%2F" - e.g. a proxy/CDN or a manually-constructed
-	// referrer URL) slips past both `sanitizeUrl` and `posthogBeforeSend`
-	// entirely, leaking the raw admin/edit token. Marked `.fails` so it
-	// documents the gap without turning the suite red; the fix should decode
-	// (or otherwise normalize) the URL before applying the redaction regex, or
-	// broaden the regex to match `%2[Ff]` as an additional separator.
-	it.fails(
-		"should redact admin tokens even when path separators are percent-encoded",
-		() => {
-			const result = sanitizeUrl(
-				"https://timesync.me/events%2Fabc123%2Fadmin%2Fsecret-token",
-			);
-			expect(result).not.toContain("secret-token");
-		},
-	);
+	// used to match literal "/" path separators only, so a percent-encoded
+	// path (where "/" is sent as "%2F" - e.g. a proxy/CDN or a
+	// manually-constructed referrer URL) slipped past both `sanitizeUrl` and
+	// `posthogBeforeSend` entirely, leaking the raw admin/edit token. The
+	// separator pattern now also matches `%2F`/`%2f`.
+	it("should redact admin tokens even when path separators are percent-encoded", () => {
+		const result = sanitizeUrl(
+			"https://timesync.me/events%2Fabc123%2Fadmin%2Fsecret-token",
+		);
+		expect(result).toBe(
+			"https://timesync.me/events%2Fabc123%2Fadmin%2F[redacted]",
+		);
+	});
+
+	it("should redact admin tokens when path separators are lowercase-percent-encoded", () => {
+		const result = sanitizeUrl(
+			"https://timesync.me/events%2fabc123%2fadmin%2fsecret-token",
+		);
+		expect(result).toBe(
+			"https://timesync.me/events%2fabc123%2fadmin%2f[redacted]",
+		);
+	});
+
+	it("should redact tokens with mixed literal and percent-encoded separators", () => {
+		const result = sanitizeUrl("/events/abc123%2Fadmin%2Fsecret-token");
+		expect(result).toBe("/events/abc123%2Fadmin%2F[redacted]");
+	});
+
+	it("should preserve query string and hash after a percent-encoded redacted segment", () => {
+		const result = sanitizeUrl(
+			"https://timesync.me/events%2Fabc123%2Fadmin%2Fsecret-token?foo=bar#section",
+		);
+		expect(result).toBe(
+			"https://timesync.me/events%2Fabc123%2Fadmin%2F[redacted]?foo=bar#section",
+		);
+	});
+
+	it("should redact edit tokens even when path separators are percent-encoded", () => {
+		const result = sanitizeUrl(
+			"https://timesync.me/events%2Fabc123%2Fedit%2Fsecret-edit-token",
+		);
+		expect(result).toBe(
+			"https://timesync.me/events%2Fabc123%2Fedit%2F[redacted]",
+		);
+	});
 });
 
 describe("posthogBeforeSend", () => {
