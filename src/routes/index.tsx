@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Calendar, Clock, Eye, Smartphone, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics-events";
 import { TIER_LIMITS } from "@/lib/tier-config";
 
 export const Route = createFileRoute("/")({ component: LandingPage });
@@ -82,7 +83,12 @@ function LandingPage() {
 						results.
 					</p>
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-						<Link to="/events/create">
+						<Link
+							to="/events/create"
+							onClick={() =>
+								trackEvent("landing_cta_clicked", { ctaLocation: "hero" })
+							}
+						>
 							<Button
 								size="lg"
 								className="text-lg px-8 py-6 shadow-lg shadow-primary/50"
@@ -188,7 +194,14 @@ function LandingPage() {
 					</div>
 
 					<div className="text-center mt-12">
-						<Link to="/events/create">
+						<Link
+							to="/events/create"
+							onClick={() =>
+								trackEvent("landing_cta_clicked", {
+									ctaLocation: "how_it_works",
+								})
+							}
+						>
 							<Button size="lg" className="text-lg px-8 py-6">
 								Create Your First Event
 							</Button>
@@ -206,7 +219,12 @@ function LandingPage() {
 					<p className="text-xl text-muted-foreground mb-8">
 						Create your event now and find the perfect time for your team.
 					</p>
-					<Link to="/events/create">
+					<Link
+						to="/events/create"
+						onClick={() =>
+							trackEvent("landing_cta_clicked", { ctaLocation: "final_cta" })
+						}
+					>
 						<Button
 							size="lg"
 							className="text-lg px-12 py-6 shadow-lg shadow-primary/50"
