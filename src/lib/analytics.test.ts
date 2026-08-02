@@ -1,5 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { getUmamiScriptConfig, umamiBeforeSendScript } from "./analytics";
+import {
+	getPostHogConfig,
+	getUmamiScriptConfig,
+	posthogBeforeSend,
+	sanitizeUrl,
+	umamiBeforeSendScript,
+} from "./analytics";
 
 describe("getUmamiScriptConfig", () => {
 	const validScriptUrl = "https://analytics.example.com/script.js";
@@ -128,5 +134,134 @@ describe("umamiBeforeSendScript", () => {
 		const result = beforeSend("event", {});
 		expect(result.url).toBeUndefined();
 		expect(result.referrer).toBeUndefined();
+	});
+});
+
+describe("getPostHogConfig", () => {
+	const validApiKey = "phc_abc123";
+	const validApiHost = "https://us.i.posthog.com";
+
+	it("should return init config when both API key and host are provided", () => {
+		const result = getPostHogConfig(validApiKey, validApiHost);
+
+		expect(result).not.toBeNull();
+		expect(result?.apiKey).toBe(validApiKey);
+		expect(result?.options).toMatchObject({
+			api_host: validApiHost,
+			person_profiles: "identified_only",
+			disable_session_recording: true,
+			persistence: "localStorage",
+			capture_pageview: false,
+		});
+		expect(result?.options.before_send).toBe(posthogBeforeSend);
+	});
+
+	it("should return null when API key is undefined", () => {
+		expect(getPostHogConfig(undefined, validApiHost)).toBeNull();
+	});
+
+	it("should return null when API host is undefined", () => {
+		expect(getPostHogConfig(validApiKey, undefined)).toBeNull();
+	});
+
+	it("should return null when both are undefined", () => {
+		expect(getPostHogConfig(undefined, undefined)).toBeNull();
+	});
+
+	it("should return null when API key is empty string", () => {
+		expect(getPostHogConfig("", validApiHost)).toBeNull();
+	});
+
+	it("should return null when API host is empty string", () => {
+		expect(getPostHogConfig(validApiKey, "")).toBeNull();
+	});
+});
+
+describe("sanitizeUrl", () => {
+	it("should redact admin tokens", () => {
+		expect(sanitizeUrl("/events/abc123/admin/secret-token-xyz")).toBe(
+			"/events/abc123/admin/[redacted]",
+		);
+	});
+
+	it("should redact edit tokens", () => {
+		expect(sanitizeUrl("/events/abc123/edit/secret-edit-token")).toBe(
+			"/events/abc123/edit/[redacted]",
+		);
+	});
+
+	it("should preserve query strings after the redacted segment", () => {
+		expect(
+			sanitizeUrl(
+				"https://timesync.me/events/abc123/admin/secret-token?foo=bar",
+			),
+		).toBe("https://timesync.me/events/abc123/admin/[redacted]?foo=bar");
+	});
+
+	it("should not modify URLs without tokens", () => {
+		expect(sanitizeUrl("/events/abc123")).toBe("/events/abc123");
+	});
+
+	it("should return undefined unchanged", () => {
+		expect(sanitizeUrl(undefined)).toBeUndefined();
+	});
+});
+
+describe("posthogBeforeSend", () => {
+	function makeCaptureResult(
+		properties: Record<string, unknown>,
+	): Parameters<typeof posthogBeforeSend>[0] {
+		return {
+			uuid: "test-uuid",
+			event: "$pageview",
+			properties,
+		};
+	}
+
+	it("should redact admin tokens from $current_url", () => {
+		const result = posthogBeforeSend(
+			makeCaptureResult({
+				$current_url: "https://timesync.me/events/abc123/admin/secret-token",
+			}),
+		);
+		expect(result?.properties.$current_url).toBe(
+			"https://timesync.me/events/abc123/admin/[redacted]",
+		);
+	});
+
+	it("should redact edit tokens from $referrer and $pathname", () => {
+		const result = posthogBeforeSend(
+			makeCaptureResult({
+				$referrer: "https://timesync.me/events/abc123/edit/secret-edit-token",
+				$pathname: "/events/abc123/edit/secret-edit-token",
+			}),
+		);
+		expect(result?.properties.$referrer).toBe(
+			"https://timesync.me/events/abc123/edit/[redacted]",
+		);
+		expect(result?.properties.$pathname).toBe("/events/abc123/edit/[redacted]");
+	});
+
+	it("should redact tokens from any URL-shaped string property", () => {
+		const result = posthogBeforeSend(
+			makeCaptureResult({
+				custom_url: "/events/abc123/admin/secret-token",
+			}),
+		);
+		expect(result?.properties.custom_url).toBe(
+			"/events/abc123/admin/[redacted]",
+		);
+	});
+
+	it("should not modify non-string properties", () => {
+		const result = posthogBeforeSend(
+			makeCaptureResult({ slotCount: 3, hasComment: true }),
+		);
+		expect(result?.properties.slotCount).toBe(3);
+		expect(result?.properties.hasComment).toBe(true);
+	});
+
+	it("should return null unchanged", () => {
+		expect(posthogBeforeSend(null)).toBeNull();
 	});
 });
