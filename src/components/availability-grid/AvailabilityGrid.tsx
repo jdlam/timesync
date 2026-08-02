@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics-events";
 import type { HeatmapSlotData } from "@/lib/heatmap-utils";
 import {
 	formatDateDisplay,
@@ -45,6 +46,8 @@ export function AvailabilityGrid({
 	);
 	// Track if this is the initial render to avoid calling onChange on mount
 	const isInitialRender = useRef(true);
+	// Fire response_grid_interacted on the first slot toggle only
+	const hasTrackedInteractionRef = useRef(false);
 
 	// Notify parent when selection changes (but not on initial render)
 	useEffect(() => {
@@ -108,6 +111,15 @@ export function AvailabilityGrid({
 		) => {
 			if (mode === "view") return;
 
+			if (!hasTrackedInteractionRef.current) {
+				hasTrackedInteractionRef.current = true;
+				trackEvent("response_grid_interacted", {
+					eventId: event._id,
+					eventMode: event.eventMode === "dates" ? "dates" : "times",
+					interactionType: action === "enter" ? "drag" : "click",
+				});
+			}
+
 			setSelectedSlots((prev) => {
 				const newSelected = new Set(prev);
 
@@ -163,7 +175,7 @@ export function AvailabilityGrid({
 				return newSelected;
 			});
 		},
-		[mode, isDragging, allSlots],
+		[mode, isDragging, allSlots, event._id, event.eventMode],
 	);
 
 	// Handle mouse down to start dragging

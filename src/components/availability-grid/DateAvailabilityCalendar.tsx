@@ -1,5 +1,6 @@
 import { parse } from "date-fns";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics-events";
 import { isGroupedPattern } from "@/lib/date-blocks";
 import { formatDate, parseTimeInZone } from "@/lib/time-utils";
 import type { PublicEvent } from "../../../convex/shared_types";
@@ -23,12 +24,28 @@ export function DateAvailabilityCalendar({
 	initialSelections = [],
 	onChange,
 }: DateAvailabilityCalendarProps) {
+	// Fire response_grid_interacted on the first day/block toggle only
+	const hasTrackedInteractionRef = useRef(false);
+	const trackedOnChange = useCallback(
+		(slots: string[]) => {
+			if (!hasTrackedInteractionRef.current) {
+				hasTrackedInteractionRef.current = true;
+				trackEvent("response_grid_interacted", {
+					eventId: event._id,
+					eventMode: "dates",
+				});
+			}
+			onChange?.(slots);
+		},
+		[onChange, event._id],
+	);
+
 	if (isGroupedPattern(event.datePattern)) {
 		return (
 			<DateBlockSelector
 				event={event}
 				initialSelections={initialSelections}
-				onChange={onChange}
+				onChange={trackedOnChange}
 			/>
 		);
 	}
@@ -36,7 +53,7 @@ export function DateAvailabilityCalendar({
 		<IndividualDateCalendar
 			event={event}
 			initialSelections={initialSelections}
-			onChange={onChange}
+			onChange={trackedOnChange}
 		/>
 	);
 }

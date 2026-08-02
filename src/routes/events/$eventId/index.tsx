@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AvailabilityGrid } from "@/components/availability-grid/AvailabilityGrid";
 import { DateAvailabilityCalendar } from "@/components/availability-grid/DateAvailabilityCalendar";
@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { trackEvent } from "@/lib/analytics-events";
 import {
 	clearStoredResponse,
 	getStoredResponse,
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/events/$eventId/")({
 function EventResponse() {
 	const { eventId } = Route.useParams();
 	const [password, setPassword] = useState<string | undefined>(undefined);
+	const hasTrackedPasswordShownRef = useRef(false);
 
 	// All hooks must be called unconditionally at the top
 	const eventData = useQuery(api.events.getByIdWithResponseCount, {
@@ -57,6 +59,10 @@ function EventResponse() {
 
 	// Password gate
 	if (eventData?.passwordRequired) {
+		if (!hasTrackedPasswordShownRef.current) {
+			hasTrackedPasswordShownRef.current = true;
+			trackEvent("event_password_required_shown", { eventId });
+		}
 		return (
 			<PasswordGate
 				eventTitle={eventData.eventTitle}
@@ -117,6 +123,15 @@ function EventResponseContent({
 			: "skip",
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fire once per mount only
+	useEffect(() => {
+		trackEvent("event_page_viewed", {
+			eventId: event._id,
+			isReturningRespondent: storedResponse !== null,
+			eventMode: event.eventMode === "dates" ? "dates" : "times",
+		});
+	}, []);
+
 	// The saved response may have been deleted by the event admin. Forget the
 	// stale token so the visitor can submit again.
 	useEffect(() => {
@@ -125,6 +140,14 @@ function EventResponseContent({
 			setStoredResponseState(null);
 		}
 	}, [storedResponse, existingResponse, event._id]);
+
+	const hasTrackedEditViewedRef = useRef(false);
+	useEffect(() => {
+		if (existingResponse && !hasTrackedEditViewedRef.current) {
+			hasTrackedEditViewedRef.current = true;
+			trackEvent("response_edit_viewed", { eventId: event._id });
+		}
+	}, [existingResponse, event._id]);
 
 	const handleSubmitted = (response: StoredResponse) => {
 		setStoredResponse(event._id, response);
@@ -265,6 +288,12 @@ function SubmitResponseForm({
 
 		setIsSubmitting(true);
 
+		trackEvent("response_submit_attempted", {
+			eventId: event._id,
+			slotCount: selectedSlots.length,
+			hasComment: comment.trim().length > 0,
+		});
+
 		try {
 			const result = await submitResponseMutation({
 				eventId: event._id,
@@ -278,15 +307,24 @@ function SubmitResponseForm({
 				responseId: result.responseId,
 				editToken: result.editToken,
 			});
+			trackEvent("response_submit_completed", {
+				eventId: event._id,
+				slotCount: selectedSlots.length,
+			});
 			toast.success("Availability submitted successfully!");
 		} catch (err) {
 			console.error("Failed to submit response:", err);
 			const rawMessage =
 				err instanceof Error ? err.message : "Failed to submit response";
-			const errorMessage =
-				rawMessage === "Maximum number of respondents reached"
-					? "This event has reached its maximum number of respondents. Please contact the event creator to increase the limit."
-					: rawMessage;
+			const isMaxRespondents =
+				rawMessage === "Maximum number of respondents reached";
+			const errorMessage = isMaxRespondents
+				? "This event has reached its maximum number of respondents. Please contact the event creator to increase the limit."
+				: rawMessage;
+			trackEvent("response_submit_failed", {
+				eventId: event._id,
+				errorType: isMaxRespondents ? "max_respondents" : "other",
+			});
 			setError(errorMessage);
 			toast.error(errorMessage);
 		} finally {

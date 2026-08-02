@@ -6,6 +6,11 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { trackEvent } from "@/lib/analytics-events";
+
+vi.mock("@/lib/analytics-events", () => ({
+	trackEvent: vi.fn(),
+}));
 
 // Capture the component passed to createFileRoute
 let CapturedComponent: React.ComponentType;
@@ -320,5 +325,183 @@ describe("EventResponse — duplicate submission prevention", () => {
 		renderPage();
 
 		expect(screen.getByText("Select Your Availability")).toBeDefined();
+	});
+});
+
+describe("EventResponse — analytics events", () => {
+	beforeEach(() => {
+		eventQueryResult = {
+			event: testEvent,
+			responseCount: 1,
+			isPasswordProtected: false,
+		};
+		editTokenQueryResult = undefined;
+		submitMutation.mockReset();
+		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+	});
+
+	it("fires event_page_viewed on mount with isReturningRespondent false for a first-time visitor", () => {
+		renderPage();
+
+		expect(trackEvent).toHaveBeenCalledWith("event_page_viewed", {
+			eventId: EVENT_ID,
+			isReturningRespondent: false,
+			eventMode: "times",
+		});
+	});
+
+	it("fires event_page_viewed on mount with isReturningRespondent true for a returning respondent", () => {
+		localStorage.setItem(
+			storedKey(),
+			JSON.stringify({ responseId: "resp-1", editToken: "token-1" }),
+		);
+		editTokenQueryResult = {
+			_id: "resp-1",
+			eventId: EVENT_ID,
+			respondentName: "Alice",
+			respondentComment: "",
+			selectedSlots: GRID_SLOTS,
+			editToken: "token-1",
+			createdAt: 0,
+			updatedAt: 0,
+		};
+
+		renderPage();
+
+		expect(trackEvent).toHaveBeenCalledWith("event_page_viewed", {
+			eventId: EVENT_ID,
+			isReturningRespondent: true,
+			eventMode: "times",
+		});
+	});
+
+	it("fires response_submit_attempted then response_submit_completed with slotCount and hasComment", async () => {
+		submitMutation.mockResolvedValue({
+			responseId: "resp-new",
+			editToken: "token-new",
+		});
+
+		renderPage();
+
+		fireEvent.click(screen.getByRole("button", { name: "select-slots" }));
+		fireEvent.change(screen.getByLabelText(/Your Name/), {
+			target: { value: "Bob" },
+		});
+		fireEvent.change(screen.getByLabelText(/Comment/), {
+			target: { value: "See you there" },
+		});
+		fireEvent.click(
+			screen.getByRole("button", { name: /Submit Availability/ }),
+		);
+
+		await waitFor(() => {
+			expect(trackEvent).toHaveBeenCalledWith("response_submit_completed", {
+				eventId: EVENT_ID,
+				slotCount: GRID_SLOTS.length,
+			});
+		});
+
+		expect(trackEvent).toHaveBeenCalledWith("response_submit_attempted", {
+			eventId: EVENT_ID,
+			slotCount: GRID_SLOTS.length,
+			hasComment: true,
+		});
+	});
+
+	it("fires response_submit_failed with errorType 'max_respondents' when the mutation rejects with the max-respondents message", async () => {
+		submitMutation.mockRejectedValue(
+			new Error("Maximum number of respondents reached"),
+		);
+
+		renderPage();
+
+		fireEvent.click(screen.getByRole("button", { name: "select-slots" }));
+		fireEvent.change(screen.getByLabelText(/Your Name/), {
+			target: { value: "Bob" },
+		});
+		fireEvent.click(
+			screen.getByRole("button", { name: /Submit Availability/ }),
+		);
+
+		await waitFor(() => {
+			expect(trackEvent).toHaveBeenCalledWith("response_submit_failed", {
+				eventId: EVENT_ID,
+				errorType: "max_respondents",
+			});
+		});
+	});
+
+	it("fires response_submit_failed with errorType 'other' for any other mutation error", async () => {
+		submitMutation.mockRejectedValue(new Error("Network error"));
+
+		renderPage();
+
+		fireEvent.click(screen.getByRole("button", { name: "select-slots" }));
+		fireEvent.change(screen.getByLabelText(/Your Name/), {
+			target: { value: "Bob" },
+		});
+		fireEvent.click(
+			screen.getByRole("button", { name: /Submit Availability/ }),
+		);
+
+		await waitFor(() => {
+			expect(trackEvent).toHaveBeenCalledWith("response_submit_failed", {
+				eventId: EVENT_ID,
+				errorType: "other",
+			});
+		});
+	});
+
+	it("never includes editToken or password in any tracked event's properties (token-leak regression)", async () => {
+		localStorage.setItem(
+			storedKey(),
+			JSON.stringify({ responseId: "resp-1", editToken: "token-1" }),
+		);
+		editTokenQueryResult = {
+			_id: "resp-1",
+			eventId: EVENT_ID,
+			respondentName: "Alice",
+			respondentComment: "",
+			selectedSlots: GRID_SLOTS,
+			editToken: "token-1",
+			createdAt: 0,
+			updatedAt: 0,
+		};
+
+		renderPage();
+
+		await waitFor(() => {
+			expect(trackEvent).toHaveBeenCalledWith(
+				"response_edit_viewed",
+				expect.anything(),
+			);
+		});
+
+		expect(vi.mocked(trackEvent).mock.calls.length).toBeGreaterThan(0);
+		for (const [, properties] of vi.mocked(trackEvent).mock.calls) {
+			if (properties && typeof properties === "object") {
+				expect(properties).not.toHaveProperty("editToken");
+				expect(properties).not.toHaveProperty("password");
+			}
+		}
+	});
+
+	it("fires event_password_required_shown when the password gate renders", () => {
+		eventQueryResult = {
+			passwordRequired: true,
+			eventTitle: "Team Sync",
+			wrongPassword: false,
+		};
+
+		renderPage();
+
+		expect(trackEvent).toHaveBeenCalledWith("event_password_required_shown", {
+			eventId: EVENT_ID,
+		});
 	});
 });
