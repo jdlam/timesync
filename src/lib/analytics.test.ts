@@ -205,6 +205,24 @@ describe("sanitizeUrl", () => {
 	it("should return undefined unchanged", () => {
 		expect(sanitizeUrl(undefined)).toBeUndefined();
 	});
+
+	// QA regression (found during instrumentation review): the redaction regex
+	// matches literal "/" path separators only. A percent-encoded path (where
+	// "/" is sent as "%2F" - e.g. a proxy/CDN or a manually-constructed
+	// referrer URL) slips past both `sanitizeUrl` and `posthogBeforeSend`
+	// entirely, leaking the raw admin/edit token. Marked `.fails` so it
+	// documents the gap without turning the suite red; the fix should decode
+	// (or otherwise normalize) the URL before applying the redaction regex, or
+	// broaden the regex to match `%2[Ff]` as an additional separator.
+	it.fails(
+		"should redact admin tokens even when path separators are percent-encoded",
+		() => {
+			const result = sanitizeUrl(
+				"https://timesync.me/events%2Fabc123%2Fadmin%2Fsecret-token",
+			);
+			expect(result).not.toContain("secret-token");
+		},
+	);
 });
 
 describe("posthogBeforeSend", () => {

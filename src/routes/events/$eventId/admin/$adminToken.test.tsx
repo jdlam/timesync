@@ -133,9 +133,15 @@ function renderPage() {
 describe("AdminDashboard analytics", () => {
 	afterEach(() => {
 		cleanup();
-		trackEventMock.mockClear();
-		exportEventToCsvMock.mockClear();
-		deleteEventMutation.mockClear();
+		trackEventMock.mockReset();
+		// mockReset (not just mockClear) so the `mockImplementation(() => throw)`
+		// set by the "export throws" test below can't leak into other tests -
+		// with this file's vitest.config.ts `sequence.shuffle: true`, tests
+		// don't always run in declaration order (regression: this leak caused
+		// "fires admin_csv_exported ... on export success" to fail
+		// intermittently depending on shuffle order).
+		exportEventToCsvMock.mockReset();
+		deleteEventMutation.mockReset();
 		responsesQueryResult = testResponses;
 	});
 
