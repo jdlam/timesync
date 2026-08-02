@@ -4,12 +4,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // Capture the component passed to createFileRoute
 let CapturedComponent: React.ComponentType;
 
+const mockSearch: { success: boolean; canceled: boolean; from?: string } = {
+	success: false,
+	canceled: false,
+};
+
 vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (opts: { component: React.ComponentType }) => {
 		CapturedComponent = opts.component;
 		return {};
 	},
-	useSearch: () => ({ success: false, canceled: false }),
+	useSearch: () => mockSearch,
+}));
+
+const trackEvent = vi.fn();
+vi.mock("@/lib/analytics-events", () => ({
+	trackEvent: (...args: unknown[]) => trackEvent(...args),
 }));
 
 vi.mock("@clerk/clerk-react", () => ({
@@ -45,6 +55,10 @@ describe("PricingPage", () => {
 		mockSubscription.isPremium = false;
 		mockSubscription.isSuperAdmin = false;
 		mockSubscription.isLoading = false;
+		mockSearch.success = false;
+		mockSearch.canceled = false;
+		mockSearch.from = undefined;
+		trackEvent.mockClear();
 	});
 
 	it("should show 'Admin Access' disabled button for super admins", () => {
@@ -116,5 +130,76 @@ describe("PricingPage", () => {
 		render(<CapturedComponent />);
 
 		expect(screen.getByRole("button", { name: "Loading..." })).toBeDefined();
+	});
+
+	it("fires pricing_page_viewed once on mount with referrerContext defaulting to 'direct'", () => {
+		render(<CapturedComponent />);
+
+		const calls = trackEvent.mock.calls.filter(
+			([name]) => name === "pricing_page_viewed",
+		);
+		expect(calls).toHaveLength(1);
+		expect(calls[0][1]).toEqual({
+			isAuthenticated: true,
+			isPremium: false,
+			referrerContext: "direct",
+		});
+	});
+
+	it("fires pricing_page_viewed with referrerContext from the ?from= search param", () => {
+		mockSearch.from = "create_form";
+
+		render(<CapturedComponent />);
+
+		const calls = trackEvent.mock.calls.filter(
+			([name]) => name === "pricing_page_viewed",
+		);
+		expect(calls).toHaveLength(1);
+		expect(calls[0][1]).toEqual({
+			isAuthenticated: true,
+			isPremium: false,
+			referrerContext: "create_form",
+		});
+	});
+
+	it("fires pricing_upgrade_clicked with isAuthenticated before upgrade() is called", async () => {
+		mockSubscription.isPremium = false;
+		mockSubscription.isSuperAdmin = false;
+		mockSubscription.upgrade = vi.fn(async () => {});
+
+		render(<CapturedComponent />);
+
+		fireEvent.click(screen.getByRole("button", { name: "Upgrade to Premium" }));
+
+		expect(trackEvent).toHaveBeenCalledWith("pricing_upgrade_clicked", {
+			isAuthenticated: true,
+		});
+	});
+
+	it("fires checkout_canceled when the canceled search param is present", () => {
+		mockSearch.canceled = true;
+
+		render(<CapturedComponent />);
+
+		expect(trackEvent).toHaveBeenCalledWith("checkout_canceled");
+	});
+
+	it("does not fire checkout_canceled on a plain page view", () => {
+		render(<CapturedComponent />);
+
+		expect(trackEvent).not.toHaveBeenCalledWith("checkout_canceled");
+	});
+
+	it("never includes tokens or emails in tracked event properties", () => {
+		mockSearch.from = "create_form";
+		mockSearch.canceled = true;
+
+		render(<CapturedComponent />);
+
+		for (const [, properties] of trackEvent.mock.calls) {
+			const serialized = JSON.stringify(properties ?? {});
+			expect(serialized).not.toMatch(/token/i);
+			expect(serialized).not.toMatch(/@/);
+		}
 	});
 });

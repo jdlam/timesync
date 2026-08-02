@@ -337,7 +337,14 @@ function CreateEvent() {
 									, {tierLimits.maxParticipants} participants
 								</p>
 							</div>
-							<Link to="/pricing" search={{ success: false, canceled: false }}>
+							<Link
+								to="/pricing"
+								search={{
+									success: false,
+									canceled: false,
+									from: "create_form",
+								}}
+							>
 								<Button variant="outline" size="sm" className="gap-1">
 									<Crown className="w-4 h-4" />
 									Upgrade
@@ -737,7 +744,11 @@ function CreateEvent() {
 								</p>
 								<Link
 									to="/pricing"
-									search={{ success: false, canceled: false }}
+									search={{
+										success: false,
+										canceled: false,
+										from: "create_form",
+									}}
 								>
 									<Button variant="outline" size="sm" className="gap-1 ml-3">
 										<Crown className="w-4 h-4" />

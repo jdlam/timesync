@@ -1,6 +1,7 @@
 import { useUser } from "@clerk/clerk-react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback } from "react";
+import { trackEvent } from "@/lib/analytics-events";
 import { api } from "../../convex/_generated/api";
 
 export type SubscriptionTier = "free" | "premium";
@@ -62,6 +63,8 @@ export function useSubscription(): SubscriptionState & SubscriptionActions {
 			successUrl: `${baseUrl}/pricing?success=true`,
 			cancelUrl: `${baseUrl}/pricing?canceled=true`,
 		});
+
+		trackEvent("checkout_started");
 
 		// Redirect to Stripe Checkout
 		window.location.href = url;
