@@ -175,7 +175,12 @@ export const updateSubscription = internalMutation({
 		console.log(
 			`[Stripe Webhook] Updated subscription for user ${user._id}: tier=${args.subscriptionTier}`,
 		);
-		return { success: true };
+		// clerkId is returned so callers (the Stripe webhook handler) can use it
+		// as the distinct_id for a durable `server_subscription_canceled`
+		// analytics event without a second lookup — subscription-lifecycle
+		// webhook payloads (unlike checkout sessions) don't carry our own
+		// clerkId in Stripe metadata.
+		return { success: true, clerkId: user.clerkId };
 	},
 });
 

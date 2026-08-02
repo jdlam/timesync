@@ -2,9 +2,24 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import Stripe from "stripe";
+import { sendToPostHog } from "./lib/analytics";
 import { USER_NOT_FOUND_ERROR } from "./users";
 
 const http = httpRouter();
+
+/**
+ * Extract the `clerkId` set on a Stripe Checkout Session's metadata (see
+ * `stripe.ts`'s `createCheckoutSession`) — the only trustworthy revenue
+ * signal, since Stripe's webhook has no browser context to read it from.
+ * Returns undefined if absent so callers can skip analytics rather than send
+ * a garbage distinct_id.
+ */
+export function extractCheckoutClerkId(
+	session: Pick<Stripe.Checkout.Session, "metadata">,
+): string | undefined {
+	const clerkId = session.metadata?.clerkId;
+	return typeof clerkId === "string" && clerkId.length > 0 ? clerkId : undefined;
+}
 
 export function handleSubscriptionUpdateResult(params: {
 	result: { success: boolean; error?: string };
@@ -120,6 +135,17 @@ http.route({
 								console.log(
 									`[Stripe Webhook] SUCCESS: Activated premium for customer=${customerId}, subscription=${subscriptionId}`,
 								);
+								// Authoritative "did they actually pay" signal — Stripe's
+								// webhook is the only source of truth for a completed
+								// subscription. No card/payment details, just the identity
+								// join key already used elsewhere (stripe.ts's
+								// createCheckoutSession metadata).
+								const clerkId = extractCheckoutClerkId(session);
+								if (clerkId) {
+									await sendToPostHog("server_checkout_completed", clerkId, {
+										clerkId,
+									});
+								}
 							} else {
 								handleSubscriptionUpdateResult({
 									result,
@@ -148,6 +174,12 @@ http.route({
 					console.warn(
 						`[Stripe Webhook] EXPIRED: Checkout session expired without payment: session=${session.id}, customer=${session.customer}`,
 					);
+					const clerkId = extractCheckoutClerkId(session);
+					if (clerkId) {
+						await sendToPostHog("server_checkout_expired", clerkId, {
+							clerkId,
+						});
+					}
 					break;
 				}
 
@@ -249,6 +281,17 @@ http.route({
 						console.log(
 							`[Stripe Webhook] Cancelled subscription: customer=${customerId}, subscription=${subscription.id}`,
 						);
+						// Churn signal (Q6) — clerkId comes back from the mutation
+						// itself since subscription-lifecycle webhook payloads (unlike
+						// checkout sessions) don't carry our own clerkId in Stripe
+						// metadata. No payment details, just the identity join key.
+						if (result.clerkId) {
+							await sendToPostHog(
+								"server_subscription_canceled",
+								result.clerkId,
+								{ clerkId: result.clerkId },
+							);
+						}
 					} else {
 						handleSubscriptionUpdateResult({
 							result,

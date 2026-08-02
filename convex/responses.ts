@@ -235,6 +235,17 @@ export const submit = mutation({
 			);
 		}
 
+		// Durable numerator for the viral loop (Q4) — a client event can be
+		// lost to a closed tab; this fires only on confirmed submission.
+		await ctx.scheduler.runAfter(0, internal.analytics_actions.capture, {
+			event: "server_response_submitted",
+			distinctId: args.eventId,
+			properties: {
+				eventId: args.eventId,
+				slotCount: normalizedSelectedSlots.length,
+			},
+		});
+
 		return {
 			responseId,
 			editToken,
