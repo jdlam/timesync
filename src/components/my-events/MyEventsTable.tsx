@@ -44,7 +44,6 @@ interface MyEventsTableProps {
 export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 	const [deleteEventId, setDeleteEventId] = useState<Id<"events"> | null>(null);
 	const [actionLoading, setActionLoading] = useState<Id<"events"> | null>(null);
-	const [openPopoverId, setOpenPopoverId] = useState<Id<"events"> | null>(null);
 
 	const toggleStatus = useMutation(api.myEvents.toggleMyEventStatus);
 	const deleteEvent = useMutation(api.myEvents.deleteMyEvent);
@@ -173,10 +172,6 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 								touch
 								label={`Actions for ${event.title}`}
 								actions={actionsFor(event)}
-								open={openPopoverId === event._id}
-								onOpenChange={(open) =>
-									setOpenPopoverId(open ? event._id : null)
-								}
 							/>
 						</div>
 					</div>
@@ -240,10 +235,6 @@ export function MyEventsTable({ events, onViewEvent }: MyEventsTableProps) {
 									<RowActionsMenu
 										label={`Actions for ${event.title}`}
 										actions={actionsFor(event)}
-										open={openPopoverId === event._id}
-										onOpenChange={(open) =>
-											setOpenPopoverId(open ? event._id : null)
-										}
 									/>
 								</td>
 							</tr>

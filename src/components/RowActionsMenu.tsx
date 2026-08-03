@@ -1,4 +1,5 @@
 import { Loader2, type LucideIcon, MoreVertical } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Popover,
@@ -22,8 +23,6 @@ interface RowActionsMenuProps {
 	/** Accessible name for the trigger, e.g. `Actions for ${event.title}`. */
 	label: string;
 	actions: RowAction[];
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
 	/**
 	 * Touch surfaces size the trigger and every row to the 44px floor. Row
 	 * actions mutate or delete records, so on touch this is a selection surface
@@ -41,17 +40,16 @@ interface RowActionsMenuProps {
 export function RowActionsMenu({
 	label,
 	actions,
-	open,
-	onOpenChange,
 	touch = false,
 }: RowActionsMenuProps) {
+	const [open, setOpen] = useState(false);
 	const itemClass = cn(
 		"w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
 		touch && "min-h-[44px]",
 	);
 
 	return (
-		<Popover open={open} onOpenChange={onOpenChange}>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
 					variant={touch ? "outline" : "ghost"}
@@ -75,7 +73,7 @@ export function RowActionsMenu({
 							)}
 							disabled={action.disabled || action.loading}
 							onClick={() => {
-								onOpenChange(false);
+								setOpen(false);
 								action.onSelect();
 							}}
 						>

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -57,5 +57,25 @@ describe("MyEventsTable", () => {
 		for (const child of Array.from(actionRow?.children ?? [])) {
 			expect(child.className).toContain("min-h-[44px]");
 		}
+	});
+
+	// Regression for #78/#79: the mobile card and desktop table each render
+	// their own RowActionsMenu instance, and both used to be wired to one
+	// shared `openPopoverId` state on this component. Opening either popover
+	// opened both, one stole focus from the other, and the dismiss layer
+	// closed both instantly — the menu never appeared to click. Clicking the
+	// desktop trigger (the second matching button) reproduces that and fails
+	// on main; RowActionsMenu is now uncontrolled so each instance manages
+	// its own open state independently.
+	it("opens the desktop actions menu on click", () => {
+		renderTable();
+
+		const desktopTrigger = screen.getAllByRole("button", {
+			name: /actions for design review/i,
+		})[1];
+		fireEvent.pointerDown(desktopTrigger);
+		fireEvent.click(desktopTrigger);
+
+		expect(screen.getByText("View Details")).toBeTruthy();
 	});
 });
