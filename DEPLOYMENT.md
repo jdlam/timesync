@@ -52,22 +52,29 @@ Important:
 The repo already uses this build command (`vercel.json`):
 
 ```json
-"buildCommand": "npx convex deploy --yes --cmd \"npm run build\""
+"buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npx convex deploy --yes --cmd \"npm run build\"; else npm run build; fi"
 ```
+
+**Build behavior:**
+- **Production:** Runs `convex deploy` first, then `npm run build`. The frontend and Convex backend both update on production deploys.
+- **Preview:** Skips `convex deploy` and only builds the frontend. Preview builds cannot authenticate with a production deploy key, so they use the `VITE_CONVEX_URL` (configured in Preview environment) pointing to the development Convex deployment instead.
 
 Set Vercel environment variables:
 
-Required:
+Required (Production environment):
 - `VITE_CONVEX_URL` (Convex production deployment URL)
 - `VITE_CLERK_PUBLISHABLE_KEY` (Clerk publishable key)
-- `CONVEX_DEPLOY_KEY` (Convex deploy key)
+- `CONVEX_DEPLOY_KEY` (Convex deploy key for production backend deploys)
 
-Optional:
+Required (Preview environment):
+- `VITE_CONVEX_URL` (Convex **development** deployment URL — preview builds query this instead of deploying)
+- `VITE_CLERK_PUBLISHABLE_KEY` (Clerk publishable key)
+- **Do NOT set `CONVEX_DEPLOY_KEY` in Preview** — preview builds skip the convex deploy step; setting a production key here would cause authentication failures
+
+Optional (all environments):
 - `VITE_STRIPE_PUBLISHABLE_KEY` (recommended if exposing client Stripe usage)
 - `VITE_UMAMI_SCRIPT_URL`
 - `VITE_UMAMI_WEBSITE_ID`
-
-Make sure required vars are enabled for the environments you deploy (`Production`, and `Preview` if needed).
 
 ## 5. Clerk Configuration
 
