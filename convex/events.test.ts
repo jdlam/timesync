@@ -2390,4 +2390,128 @@ describe("events", () => {
 			expect(event?.eventMode).toBe("times");
 		});
 	});
+
+	describe("server_event_created analytics", () => {
+		it("should schedule server_event_created with eventId, eventMode, and tier on successful create", async () => {
+			const t = makeConvexTest();
+
+			const result = await t.mutation(api.events.create, {
+				title: "Analytics Event",
+				timeZone: "UTC",
+				dates: ["2025-01-20"],
+				timeRangeStart: "09:00",
+				timeRangeEnd: "17:00",
+				slotDuration: 30,
+				maxRespondents: 5,
+			});
+
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			const analyticsJob = scheduledJobs.find(
+				(job) => job.name === "analytics_actions:capture",
+			);
+			expect(analyticsJob).toBeDefined();
+			expect(analyticsJob?.args[0]).toEqual({
+				event: "server_event_created",
+				distinctId: result.eventId,
+				properties: {
+					eventId: result.eventId,
+					eventMode: "times",
+					tier: "free",
+				},
+			});
+		});
+
+		it("should not schedule any analytics capture when the date-span tier limit rejects a dates-mode create", async () => {
+			// Regression for the removed `server_date_span_limit_blocked` capture:
+			// `ctx.scheduler.runAfter` calls are rolled back with the rest of the
+			// transaction when the mutation throws, so scheduling one before the
+			// throw was always a no-op — verify the rejection still throws and
+			// that nothing is scheduled.
+			const t = makeConvexTest();
+
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Too Long Trip",
+					timeZone: "UTC",
+					eventMode: "dates",
+					// Free tier maxDateSpanDays is well under a year.
+					dates: ["2025-01-01", "2026-01-01"],
+					timeRangeStart: "00:00",
+					timeRangeEnd: "00:00",
+					slotDuration: 1440,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow(/Dates can span at most/);
+
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			expect(scheduledJobs).toEqual([]);
+		});
+
+		it("should not schedule any analytics capture when the max-dates tier limit rejects a create", async () => {
+			const t = makeConvexTest();
+
+			const tooManyDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+			await expect(
+				t.mutation(api.events.create, {
+					title: "Too Many Dates",
+					timeZone: "UTC",
+					dates: tooManyDates,
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				}),
+			).rejects.toThrow("Must have between 1 and 14 dates");
+
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			expect(scheduledJobs).toEqual([]);
+		});
+
+		it("should not schedule any analytics capture when the max-dates tier limit rejects an update", async () => {
+			const t = makeConvexTest();
+
+			const eventId = await t.run(async (ctx) => {
+				return await ctx.db.insert("events", {
+					title: "Free Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					adminToken: "admin-token",
+					maxRespondents: 5,
+					isPremium: false,
+					isActive: true,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				});
+			});
+
+			const tooManyDates = Array.from(
+				{ length: 15 },
+				(_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`,
+			);
+			await expect(
+				t.mutation(api.events.update, {
+					eventId,
+					adminToken: "admin-token",
+					dates: tooManyDates,
+				}),
+			).rejects.toThrow("Must have between 1 and 14 dates");
+
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			expect(scheduledJobs).toEqual([]);
+		});
+	});
 });

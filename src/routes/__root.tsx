@@ -6,6 +6,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import Header from "../components/Header";
 import { Toaster } from "../components/ui/sonner";
 import { getUmamiScriptConfig, umamiBeforeSendScript } from "../lib/analytics";
+import { PostHogProvider } from "../lib/posthog-provider";
 import { ThemeProvider } from "../lib/theme";
 
 import appCss from "../styles.css?url";
@@ -111,22 +112,24 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body className="bg-background text-foreground">
 				<ErrorBoundary>
 					<ConvexClientProvider>
-						<ThemeProvider>
-							<Header />
-							{children}
-							<Toaster richColors closeButton />
-							<TanStackDevtools
-								config={{
-									position: "bottom-right",
-								}}
-								plugins={[
-									{
-										name: "Tanstack Router",
-										render: <TanStackRouterDevtoolsPanel />,
-									},
-								]}
-							/>
-						</ThemeProvider>
+						<PostHogProvider>
+							<ThemeProvider>
+								<Header />
+								{children}
+								<Toaster richColors closeButton />
+								<TanStackDevtools
+									config={{
+										position: "bottom-right",
+									}}
+									plugins={[
+										{
+											name: "Tanstack Router",
+											render: <TanStackRouterDevtoolsPanel />,
+										},
+									]}
+								/>
+							</ThemeProvider>
+						</PostHogProvider>
 					</ConvexClientProvider>
 				</ErrorBoundary>
 				<Scripts />

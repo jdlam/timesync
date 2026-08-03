@@ -10,7 +10,7 @@ import {
 	Trash2,
 	Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditEventDialog } from "@/components/EditEventDialog";
 import { EventHeader } from "@/components/EventHeader";
@@ -30,6 +30,7 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics-events";
 import { exportEventToCsv } from "@/lib/csv-export";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
@@ -108,6 +109,19 @@ function AdminDashboardContent({
 	const [showDeleteEventDialog, setShowDeleteEventDialog] = useState(false);
 	const [isEventActionLoading, setIsEventActionLoading] = useState(false);
 
+	// Capture the response count at the moment of the initial mount, since the
+	// live query updates in real time and we want the view-time snapshot, not
+	// whatever count happens to be current when the effect fires.
+	const initialResponseCountRef = useRef(responses.length);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fire once per mount only, not on every prop change
+	useEffect(() => {
+		trackEvent("admin_dashboard_viewed", {
+			eventId: event._id,
+			responseCount: initialResponseCountRef.current,
+		});
+	}, []);
+
 	// Find the highlighted response object
 	const highlightedResponse = selectedResponseId
 		? responses?.find((r) => r._id === selectedResponseId)
@@ -164,10 +178,15 @@ function AdminDashboardContent({
 
 	const handleDeleteEvent = async () => {
 		setIsEventActionLoading(true);
+		const responseCountBeforeDelete = responses.length;
 		try {
 			await deleteEventMutation({
 				eventId: event._id,
 				adminToken,
+			});
+			trackEvent("admin_event_deleted", {
+				eventId: event._id,
+				responseCount: responseCountBeforeDelete,
 			});
 			toast.success("Event deleted successfully");
 			navigate({ to: "/" });
@@ -234,6 +253,10 @@ function AdminDashboardContent({
 							onClick={() => {
 								try {
 									exportEventToCsv(event, responses);
+									trackEvent("admin_csv_exported", {
+										eventId: event._id,
+										responseCount: responses.length,
+									});
 									toast.success("CSV exported successfully");
 								} catch (error) {
 									console.error("Failed to export CSV:", error);

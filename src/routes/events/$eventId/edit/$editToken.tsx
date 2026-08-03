@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { EditResponseForm } from "@/components/EditResponseForm";
 import { EventHeader } from "@/components/EventHeader";
 import { NotFound } from "@/components/NotFound";
+import { trackEvent } from "@/lib/analytics-events";
 import { TimezoneDisplayProvider } from "@/lib/timezone-display";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -26,6 +28,14 @@ function EditResponseWrapper() {
 		eventId: eventId as Id<"events">,
 		editToken,
 	});
+
+	const hasTrackedEditViewedRef = useRef(false);
+	useEffect(() => {
+		if (event && response && !hasTrackedEditViewedRef.current) {
+			hasTrackedEditViewedRef.current = true;
+			trackEvent("response_edit_viewed", { eventId: event._id });
+		}
+	}, [event, response]);
 
 	// Loading state
 	if (event === undefined || response === undefined) {

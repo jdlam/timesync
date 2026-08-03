@@ -1,3 +1,4 @@
+import { useStore } from "@tanstack/react-form";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
@@ -12,7 +13,7 @@ import {
 	Lock,
 	Mail,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DayPoolPicker } from "@/components/availability-grid/DayPoolPicker";
 import { PatternRangePicker } from "@/components/availability-grid/PatternRangePicker";
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { useAppForm } from "@/hooks/form";
 import { useSubscription } from "@/hooks/useSubscription";
+import { trackEvent } from "@/lib/analytics-events";
 import {
 	type DatePattern,
 	getDateBlocks,
@@ -46,11 +48,29 @@ import {
 	weekdaysForPattern,
 } from "@/lib/date-blocks";
 import { getErrorMessage } from "@/lib/form-utils";
-import { TIER_LIMITS } from "@/lib/tier-config";
+import { getDateRangeSpanDays, TIER_LIMITS } from "@/lib/tier-config";
 import { getBrowserTimezone, isDateInPast } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 import { createEventSchemaForTier } from "@/lib/validation-schemas";
 import { api } from "../../../convex/_generated/api";
+
+// Matches the tier-limit validation messages from
+// `src/lib/validation-schemas.ts` (`refineDatesLimit`) so
+// `event_create_tier_limit_hit` fires only for those messages, not every
+// validation error on the `dates` field.
+const TIER_LIMIT_MESSAGE_PATTERNS: {
+	pattern: RegExp;
+	limitType: "maxDates" | "maxDateSpanDays";
+}[] = [
+	{
+		pattern: /^Maximum \d+ dates allowed for \w+ tier$/,
+		limitType: "maxDates",
+	},
+	{
+		pattern: /^Dates can span at most \d+ weeks for \w+ tier$/,
+		limitType: "maxDateSpanDays",
+	},
+];
 
 const PATTERN_OPTIONS: { value: DatePattern; label: string }[] = [
 	{ value: "individual", label: "Individual" },
@@ -96,6 +116,15 @@ function CreateEvent() {
 
 	const [showPassword, setShowPassword] = useState(false);
 
+	// Fires `event_create_started` once per page load, on the first
+	// field-level interaction anywhere in the create form.
+	const hasStartedRef = useRef(false);
+	const trackCreateStartedOnce = () => {
+		if (hasStartedRef.current) return;
+		hasStartedRef.current = true;
+		trackEvent("event_create_started", { eventMode, isAuthenticated });
+	};
+
 	const form = useAppForm({
 		defaultValues: {
 			title: "",
@@ -119,6 +148,13 @@ function CreateEvent() {
 			try {
 				const isDates = value.eventMode === "dates";
 				const grouped = isDates && value.datePattern !== "individual";
+				trackEvent("event_create_submitted", {
+					eventMode: value.eventMode,
+					datePattern: value.datePattern,
+					isAuthenticated,
+					hasPassword: Boolean(value.password),
+					notifyOnResponse: Boolean(value.notifyOnResponse),
+				});
 				const result = await createEventMutation({
 					title: value.title,
 					description: value.description || undefined,
@@ -145,6 +181,11 @@ function CreateEvent() {
 					eventId: result.eventId,
 					adminToken: result.adminToken,
 				});
+				trackEvent("event_create_completed", {
+					eventId: result.eventId,
+					eventMode: value.eventMode,
+					isAuthenticated,
+				});
 				toast.success("Event created successfully!");
 			} catch (error) {
 				console.error("Failed to create event:", error);
@@ -152,6 +193,10 @@ function CreateEvent() {
 					error instanceof Error
 						? error.message
 						: "Failed to create event. Please try again.";
+				trackEvent("event_create_failed", {
+					errorMessage,
+					eventMode: value.eventMode,
+				});
 				toast.error(errorMessage);
 			}
 		},
@@ -163,6 +208,42 @@ function CreateEvent() {
 			form.setFieldValue("notifyOnResponse", true);
 		}
 	}, [form, isAuthenticated]);
+
+	// Fires `event_create_tier_limit_hit` only when the `dates` field's
+	// validation error is one of the tier-limit messages from
+	// `refineDatesLimit` (src/lib/validation-schemas.ts), not on every
+	// validation error. Dedupes on message content so it doesn't re-fire on
+	// every render while the same limit error stays visible.
+	const datesFieldErrors = useStore(
+		form.store,
+		(state) => state.fieldMeta.dates?.errors ?? [],
+	);
+	const lastTierLimitMessageRef = useRef<string | null>(null);
+	useEffect(() => {
+		const message =
+			datesFieldErrors.length > 0
+				? getErrorMessage(datesFieldErrors[0])
+				: undefined;
+		if (!message) {
+			lastTierLimitMessageRef.current = null;
+			return;
+		}
+		if (lastTierLimitMessageRef.current === message) return;
+		const match = TIER_LIMIT_MESSAGE_PATTERNS.find(({ pattern }) =>
+			pattern.test(message),
+		);
+		if (!match) return;
+		lastTierLimitMessageRef.current = message;
+		const currentDates = form.getFieldValue("dates");
+		trackEvent("event_create_tier_limit_hit", {
+			limitType: match.limitType,
+			tier,
+			attemptedValue:
+				match.limitType === "maxDates"
+					? currentDates.length
+					: getDateRangeSpanDays(currentDates),
+		});
+	}, [datesFieldErrors, form, tier]);
 
 	const maxDateSpanDays = tierLimits.maxDateSpanDays;
 	const spanWeeks = Math.round(maxDateSpanDays / 7);
@@ -178,6 +259,10 @@ function CreateEvent() {
 
 	// Toggle between "times" and "dates" event modes (keep form field in sync).
 	const handleModeChange = (mode: "times" | "dates") => {
+		trackEvent("event_create_mode_selected", {
+			eventMode: mode,
+			previousMode: eventMode,
+		});
 		setEventMode(mode);
 		form.setFieldValue("eventMode", mode);
 	};
@@ -252,7 +337,14 @@ function CreateEvent() {
 									, {tierLimits.maxParticipants} participants
 								</p>
 							</div>
-							<Link to="/pricing" search={{ success: false, canceled: false }}>
+							<Link
+								to="/pricing"
+								search={{
+									success: false,
+									canceled: false,
+									from: "create_form",
+								}}
+							>
 								<Button variant="outline" size="sm" className="gap-1">
 									<Crown className="w-4 h-4" />
 									Upgrade
@@ -268,6 +360,8 @@ function CreateEvent() {
 						e.stopPropagation();
 						form.handleSubmit();
 					}}
+					onChangeCapture={trackCreateStartedOnce}
+					onClickCapture={trackCreateStartedOnce}
 					className="space-y-6 bg-card border border-border rounded-xl p-6 shadow-lg"
 				>
 					{/* Event Mode Chooser */}
@@ -650,7 +744,11 @@ function CreateEvent() {
 								</p>
 								<Link
 									to="/pricing"
-									search={{ success: false, canceled: false }}
+									search={{
+										success: false,
+										canceled: false,
+										from: "create_form",
+									}}
 								>
 									<Button variant="outline" size="sm" className="gap-1 ml-3">
 										<Crown className="w-4 h-4" />

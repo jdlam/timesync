@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "npx convex deploy --yes --cmd \"npm run build\"",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npx convex deploy --yes --cmd \"npm run build\"; else npm run build; fi",
   "outputDirectory": ".output",
   "headers": [
     {

@@ -1,18 +1,22 @@
 import { SignInButton, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { Check, Crown, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
+import { trackEvent } from "@/lib/analytics-events";
 import { TIER_LIMITS } from "@/lib/tier-config";
 
 export const Route = createFileRoute("/pricing")({
 	component: PricingPage,
-	validateSearch: (search: Record<string, unknown>) => {
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { success: boolean; canceled: boolean; from?: string } => {
 		return {
 			success: search.success === "true",
 			canceled: search.canceled === "true",
+			...(typeof search.from === "string" ? { from: search.from } : {}),
 		};
 	},
 });
@@ -27,8 +31,9 @@ function PricingPage() {
 		manageSubscription,
 		syncUser,
 	} = useSubscription();
-	const { success, canceled } = useSearch({ from: "/pricing" });
+	const { success, canceled, from } = useSearch({ from: "/pricing" });
 	const [isCheckoutStarting, setIsCheckoutStarting] = useState(false);
+	const hasTrackedPageViewedRef = useRef(false);
 
 	// Sync user on page load (creates user record if needed)
 	useEffect(() => {
@@ -36,6 +41,18 @@ function PricingPage() {
 			syncUser();
 		}
 	}, [isSignedIn, syncUser]);
+
+	useEffect(() => {
+		if (isLoading || hasTrackedPageViewedRef.current) {
+			return;
+		}
+		hasTrackedPageViewedRef.current = true;
+		trackEvent("pricing_page_viewed", {
+			isAuthenticated: isSignedIn ?? false,
+			isPremium,
+			referrerContext: from ?? "direct",
+		});
+	}, [isLoading, isSignedIn, isPremium, from]);
 
 	// Show success/canceled messages
 	useEffect(() => {
@@ -47,6 +64,7 @@ function PricingPage() {
 			window.history.replaceState({}, "", "/pricing");
 		} else if (canceled) {
 			toast.info("Checkout was canceled. No charges were made.");
+			trackEvent("checkout_canceled");
 			// Clear URL params
 			window.history.replaceState({}, "", "/pricing");
 		}
@@ -56,6 +74,10 @@ function PricingPage() {
 		if (isCheckoutStarting) {
 			return;
 		}
+
+		trackEvent("pricing_upgrade_clicked", {
+			isAuthenticated: isSignedIn ?? false,
+		});
 
 		setIsCheckoutStarting(true);
 		try {

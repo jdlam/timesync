@@ -10,6 +10,10 @@ import {
 	TIER_LIMITS,
 } from "./lib/tier_config";
 
+// NOTE: never schedule analytics capture before a throw — Convex rolls
+// back scheduled calls when the mutation fails (see
+// INSTRUMENTATION_PLAN.local.md §2 Revision).
+
 // Query: Get event by ID (public — strips sensitive fields, respects password gate)
 export const getById = query({
 	args: {
@@ -200,7 +204,8 @@ export const update = mutation({
 			if (event.eventMode === "dates") {
 				// Dates events are capped by calendar span, not day count.
 				const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
-				if (getDateRangeSpanDays(args.dates) > maxSpan) {
+				const spanDays = getDateRangeSpanDays(args.dates);
+				if (spanDays > maxSpan) {
 					throw new Error(
 						`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
 					);
@@ -438,7 +443,8 @@ export const create = mutation({
 		if (isDatesMode) {
 			// Dates events are capped by calendar span, not day count.
 			const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
-			if (getDateRangeSpanDays(args.dates) > maxSpan) {
+			const spanDays = getDateRangeSpanDays(args.dates);
+			if (spanDays > maxSpan) {
 				throw new Error(
 					`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
 				);
@@ -536,6 +542,21 @@ export const create = mutation({
 				{ eventId },
 			);
 		}
+
+		// Durable server-side confirmation, cross-checked against the client's
+		// `event_create_completed` (a client event can be lost to a closed tab;
+		// this fires only on confirmed creation). Fire-and-forget: scheduled as
+		// an action since mutations cannot fetch, and never fails event
+		// creation if PostHog is unreachable/unconfigured.
+		await ctx.scheduler.runAfter(0, internal.analytics_actions.capture, {
+			event: "server_event_created",
+			distinctId: creatorId ?? eventId,
+			properties: {
+				eventId,
+				eventMode: isDatesMode ? "dates" : "times",
+				tier,
+			},
+		});
 
 		return {
 			eventId,

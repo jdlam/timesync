@@ -1,9 +1,36 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
 import { modules } from "./test.setup";
+
+// `responses.submit` schedules an internal action (the "server_response_submitted"
+// PostHog capture) on every successful submit, and `responses.update` schedules
+// an email when notifications are configured. convex-test runs scheduled
+// functions on a real timer, so any that outlive a test surface as unhandled
+// rejections. Track every instance and drain it after each test (mirrors the
+// pattern in events.test.ts).
+const activeInstances: Array<ReturnType<typeof convexTest>> = [];
+function makeConvexTest() {
+	const t = convexTest(schema, modules);
+	activeInstances.push(t);
+	return t;
+}
+
+afterEach(async () => {
+	for (const t of activeInstances) {
+		try {
+			// Let any runAfter(0) timer fire, then wait for it to finish inside the
+			// still-live instance so it can't write after teardown.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await t.finishInProgressScheduledFunctions();
+		} catch {
+			// Best-effort drain; scheduled actions are no-ops without lame-mail/PostHog configured.
+		}
+	}
+	activeInstances.length = 0;
+});
 
 // Helper to create a test event
 async function createTestEvent(
@@ -41,7 +68,7 @@ async function createTestEvent(
 describe("responses", () => {
 	describe("submit", () => {
 		it("should submit a response successfully", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const result = await t.mutation(api.responses.submit, {
@@ -58,7 +85,7 @@ describe("responses", () => {
 		});
 
 		it("should generate unique edit tokens for different responses", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const result1 = await t.mutation(api.responses.submit, {
@@ -77,7 +104,7 @@ describe("responses", () => {
 		});
 
 		it("should submit a response without optional comment", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const result = await t.mutation(api.responses.submit, {
@@ -90,7 +117,7 @@ describe("responses", () => {
 		});
 
 		it("should throw error when event not found", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Create and delete an event to get a valid but non-existent ID
 			const eventId = await t.run(async (ctx) => {
@@ -122,7 +149,7 @@ describe("responses", () => {
 		});
 
 		it("should throw error when event is inactive", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, { isActive: false });
 
 			await expect(
@@ -135,7 +162,7 @@ describe("responses", () => {
 		});
 
 		it("should throw error when max respondents reached", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, { maxRespondents: 2 });
 
 			// Add 2 responses to reach the limit
@@ -169,7 +196,7 @@ describe("responses", () => {
 		});
 
 		it("should allow unlimited responses when maxRespondents is -1", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, {
 				maxRespondents: -1,
 				isPremium: true,
@@ -195,7 +222,7 @@ describe("responses", () => {
 		});
 
 		it("should allow response when under max respondents limit", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, { maxRespondents: 3 });
 
 			// Add 2 responses
@@ -229,7 +256,7 @@ describe("responses", () => {
 		});
 
 		it("should reject name longer than 255 characters", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await expect(
@@ -242,7 +269,7 @@ describe("responses", () => {
 		});
 
 		it("should reject comment longer than 500 characters", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await expect(
@@ -256,7 +283,7 @@ describe("responses", () => {
 		});
 
 		it("should reject empty selectedSlots", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await expect(
@@ -269,7 +296,7 @@ describe("responses", () => {
 		});
 
 		it("should reject invalid slot format", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await expect(
@@ -282,7 +309,7 @@ describe("responses", () => {
 		});
 
 		it("should accept valid ISO 8601 slots", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const result = await t.mutation(api.responses.submit, {
@@ -295,7 +322,7 @@ describe("responses", () => {
 		});
 
 		it("should reject slots that are outside the event schedule", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await expect(
@@ -310,7 +337,7 @@ describe("responses", () => {
 		});
 
 		it("should reject submission when event-scoped rate limit is exceeded", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, {
 				maxRespondents: -1,
 				isPremium: true,
@@ -340,7 +367,7 @@ describe("responses", () => {
 
 	describe("getByEventId", () => {
 		it("should return empty array for event with no responses", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responses = await t.query(api.responses.getByEventId, {
@@ -352,7 +379,7 @@ describe("responses", () => {
 		});
 
 		it("should not return editToken in responses", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await t.run(async (ctx) => {
@@ -379,7 +406,7 @@ describe("responses", () => {
 		});
 
 		it("should return all responses for an event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await t.run(async (ctx) => {
@@ -413,7 +440,7 @@ describe("responses", () => {
 		});
 
 		it("should return empty array for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await t.run(async (ctx) => {
@@ -438,7 +465,7 @@ describe("responses", () => {
 
 	describe("getByEditToken", () => {
 		it("should return response with valid edit token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await t.run(async (ctx) => {
@@ -461,7 +488,7 @@ describe("responses", () => {
 		});
 
 		it("should return null for invalid edit token so a stale saved token falls back to submitting", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const response = await t.query(api.responses.getByEditToken, {
@@ -473,7 +500,7 @@ describe("responses", () => {
 		});
 
 		it("should return null when the response was deleted after the token was saved", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -500,7 +527,7 @@ describe("responses", () => {
 		});
 
 		it("should return null when token exists but for different event", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId1 = await createTestEvent(t);
 			const eventId2 = await createTestEvent(t);
 
@@ -527,7 +554,7 @@ describe("responses", () => {
 
 	describe("countByEventId", () => {
 		it("should return 0 for event with no responses", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const count = await t.query(api.responses.countByEventId, {
@@ -539,7 +566,7 @@ describe("responses", () => {
 		});
 
 		it("should return correct count", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await t.run(async (ctx) => {
@@ -564,7 +591,7 @@ describe("responses", () => {
 		});
 
 		it("should return 0 for invalid admin token", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			await t.run(async (ctx) => {
@@ -589,7 +616,7 @@ describe("responses", () => {
 
 	describe("update", () => {
 		it("should update response fields with valid editToken", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -617,7 +644,7 @@ describe("responses", () => {
 		});
 
 		it("should reject update with invalid editToken", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -642,7 +669,7 @@ describe("responses", () => {
 		});
 
 		it("should throw error for non-existent response", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			// Create and delete a response to get a valid but non-existent ID
@@ -670,7 +697,7 @@ describe("responses", () => {
 		});
 
 		it("should reject update when event is inactive", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, { isActive: false });
 
 			const responseId = await t.run(async (ctx) => {
@@ -695,7 +722,7 @@ describe("responses", () => {
 		});
 
 		it("should reject name longer than 255 characters in update", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -720,7 +747,7 @@ describe("responses", () => {
 		});
 
 		it("should reject comment longer than 500 characters in update", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -746,7 +773,7 @@ describe("responses", () => {
 		});
 
 		it("should reject empty selectedSlots in update", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -771,7 +798,7 @@ describe("responses", () => {
 		});
 
 		it("should reject update with slots outside the event schedule", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -798,7 +825,7 @@ describe("responses", () => {
 		});
 
 		it("should accept an update within the rate limit", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -823,7 +850,7 @@ describe("responses", () => {
 		});
 
 		it("should reject an update when the event-scoped rate limit is exceeded, and not patch the response or schedule a notification", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t, {
 				notifyOnResponse: true,
 				creatorId: "user_123",
@@ -882,7 +909,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: true,
 					creatorId: "user_123",
@@ -928,7 +955,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: true,
 					creatorId: "user_123",
@@ -994,7 +1021,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: false,
 					creatorId: "user_123",
@@ -1034,7 +1061,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: true,
 				});
@@ -1072,7 +1099,7 @@ describe("responses", () => {
 
 	describe("remove", () => {
 		it("should delete a response with valid adminToken", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -1101,7 +1128,7 @@ describe("responses", () => {
 		});
 
 		it("should reject deletion with invalid adminToken", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -1124,7 +1151,7 @@ describe("responses", () => {
 		});
 
 		it("should reject deletion of non-existent response", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const responseId = await t.run(async (ctx) => {
@@ -1154,7 +1181,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: true,
 					creatorId: "user_123",
@@ -1185,7 +1212,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: false,
 					creatorId: "user_123",
@@ -1214,7 +1241,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t);
 
 				const result = await t.mutation(api.responses.submit, {
@@ -1240,7 +1267,7 @@ describe("responses", () => {
 			vi.useFakeTimers();
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
-				const t = convexTest(schema, modules);
+				const t = makeConvexTest();
 				const eventId = await createTestEvent(t, {
 					notifyOnResponse: true,
 				});
@@ -1267,7 +1294,7 @@ describe("responses", () => {
 
 	describe("submit with password", () => {
 		it("should allow submission when event has no password", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createTestEvent(t);
 
 			const result = await t.mutation(api.responses.submit, {
@@ -1280,7 +1307,7 @@ describe("responses", () => {
 		});
 
 		it("should require password when event has one", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			// Use hashPassword to create a real hash
 			const { hashPassword } = await import("./lib/password");
@@ -1301,7 +1328,7 @@ describe("responses", () => {
 		});
 
 		it("should reject incorrect password", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const { hashPassword } = await import("./lib/password");
 			const hashedPw = await hashPassword("correct-pass");
@@ -1322,7 +1349,7 @@ describe("responses", () => {
 		});
 
 		it("should accept correct password", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 
 			const { hashPassword } = await import("./lib/password");
 			const hashedPw = await hashPassword("correct-pass");
@@ -1366,7 +1393,7 @@ describe("responses", () => {
 		}
 
 		it("should accept per-day canonical slots for candidate days", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createDatesEvent(t);
 
 			const result = await t.mutation(api.responses.submit, {
@@ -1383,7 +1410,7 @@ describe("responses", () => {
 		});
 
 		it("should reject a day outside the candidate pool", async () => {
-			const t = convexTest(schema, modules);
+			const t = makeConvexTest();
 			const eventId = await createDatesEvent(t);
 
 			await expect(
@@ -1393,6 +1420,68 @@ describe("responses", () => {
 					selectedSlots: ["2025-08-05T00:00:00.000Z"],
 				}),
 			).rejects.toThrow(/must match the event's configured schedule/);
+		});
+	});
+
+	describe("server_response_submitted analytics", () => {
+		it("should schedule server_response_submitted with eventId and slotCount on successful submit", async () => {
+			const t = makeConvexTest();
+			const eventId = await createTestEvent(t);
+
+			const result = await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "Alice",
+				selectedSlots: ["2025-01-20T10:00:00Z", "2025-01-20T10:30:00Z"],
+			});
+			expect(result.responseId).toBeDefined();
+
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			const analyticsJob = scheduledJobs.find(
+				(job) => job.name === "analytics_actions:capture",
+			);
+			expect(analyticsJob).toBeDefined();
+			expect(analyticsJob?.args[0]).toEqual({
+				event: "server_response_submitted",
+				distinctId: eventId,
+				properties: {
+					eventId,
+					slotCount: 2,
+				},
+			});
+		});
+
+		it("should not schedule any analytics capture when the max-respondents limit rejects a submit", async () => {
+			// Regression for the removed `server_max_respondents_blocked` capture:
+			// scheduling before a throw was always rolled back with the rest of
+			// the transaction — verify the rejection still throws and nothing
+			// is scheduled.
+			const t = makeConvexTest();
+			const eventId = await createTestEvent(t, { maxRespondents: 1 });
+
+			await t.mutation(api.responses.submit, {
+				eventId,
+				respondentName: "User 1",
+				selectedSlots: ["2025-01-20T10:00:00Z"],
+			});
+
+			await expect(
+				t.mutation(api.responses.submit, {
+					eventId,
+					respondentName: "User 2",
+					selectedSlots: ["2025-01-20T11:00:00Z"],
+				}),
+			).rejects.toThrow("Maximum number of respondents reached");
+
+			const scheduledJobs = await t.run(async (ctx) => {
+				return await ctx.db.system.query("_scheduled_functions").collect();
+			});
+			// Only the first (successful) submit's server_response_submitted capture.
+			expect(scheduledJobs).toHaveLength(1);
+			expect(
+				(scheduledJobs[0]?.args[0] as { event: string }).event,
+			).toBe("server_response_submitted");
 		});
 	});
 });

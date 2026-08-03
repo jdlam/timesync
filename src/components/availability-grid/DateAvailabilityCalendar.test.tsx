@@ -1,7 +1,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { trackEvent } from "@/lib/analytics-events";
 import type { PublicEvent } from "../../../convex/shared_types";
 import { DateAvailabilityCalendar } from "./DateAvailabilityCalendar";
+
+vi.mock("@/lib/analytics-events", () => ({
+	trackEvent: vi.fn(),
+}));
 
 // Minimal dates-only event (UTC so canonical slots are midnight-Z).
 const event = {
@@ -12,6 +17,7 @@ const event = {
 } as unknown as PublicEvent;
 
 describe("DateAvailabilityCalendar", () => {
+	beforeEach(() => vi.clearAllMocks());
 	afterEach(() => cleanup());
 
 	it("selects and clears all candidate days", () => {
@@ -56,5 +62,22 @@ describe("DateAvailabilityCalendar", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Remove Sat, Aug 2" }));
 		expect(onChange).toHaveBeenLastCalledWith([]);
+	});
+
+	it("fires response_grid_interacted only once across multiple day toggles", () => {
+		render(<DateAvailabilityCalendar event={event} onChange={vi.fn()} />);
+
+		fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+		fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+		fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+
+		const gridInteractedCalls = vi
+			.mocked(trackEvent)
+			.mock.calls.filter(([name]) => name === "response_grid_interacted");
+		expect(gridInteractedCalls).toHaveLength(1);
+		expect(gridInteractedCalls[0][1]).toEqual({
+			eventId: "event123",
+			eventMode: "dates",
+		});
 	});
 });
