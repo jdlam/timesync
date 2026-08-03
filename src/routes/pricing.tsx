@@ -1,7 +1,7 @@
 import { SignInButton, useUser } from "@clerk/clerk-react";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { Check, Crown, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -33,6 +33,7 @@ function PricingPage() {
 	} = useSubscription();
 	const { success, canceled, from } = useSearch({ from: "/pricing" });
 	const [isCheckoutStarting, setIsCheckoutStarting] = useState(false);
+	const hasTrackedPageViewedRef = useRef(false);
 
 	// Sync user on page load (creates user record if needed)
 	useEffect(() => {
@@ -41,14 +42,17 @@ function PricingPage() {
 		}
 	}, [isSignedIn, syncUser]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fire once per mount only
 	useEffect(() => {
+		if (isLoading || hasTrackedPageViewedRef.current) {
+			return;
+		}
+		hasTrackedPageViewedRef.current = true;
 		trackEvent("pricing_page_viewed", {
 			isAuthenticated: isSignedIn ?? false,
 			isPremium,
 			referrerContext: from ?? "direct",
 		});
-	}, []);
+	}, [isLoading, isSignedIn, isPremium, from]);
 
 	// Show success/canceled messages
 	useEffect(() => {

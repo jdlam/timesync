@@ -491,7 +491,7 @@ describe("EventResponse — analytics events", () => {
 		}
 	});
 
-	it("fires event_password_required_shown when the password gate renders", () => {
+	it("fires event_password_required_shown exactly once when the password gate renders", () => {
 		eventQueryResult = {
 			passwordRequired: true,
 			eventTitle: "Team Sync",
@@ -500,8 +500,19 @@ describe("EventResponse — analytics events", () => {
 
 		renderPage();
 
-		expect(trackEvent).toHaveBeenCalledWith("event_password_required_shown", {
-			eventId: EVENT_ID,
-		});
+		const calls = vi
+			.mocked(trackEvent)
+			.mock.calls.filter(([name]) => name === "event_password_required_shown");
+		expect(calls).toHaveLength(1);
+		expect(calls[0][1]).toEqual({ eventId: EVENT_ID });
+	});
+
+	it("never fires event_password_required_shown when the password gate is not shown", () => {
+		renderPage();
+
+		expect(trackEvent).not.toHaveBeenCalledWith(
+			"event_password_required_shown",
+			expect.anything(),
+		);
 	});
 });

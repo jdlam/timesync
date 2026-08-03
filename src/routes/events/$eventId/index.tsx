@@ -48,6 +48,13 @@ function EventResponse() {
 		password,
 	});
 
+	useEffect(() => {
+		if (eventData?.passwordRequired && !hasTrackedPasswordShownRef.current) {
+			hasTrackedPasswordShownRef.current = true;
+			trackEvent("event_password_required_shown", { eventId });
+		}
+	}, [eventData?.passwordRequired, eventId]);
+
 	// Loading state
 	if (eventData === undefined) {
 		return (
@@ -59,10 +66,6 @@ function EventResponse() {
 
 	// Password gate
 	if (eventData?.passwordRequired) {
-		if (!hasTrackedPasswordShownRef.current) {
-			hasTrackedPasswordShownRef.current = true;
-			trackEvent("event_password_required_shown", { eventId });
-		}
 		return (
 			<PasswordGate
 				eventTitle={eventData.eventTitle}
