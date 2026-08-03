@@ -67,12 +67,18 @@ function resolvePostHogConfig(): PostHogInitConfig | null {
  *
  * PostHog is optional overall - the app works without
  * `VITE_POSTHOG_KEY`/`VITE_POSTHOG_HOST` set.
+ * - Unconfigured (no `VITE_POSTHOG_KEY`/`VITE_POSTHOG_HOST`): no banner is
+ *   shown and no init occurs, regardless of visitor region.
  */
 export function PostHogProvider({ children }: { children: ReactNode }) {
 	const [needsConsent, setNeedsConsent] = useState(false);
 
 	useEffect(() => {
 		const config = resolvePostHogConfig();
+
+		if (!config) {
+			return;
+		}
 
 		if (!isEuUkVisitor()) {
 			initPostHog(config);

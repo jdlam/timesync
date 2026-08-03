@@ -166,6 +166,25 @@ describe("PostHogProvider", () => {
 		).toBeNull();
 	});
 
+	it("EU/UK visitor with no stored choice and no PostHog config: no banner, no init", async () => {
+		// A banner asking for consent to analytics that cannot run (no config)
+		// is meaningless, and "Accept"/"Reject" would persist a choice that
+		// controls nothing.
+		stubTimezone("Europe/London");
+		const PostHogProvider = await loadProvider();
+
+		render(
+			<PostHogProvider>
+				<div>app</div>
+			</PostHogProvider>,
+		);
+
+		expect(posthog.init).not.toHaveBeenCalled();
+		expect(
+			screen.queryByRole("region", { name: "Analytics consent" }),
+		).toBeNull();
+	});
+
 	it("does not initialize or throw when PostHog env vars are absent", async () => {
 		stubTimezone("America/New_York");
 		const PostHogProvider = await loadProvider();
