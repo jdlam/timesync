@@ -222,6 +222,28 @@ describe("CreateEvent analytics", () => {
 		);
 	});
 
+	it("shows the ConvexError message but tracks unknown_error when code is missing", async () => {
+		createEventMutation.mockRejectedValue(
+			new ConvexError({
+				message: "Some user-safe message",
+			}),
+		);
+		renderPage();
+
+		fillTitle();
+		switchToDatesMode();
+		fireEvent.click(screen.getByRole("button", { name: "select-one-date" }));
+		submitForm();
+
+		await vi.waitFor(() => {
+			expect(trackEvent).toHaveBeenCalledWith("event_create_failed", {
+				errorCode: "unknown_error",
+				eventMode: "dates",
+			});
+		});
+		expect(toast.error).toHaveBeenCalledWith("Some user-safe message");
+	});
+
 	it("shows a generic message and tracks unknown_error for an unstructured/redacted failure", async () => {
 		createEventMutation.mockRejectedValue(
 			new Error("[CONVEX M(events:create)] [Request ID: abc123] Server Error"),

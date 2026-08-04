@@ -190,22 +190,22 @@ function CreateEvent() {
 				toast.success("Event created successfully!");
 			} catch (error) {
 				console.error("Failed to create event:", error);
+				let errorCode = "unknown_error";
+				let message = "Failed to create event. Please try again.";
 				if (
 					error instanceof ConvexError &&
 					typeof error.data?.message === "string"
 				) {
-					trackEvent("event_create_failed", {
-						errorCode: error.data.code,
-						eventMode: value.eventMode,
-					});
-					toast.error(error.data.message);
-				} else {
-					trackEvent("event_create_failed", {
-						errorCode: "unknown_error",
-						eventMode: value.eventMode,
-					});
-					toast.error("Failed to create event. Please try again.");
+					message = error.data.message;
+					if (typeof error.data?.code === "string") {
+						errorCode = error.data.code;
+					}
 				}
+				trackEvent("event_create_failed", {
+					errorCode,
+					eventMode: value.eventMode,
+				});
+				toast.error(message);
 			}
 		},
 	});
