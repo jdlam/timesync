@@ -127,14 +127,16 @@ export function getPostHogConfig(
 	apiKey: string | undefined,
 	apiHost: string | undefined,
 ): PostHogInitConfig | null {
-	if (!apiKey || !apiHost) {
+	const trimmedApiKey = apiKey?.trim();
+	const trimmedApiHost = apiHost?.trim();
+	if (!trimmedApiKey || !trimmedApiHost) {
 		return null;
 	}
 
 	return {
-		apiKey,
+		apiKey: trimmedApiKey,
 		options: {
-			api_host: apiHost,
+			api_host: trimmedApiHost,
 			person_profiles: "identified_only",
 			disable_session_recording: true,
 			persistence: "localStorage",

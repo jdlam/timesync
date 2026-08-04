@@ -67,6 +67,22 @@ describe("sendToPostHog", () => {
 		errorSpy.mockRestore();
 	});
 
+	it("trims a trailing space from POSTHOG_HOST before building the endpoint", async () => {
+		// Production regression: VITE_POSTHOG_HOST had a trailing space, which
+		// broke the browser SDK's URL concatenation. The same env-var typo can
+		// happen server-side, so POSTHOG_HOST must be trimmed too.
+		vi.stubEnv("POSTHOG_PROJECT_API_KEY", "phc_test");
+		vi.stubEnv("POSTHOG_HOST", "https://us.i.posthog.com ");
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+		vi.stubGlobal("fetch", fetchMock);
+
+		await sendToPostHog("server_event_created", "user_123", { eventId: "e1" });
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).toBe("https://us.i.posthog.com/i/v0/e/");
+	});
+
 	it("does not throw when fetch itself rejects", async () => {
 		vi.stubEnv("POSTHOG_PROJECT_API_KEY", "phc_test");
 		vi.stubEnv("POSTHOG_HOST", "https://us.i.posthog.com");
