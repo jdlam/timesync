@@ -23,8 +23,8 @@ export async function sendToPostHog(
 	distinctId: string,
 	properties?: AnalyticsProperties,
 ): Promise<void> {
-	const apiKey = process.env.POSTHOG_PROJECT_API_KEY;
-	const host = process.env.POSTHOG_HOST;
+	const apiKey = process.env.POSTHOG_PROJECT_API_KEY?.trim();
+	const host = process.env.POSTHOG_HOST?.trim();
 
 	if (!apiKey || !host) {
 		return;

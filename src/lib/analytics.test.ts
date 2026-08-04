@@ -222,6 +222,25 @@ describe("getPostHogConfig", () => {
 	it("should return null when API host is empty string", () => {
 		expect(getPostHogConfig(validApiKey, "")).toBeNull();
 	});
+
+	// Production regression: a trailing space in the Vercel env var
+	// VITE_POSTHOG_HOST made posthog-js concatenate host + path into an
+	// invalid URL (e.g. "https://us.i.posthog.com /e/?..."), throwing on
+	// every capture request and silently dropping all analytics.
+	it("should trim trailing/leading whitespace from the API key and host", () => {
+		const result = getPostHogConfig(`  ${validApiKey}  `, `${validApiHost} `);
+
+		expect(result?.apiKey).toBe(validApiKey);
+		expect(result?.options.api_host).toBe(validApiHost);
+	});
+
+	it("should return null when API key is whitespace-only", () => {
+		expect(getPostHogConfig("   ", validApiHost)).toBeNull();
+	});
+
+	it("should return null when API host is whitespace-only", () => {
+		expect(getPostHogConfig(validApiKey, "   ")).toBeNull();
+	});
 });
 
 describe("sanitizeUrl", () => {
