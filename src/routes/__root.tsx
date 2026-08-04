@@ -1,6 +1,7 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { Analytics } from "@vercel/analytics/react";
 import { ConvexClientProvider } from "../components/ConvexClientProvider";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import Header from "../components/Header";
@@ -132,6 +133,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						</PostHogProvider>
 					</ConvexClientProvider>
 				</ErrorBoundary>
+				<Analytics />
 				<Scripts />
 			</body>
 		</html>
