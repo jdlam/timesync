@@ -1,6 +1,7 @@
 import { useStore } from "@tanstack/react-form";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import { format } from "date-fns";
 import {
 	Bell,
@@ -189,15 +190,22 @@ function CreateEvent() {
 				toast.success("Event created successfully!");
 			} catch (error) {
 				console.error("Failed to create event:", error);
-				const errorMessage =
-					error instanceof Error
-						? error.message
-						: "Failed to create event. Please try again.";
+				let errorCode = "unknown_error";
+				let message = "Failed to create event. Please try again.";
+				if (
+					error instanceof ConvexError &&
+					typeof error.data?.message === "string"
+				) {
+					message = error.data.message;
+					if (typeof error.data?.code === "string") {
+						errorCode = error.data.code;
+					}
+				}
 				trackEvent("event_create_failed", {
-					errorMessage,
+					errorCode,
 					eventMode: value.eventMode,
 				});
-				toast.error(errorMessage);
+				toast.error(message);
 			}
 		},
 	});

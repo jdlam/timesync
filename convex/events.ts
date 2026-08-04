@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { isSuperAdmin } from "./lib/auth";
@@ -365,7 +365,10 @@ export const create = mutation({
 		const accountEmail = identity?.email ?? undefined;
 		const guestEmail = accountEmail ? undefined : args.creatorEmail?.trim() || undefined;
 		if (guestEmail && !isValidEmail(guestEmail)) {
-			throw new Error("Please enter a valid email address");
+			throw new ConvexError({
+				code: "email_invalid",
+				message: "Please enter a valid email address",
+			});
 		}
 		const creatorEmail = accountEmail ?? guestEmail;
 
@@ -389,24 +392,39 @@ export const create = mutation({
 
 		// Server-side input validation (format checks first)
 		if (!args.title || args.title.length > 255) {
-			throw new Error("Title must be between 1 and 255 characters");
+			throw new ConvexError({
+				code: "title_invalid",
+				message: "Title must be between 1 and 255 characters",
+			});
 		}
 		if (args.description && args.description.length > 1000) {
-			throw new Error("Description must be at most 1000 characters");
+			throw new ConvexError({
+				code: "description_too_long",
+				message: "Description must be at most 1000 characters",
+			});
 		}
 		// Time-range and slot-duration only apply to "times" events. Dates
 		// events store sentinel values (see insert below) and are ignored.
 		if (!isDatesMode) {
 			if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeStart) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.timeRangeEnd)) {
-				throw new Error("Time range must be in HH:mm format");
+				throw new ConvexError({
+					code: "time_range_invalid",
+					message: "Time range must be in HH:mm format",
+				});
 			}
 			const [startH, startM] = args.timeRangeStart.split(":").map(Number);
 			const [endH, endM] = args.timeRangeEnd.split(":").map(Number);
 			if (startH * 60 + startM >= endH * 60 + endM) {
-				throw new Error("End time must be after start time");
+				throw new ConvexError({
+					code: "time_range_invalid",
+					message: "End time must be after start time",
+				});
 			}
 			if (![15, 30, 60].includes(args.slotDuration)) {
-				throw new Error("Slot duration must be 15, 30, or 60 minutes");
+				throw new ConvexError({
+					code: "slot_duration_invalid",
+					message: "Slot duration must be 15, 30, or 60 minutes",
+				});
 			}
 		}
 
@@ -438,28 +456,36 @@ export const create = mutation({
 		// Tier-aware validation
 		const tier = isPremium ? "premium" : "free";
 		if (args.dates.length === 0) {
-			throw new Error("At least one date is required");
+			throw new ConvexError({
+				code: "dates_required",
+				message: "At least one date is required",
+			});
 		}
 		if (isDatesMode) {
 			// Dates events are capped by calendar span, not day count.
 			const maxSpan = TIER_LIMITS[tier].maxDateSpanDays;
 			const spanDays = getDateRangeSpanDays(args.dates);
 			if (spanDays > maxSpan) {
-				throw new Error(
-					`Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
-				);
+				throw new ConvexError({
+					code: "date_span_too_long",
+					message: `Dates can span at most ${Math.round(maxSpan / 7)} weeks`,
+				});
 			}
 		} else {
 			const maxDates = TIER_LIMITS[tier].maxDates;
 			if (args.dates.length > maxDates) {
-				throw new Error(`Must have between 1 and ${maxDates} dates`);
+				throw new ConvexError({
+					code: "too_many_dates",
+					message: `Must have between 1 and ${maxDates} dates`,
+				});
 			}
 		}
 		for (const d of args.dates) {
 			if (!isValidDateString(d)) {
-				throw new Error(
-					"Each date must be a valid calendar date in YYYY-MM-DD format",
-				);
+				throw new ConvexError({
+					code: "date_invalid",
+					message: "Each date must be a valid calendar date in YYYY-MM-DD format",
+				});
 			}
 		}
 		// Grouped date patterns: every candidate day must fall on a pattern weekday.
@@ -469,22 +495,34 @@ export const create = mutation({
 			args.datePattern !== "individual";
 		if (isGroupedPattern) {
 			if (!args.patternWeekdays || args.patternWeekdays.length === 0) {
-				throw new Error("A grouped date pattern requires at least one weekday");
+				throw new ConvexError({
+					code: "date_pattern_invalid",
+					message: "A grouped date pattern requires at least one weekday",
+				});
 			}
 			const allowedWeekdays = new Set(args.patternWeekdays);
 			for (const d of args.dates) {
 				const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
 				if (!allowedWeekdays.has(weekday)) {
-					throw new Error("Candidate days must match the selected day pattern");
+					throw new ConvexError({
+						code: "date_pattern_invalid",
+						message: "Candidate days must match the selected day pattern",
+					});
 				}
 			}
 		}
 		if (args.password !== undefined) {
 			if (!isPremium) {
-				throw new Error("Password protection is a premium feature");
+				throw new ConvexError({
+					code: "password_premium_required",
+					message: "Password protection is a premium feature",
+				});
 			}
 			if (args.password.length < 4 || args.password.length > 128) {
-				throw new Error("Password must be between 4 and 128 characters");
+				throw new ConvexError({
+					code: "password_invalid",
+					message: "Password must be between 4 and 128 characters",
+				});
 			}
 		}
 
