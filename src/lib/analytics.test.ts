@@ -198,7 +198,7 @@ describe("getPostHogConfig", () => {
 			person_profiles: "identified_only",
 			disable_session_recording: true,
 			persistence: "localStorage",
-			capture_pageview: false,
+			capture_pageview: "history_change",
 		});
 		expect(result?.options.before_send).toBe(posthogBeforeSend);
 	});
@@ -221,6 +221,25 @@ describe("getPostHogConfig", () => {
 
 	it("should return null when API host is empty string", () => {
 		expect(getPostHogConfig(validApiKey, "")).toBeNull();
+	});
+
+	// Production regression: a trailing space in the Vercel env var
+	// VITE_POSTHOG_HOST made posthog-js concatenate host + path into an
+	// invalid URL (e.g. "https://us.i.posthog.com /e/?..."), throwing on
+	// every capture request and silently dropping all analytics.
+	it("should trim trailing/leading whitespace from the API key and host", () => {
+		const result = getPostHogConfig(`  ${validApiKey}  `, `${validApiHost} `);
+
+		expect(result?.apiKey).toBe(validApiKey);
+		expect(result?.options.api_host).toBe(validApiHost);
+	});
+
+	it("should return null when API key is whitespace-only", () => {
+		expect(getPostHogConfig("   ", validApiHost)).toBeNull();
+	});
+
+	it("should return null when API host is whitespace-only", () => {
+		expect(getPostHogConfig(validApiKey, "   ")).toBeNull();
 	});
 });
 
@@ -357,5 +376,20 @@ describe("posthogBeforeSend", () => {
 
 	it("should return null unchanged", () => {
 		expect(posthogBeforeSend(null)).toBeNull();
+	});
+
+	it("should redact admin tokens from $pageview events", () => {
+		const result = posthogBeforeSend({
+			uuid: "test-uuid",
+			event: "$pageview",
+			properties: {
+				$current_url: "https://timesync.example/events/abc/admin/SECRETTOKEN",
+				$pathname: "/events/abc/admin/SECRETTOKEN",
+			},
+		});
+		expect(result?.properties.$current_url).toBe(
+			"https://timesync.example/events/abc/admin/[redacted]",
+		);
+		expect(result?.properties.$pathname).toBe("/events/abc/admin/[redacted]");
 	});
 });
