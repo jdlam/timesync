@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { addMinutes, parse } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import { internal } from "./_generated/api";
@@ -207,7 +207,10 @@ export const submit = mutation({
 			event.maxRespondents !== -1 &&
 			existingResponses.length >= event.maxRespondents
 		) {
-			throw new Error("Maximum number of respondents reached");
+			throw new ConvexError({
+				code: "max_respondents",
+				message: "Maximum number of respondents reached",
+			});
 		}
 
 		const editToken = crypto.randomUUID();

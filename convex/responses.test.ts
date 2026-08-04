@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -186,13 +187,25 @@ describe("responses", () => {
 			});
 
 			// Try to add a third response
-			await expect(
-				t.mutation(api.responses.submit, {
+			let thrown: unknown;
+			try {
+				await t.mutation(api.responses.submit, {
 					eventId,
 					respondentName: "User 3",
 					selectedSlots: ["2025-01-20T12:00:00Z"],
-				}),
-			).rejects.toThrow("Maximum number of respondents reached");
+				});
+			} catch (error) {
+				thrown = error;
+			}
+			expect(thrown).toBeInstanceOf(ConvexError);
+			// convex-test doesn't run the client-side wire deserialization that
+			// turns `data` back into an object (see `forwardData` in the convex
+			// client), so here it's still the JSON string the server serializes it
+			// to. In the real client, `err.data` is already the parsed object.
+			const data = JSON.parse((thrown as ConvexError<string>).data) as {
+				code: string;
+			};
+			expect(data.code).toBe("max_respondents");
 		});
 
 		it("should allow unlimited responses when maxRespondents is -1", async () => {

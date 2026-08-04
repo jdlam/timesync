@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -317,13 +318,12 @@ function SubmitResponseForm({
 			toast.success("Availability submitted successfully!");
 		} catch (err) {
 			console.error("Failed to submit response:", err);
-			const rawMessage =
-				err instanceof Error ? err.message : "Failed to submit response";
 			const isMaxRespondents =
-				rawMessage === "Maximum number of respondents reached";
+				err instanceof ConvexError &&
+				(err.data as { code?: string } | undefined)?.code === "max_respondents";
 			const errorMessage = isMaxRespondents
 				? "This event has reached its maximum number of respondents. Please contact the event creator to increase the limit."
-				: rawMessage;
+				: "Failed to submit response. Please try again.";
 			trackEvent("response_submit_failed", {
 				eventId: event._id,
 				errorType: isMaxRespondents ? "max_respondents" : "other",
