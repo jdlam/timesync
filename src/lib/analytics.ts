@@ -140,9 +140,12 @@ export function getPostHogConfig(
 			person_profiles: "identified_only",
 			disable_session_recording: true,
 			persistence: "localStorage",
-			// Umami owns pageviews (see INSTRUMENTATION_PLAN.local.md §1) - do
-			// not double-count.
-			capture_pageview: false,
+			// PostHog captures pageviews (including SPA route changes via
+			// TanStack Router's history API) so funnel/DAU insights aren't
+			// permanently empty. Umami also tracks pageviews independently -
+			// the overlap is intentional (PostHog powers funnels, Umami is
+			// the lightweight public stats widget).
+			capture_pageview: "history_change",
 			before_send: posthogBeforeSend,
 		},
 	};
