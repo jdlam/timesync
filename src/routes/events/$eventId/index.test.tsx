@@ -5,6 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import { ConvexError } from "convex/values";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { trackEvent } from "@/lib/analytics-events";
 
@@ -413,9 +414,12 @@ describe("EventResponse — analytics events", () => {
 		});
 	});
 
-	it("fires response_submit_failed with errorType 'max_respondents' when the mutation rejects with the max-respondents message", async () => {
+	it("shows the friendly max-respondents message and tracks errorType 'max_respondents' when the mutation rejects with a max_respondents ConvexError", async () => {
 		submitMutation.mockRejectedValue(
-			new Error("Maximum number of respondents reached"),
+			new ConvexError({
+				code: "max_respondents",
+				message: "Maximum number of respondents reached",
+			}),
 		);
 
 		renderPage();
@@ -429,15 +433,23 @@ describe("EventResponse — analytics events", () => {
 		);
 
 		await waitFor(() => {
-			expect(trackEvent).toHaveBeenCalledWith("response_submit_failed", {
-				eventId: EVENT_ID,
-				errorType: "max_respondents",
-			});
+			expect(
+				screen.getByText(
+					"This event has reached its maximum number of respondents. Please contact the event creator to increase the limit.",
+				),
+			).toBeDefined();
+		});
+		expect(trackEvent).toHaveBeenCalledWith("response_submit_failed", {
+			eventId: EVENT_ID,
+			errorType: "max_respondents",
 		});
 	});
 
-	it("fires response_submit_failed with errorType 'other' for any other mutation error", async () => {
-		submitMutation.mockRejectedValue(new Error("Network error"));
+	it("shows the generic message and tracks errorType 'other' without leaking Convex's redacted server-error string when the mutation rejects with a non-max-respondents error", async () => {
+		const redactedProdError = new Error(
+			"[CONVEX M(responses:submit)] [Request ID: abc123] Server Error",
+		);
+		submitMutation.mockRejectedValue(redactedProdError);
 
 		renderPage();
 
@@ -450,10 +462,14 @@ describe("EventResponse — analytics events", () => {
 		);
 
 		await waitFor(() => {
-			expect(trackEvent).toHaveBeenCalledWith("response_submit_failed", {
-				eventId: EVENT_ID,
-				errorType: "other",
-			});
+			expect(
+				screen.getByText("Failed to submit response. Please try again."),
+			).toBeDefined();
+		});
+		expect(screen.queryByText(/\[CONVEX M\(responses:submit\)\]/)).toBeNull();
+		expect(trackEvent).toHaveBeenCalledWith("response_submit_failed", {
+			eventId: EVENT_ID,
+			errorType: "other",
 		});
 	});
 
