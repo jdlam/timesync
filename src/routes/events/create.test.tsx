@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { ConvexError } from "convex/values";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Capture the component passed to createFileRoute
@@ -58,6 +59,7 @@ vi.mock("@/components/availability-grid/DayPoolPicker", () => ({
 vi.mock("sonner", () => ({
 	toast: { success: vi.fn(), error: vi.fn() },
 }));
+const { toast } = await import("sonner");
 
 // Import after mocks to capture the component
 await import("./create");
@@ -195,8 +197,13 @@ describe("CreateEvent analytics", () => {
 		}
 	});
 
-	it("fires event_create_failed with the user-safe error message on mutation failure", async () => {
-		createEventMutation.mockRejectedValue(new Error("Event limit reached"));
+	it("shows the ConvexError message and tracks its error code on mutation failure", async () => {
+		createEventMutation.mockRejectedValue(
+			new ConvexError({
+				code: "too_many_dates",
+				message: "Must have between 1 and 30 dates",
+			}),
+		);
 		renderPage();
 
 		fillTitle();
@@ -206,9 +213,37 @@ describe("CreateEvent analytics", () => {
 
 		await vi.waitFor(() => {
 			expect(trackEvent).toHaveBeenCalledWith("event_create_failed", {
-				errorMessage: "Event limit reached",
+				errorCode: "too_many_dates",
 				eventMode: "dates",
 			});
 		});
+		expect(toast.error).toHaveBeenCalledWith(
+			"Must have between 1 and 30 dates",
+		);
+	});
+
+	it("shows a generic message and tracks unknown_error for an unstructured/redacted failure", async () => {
+		createEventMutation.mockRejectedValue(
+			new Error("[CONVEX M(events:create)] [Request ID: abc123] Server Error"),
+		);
+		renderPage();
+
+		fillTitle();
+		switchToDatesMode();
+		fireEvent.click(screen.getByRole("button", { name: "select-one-date" }));
+		submitForm();
+
+		await vi.waitFor(() => {
+			expect(trackEvent).toHaveBeenCalledWith("event_create_failed", {
+				errorCode: "unknown_error",
+				eventMode: "dates",
+			});
+		});
+		expect(toast.error).toHaveBeenCalledWith(
+			"Failed to create event. Please try again.",
+		);
+		expect(toast.error).not.toHaveBeenCalledWith(
+			expect.stringContaining("Request ID"),
+		);
 	});
 });

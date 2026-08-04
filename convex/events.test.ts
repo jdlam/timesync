@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import { afterEach, describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -149,6 +150,55 @@ describe("events", () => {
 					maxRespondents: 5,
 				}),
 			).rejects.toThrow("Slot duration must be 15, 30, or 60 minutes");
+		});
+
+		it("should throw a ConvexError with a low-cardinality code for an invalid title", async () => {
+			const t = makeConvexTest();
+
+			const error = await t
+				.mutation(api.events.create, {
+					title: "a".repeat(256),
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				})
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ConvexError);
+			// convex-test mirrors the production wire format: `error.data` crosses
+			// the udf boundary as a JSON string (the real ConvexReactClient parses
+			// it back into an object for the browser). Parse it the same way here.
+			expect(JSON.parse(error.data)).toEqual({
+				code: "title_invalid",
+				message: "Title must be between 1 and 255 characters",
+			});
+		});
+
+		it("should throw a ConvexError with a low-cardinality code for too many dates (no dynamic values in the code)", async () => {
+			const t = makeConvexTest();
+			const tooManyDates = Array.from({ length: 15 }, (_, i) => `2025-02-${String(i + 1).padStart(2, "0")}`);
+
+			const error = await t
+				.mutation(api.events.create, {
+					title: "Test",
+					timeZone: "UTC",
+					dates: tooManyDates,
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				})
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ConvexError);
+			// See the title_invalid test above: convex-test hands back `data` as a
+			// JSON string, matching the wire format the real client parses.
+			const data = JSON.parse(error.data);
+			expect(data.code).toBe("too_many_dates");
+			expect(data.message).toBe("Must have between 1 and 14 dates");
 		});
 
 		it("should reject invalid time format", async () => {
@@ -374,24 +424,32 @@ describe("events", () => {
 				});
 			});
 
-			await expect(
-				t
-					.withIdentity({
-						subject: "rate_limited_user",
-						email: "rate-limited@example.com",
-					})
-					.mutation(api.events.create, {
-						title: "Rate Limited Event",
-						timeZone: "UTC",
-						dates: ["2025-01-20"],
-						timeRangeStart: "09:00",
-						timeRangeEnd: "17:00",
-						slotDuration: 30,
-						maxRespondents: 5,
-					}),
-			).rejects.toThrow(
-				"Too many events created from this account. Please try again later.",
-			);
+			const error = await t
+				.withIdentity({
+					subject: "rate_limited_user",
+					email: "rate-limited@example.com",
+				})
+				.mutation(api.events.create, {
+					title: "Rate Limited Event",
+					timeZone: "UTC",
+					dates: ["2025-01-20"],
+					timeRangeStart: "09:00",
+					timeRangeEnd: "17:00",
+					slotDuration: 30,
+					maxRespondents: 5,
+				})
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ConvexError);
+			// See the title_invalid test above: convex-test hands back `data` as a
+			// JSON string, matching the wire format the real client parses. This
+			// guards against Convex redacting a plain Error message in production
+			// (the exact bug class T3 eliminates) for rate-limited creates.
+			expect(JSON.parse(error.data)).toEqual({
+				code: "rate_limited",
+				message:
+					"Too many events created from this account. Please try again later.",
+			});
 		});
 	});
 

@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { MutationCtx } from "../_generated/server";
 
 interface RateLimitOptions {
@@ -44,7 +45,7 @@ export async function enforceRateLimit(
 	}
 
 	if (existing.count >= maxRequests) {
-		throw new Error(errorMessage);
+		throw new ConvexError({ code: "rate_limited", message: errorMessage });
 	}
 
 	await ctx.db.patch(existing._id, {

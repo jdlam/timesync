@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -353,15 +354,22 @@ describe("responses", () => {
 				});
 			});
 
-			await expect(
-				t.mutation(api.responses.submit, {
+			const error = await t
+				.mutation(api.responses.submit, {
 					eventId,
 					respondentName: "Rate Limited",
 					selectedSlots: ["2025-01-20T10:00:00Z"],
-				}),
-			).rejects.toThrow(
-				"Too many responses submitted for this event right now. Please try again shortly.",
-			);
+				})
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ConvexError);
+			// convex-test mirrors the production wire format: `error.data` crosses
+			// the udf boundary as a JSON string.
+			expect(JSON.parse(error.data)).toEqual({
+				code: "rate_limited",
+				message:
+					"Too many responses submitted for this event right now. Please try again shortly.",
+			});
 		});
 	});
 
@@ -877,16 +885,21 @@ describe("responses", () => {
 				});
 			});
 
-			await expect(
-				t.mutation(api.responses.update, {
+			const error = await t
+				.mutation(api.responses.update, {
 					responseId,
 					editToken: "edit-token",
 					respondentName: "Rate Limited",
 					selectedSlots: ["2025-01-20T14:00:00Z"],
-				}),
-			).rejects.toThrow(
-				"Too many responses updated for this event right now. Please try again shortly.",
-			);
+				})
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ConvexError);
+			expect(JSON.parse(error.data)).toEqual({
+				code: "rate_limited",
+				message:
+					"Too many responses updated for this event right now. Please try again shortly.",
+			});
 
 			// The whole mutation must be rejected — no partial patch, matching
 			// how submit behaves when limited (nothing is inserted at all).

@@ -44,7 +44,7 @@ export interface EventProperties {
 		isAuthenticated: boolean;
 	};
 	event_create_failed: {
-		errorMessage: string;
+		errorCode: string;
 		eventMode: "times" | "dates";
 	};
 	event_page_viewed: {
