@@ -482,3 +482,13 @@ When working on features that span multiple parts of the codebase, reference `.a
 - Modifying heatmap rendering logic → update `heatmap-visualization.mmd`
 
 Diagrams should stay in sync with the codebase. If you add a new major feature flow, consider adding a new `.mmd` file for it.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `jdlam/timesync`, driven via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at the repo root plus `docs/adr/`. See `docs/agents/domain.md`.
