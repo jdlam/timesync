@@ -15,6 +15,7 @@
 - ✅ Implemented
 - ⚠️ Partially Implemented
 - ❌ Not Implemented
+- 🚫 Dropped (deliberately not planned; kept for history)
 
 ---
 
@@ -423,7 +424,10 @@
 
 **Technical Notes:**
 - Check `user.subscriptionTier === 'premium'`
-- Database schema supports custom durations, UI not implemented
+- A preset selector (15/30/60) already ships in `src/routes/events/create.tsx`;
+  what's missing is the arbitrary "Custom" duration and the premium gate
+- `src/lib/tier-config.ts` currently grants free and premium the same
+  `slotDurations: [15, 30, 60]`, so there is no tier difference yet
 
 ---
 
@@ -469,7 +473,12 @@
 
 ---
 
-### Story 5.6 - Ad-Free Experience [P1] [Premium] ❌
+### Story 5.6 - Ad-Free Experience [P1] [Premium] 🚫 Dropped
+
+> **Dropped.** TimeSync never shipped ads, so there is no ad experience for
+> premium to remove. Revive this story only if an ad-supported free tier is
+> revisited.
+
 **As a** premium user
 **I want to** use the app without ads
 **So that** I have a cleaner experience
@@ -526,31 +535,6 @@
 
 ---
 
-### Story 6.4 - Event Links Emailed on Creation [P2] ✅
-**As an** event creator
-**I want to** receive my event's public and admin links by email
-**So that** I don't lose the admin link after creating an event
-
-**Acceptance Criteria:**
-- [x] Signed-in creators are emailed the links at their account email
-- [x] Guests can enter an optional email on the create form to receive the links
-- [x] Email includes both the public (share) and admin (private) links
-- [x] Invalid guest emails are rejected on both client and server
-- [x] Event creation still succeeds when email is unconfigured (silent skip)
-
-**Technical Notes:**
-- `events.create` accepts an optional `creatorEmail` arg (guests); the account
-  email always wins for signed-in users. Stored as `events.creatorEmail`.
-- New `sendEventCreatedEmail` internal action (`convex/email_actions.ts`) sends
-  the links; scheduled via `ctx.scheduler.runAfter(0, ...)` from `create` when a
-  recipient email is resolvable.
-- Requires `LAME_MAIL_URL`, `LAME_MAIL_API_KEY`, and `APP_URL` (for the
-  links) in the Convex Dashboard; a no-op if any are missing.
-- Recipient resolution (`resolveRecipientEmail`) is shared with the new-response
-  notification: users-table email first, then `event.creatorEmail`.
-
----
-
 ### Story 6.3 - Share Event on Social Media [P2] ❌
 **As an** event creator
 **I want to** share the public link on social media
@@ -601,6 +585,31 @@
 **Technical Notes:**
 - Uses Tailwind `dark:` classes
 - Theme provider with light/dark/system options
+
+---
+
+### Story 6.6 - Event Links Emailed on Creation [P2] ✅
+**As an** event creator
+**I want to** receive my event's public and admin links by email
+**So that** I don't lose the admin link after creating an event
+
+**Acceptance Criteria:**
+- [x] Signed-in creators are emailed the links at their account email
+- [x] Guests can enter an optional email on the create form to receive the links
+- [x] Email includes both the public (share) and admin (private) links
+- [x] Invalid guest emails are rejected on both client and server
+- [x] Event creation still succeeds when email is unconfigured (silent skip)
+
+**Technical Notes:**
+- `events.create` accepts an optional `creatorEmail` arg (guests); the account
+  email always wins for signed-in users. Stored as `events.creatorEmail`.
+- New `sendEventCreatedEmail` internal action (`convex/email_actions.ts`) sends
+  the links; scheduled via `ctx.scheduler.runAfter(0, ...)` from `create` when a
+  recipient email is resolvable.
+- Requires `LAME_MAIL_URL`, `LAME_MAIL_API_KEY`, and `APP_URL` (for the
+  links) in the Convex Dashboard; a no-op if any are missing.
+- Recipient resolution (`resolveRecipientEmail`) is shared with the new-response
+  notification: users-table email first, then `event.creatorEmail`.
 
 ---
 
@@ -747,14 +756,16 @@
 - [x] Unit tests for utility functions
 - [x] Tests for Convex functions
 - [x] `npm run test` command works
-- [ ] Integration tests for API routes
+- [x] Integration tests for API routes (Convex HTTP routes covered in `convex/http.test.ts`)
 - [ ] E2E tests for critical flows (event creation, response submission)
-- [ ] Tests run in CI/CD pipeline
+- [x] Tests run in CI/CD pipeline
 - [ ] Test coverage reports
 
 **Tools:**
 - Vitest (configured and working)
 - Testing Library
+- GitHub Actions (`.github/workflows/ci.yml`) — runs Biome lint, typecheck,
+  tests, and build on every push and PR to `main`
 - Playwright (for E2E - not yet set up)
 
 ---
@@ -783,6 +794,7 @@
 | 6.1 | Copy links | ✅ |
 | 6.2 | Email notifications | ✅ |
 | 6.5 | Dark mode | ✅ |
+| 6.6 | Event links emailed on creation | ✅ |
 | 7.2 | Hard delete event (creator) | ✅ |
 | T.1 | Database setup | ✅ |
 | T.2 | Environment config | ✅ |
@@ -790,20 +802,24 @@
 ### Partially Implemented:
 | Story | Description | Status | Notes |
 |-------|-------------|--------|-------|
-| 5.3 | Custom slot duration | ⚠️ | Schema ready, no UI |
-| 7.1 | Archive events | ⚠️ | Schema ready, no UI |
+| 5.3 | Custom slot duration | ⚠️ | Preset 15/30/60 selector ships; no custom value, no premium gate |
+| 7.1 | Archive events | ⚠️ | `isActive` toggle wired across tables; no archive tab/filter |
 | 8.1 | Event statistics | ⚠️ | Basic stats only |
-| T.3 | Error handling | ⚠️ | Basic only, no Sentry/error tracking |
-| T.4 | Testing | ⚠️ | 250 unit tests, no E2E or CI |
+| T.3 | Error handling | ⚠️ | Error boundary + 404; no Sentry, no custom 500 page |
+| T.4 | Testing | ⚠️ | 686 tests across 44 files, running in CI; no E2E or coverage |
 
 ### Not Started:
 | Story | Description | Priority |
 |-------|-------------|----------|
 | 4.4 | Claim guest events | P2 |
-| 5.6 | Ad-free experience | P1 |
 | 6.3 | Social media share | P2 |
 | 6.4 | Duplicate event | P2 |
 | 8.2 | Track link views | P2 |
+
+### Dropped:
+| Story | Description | Why |
+|-------|-------------|-----|
+| 5.6 | Ad-free experience | The app never shipped ads, so there is nothing for premium to remove. Revive this only if ad-supported free tier is revisited. |
 
 ---
 

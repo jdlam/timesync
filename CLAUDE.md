@@ -413,10 +413,15 @@ LAME_MAIL_API_KEY=your-lame-mail-api-key
 
 See `USER_STORIES.md` for full status. Major missing features:
 - Full archive UI with filtered tabs (Story 7.1 - toggle implemented, archive tab not)
-- Custom slot duration UI for premium (Story 5.3 - schema ready, no UI)
-- Custom branding UI (schema ready, no UI)
-- E2E tests and CI pipeline (Story T.4)
-- Error tracking / Sentry integration (Story T.3)
+- Custom slot duration for premium (Story 5.3 - the 15/30/60 preset selector
+  ships; an arbitrary "Custom" value and the premium gate do not. Free and
+  premium share the same `slotDurations` in `src/lib/tier-config.ts`)
+- Custom branding UI (`events.customLogo` field exists in the schema, no UI)
+- E2E tests and coverage reports (Story T.4 - CI itself runs in
+  `.github/workflows/ci.yml`: lint, typecheck, test, build)
+- Error tracking / Sentry integration and a custom 500 page (Story T.3)
+- Claim guest events after signup (Story 4.4), social share buttons (6.3),
+  duplicate event (6.4), link-view tracking (8.2)
 
 ## Documentation Files
 
